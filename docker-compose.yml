@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pellets_factory
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=springuser
+      - POSTGRES_PASSWORD=Thepassword
+      - POSTGRES_DB=pellets_factory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

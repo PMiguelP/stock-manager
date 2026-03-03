@@ -1,0 +1,43 @@
+package com.pelletsfactory.stock_manager;
+import javafx.scene.layout.VBox;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication
+public class StockManagerApplication extends Application {
+
+    private ConfigurableApplicationContext springContext;
+
+    public static void main(String[] args) {
+        Application.launch(StockManagerApplication.class, args);
+    }
+
+    @Override
+    public void init() {
+        this.springContext = new SpringApplicationBuilder(StockManagerApplication.class).run();
+    }
+
+    @Override
+    public void start(Stage stage) throws Exception {
+        //FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
+        //loader.setControllerFactory(springContext::getBean);
+        //Parent root = loader.load();
+        Scene scene = new Scene(new VBox(), 100, 100);
+        stage.setTitle("Hello world");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    @Override
+    public void stop() {
+        springContext.close();
+        Platform.exit();
+    }
+}
