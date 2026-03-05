@@ -7,6 +7,8 @@ import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.control.Label;
+import javafx.geometry.Pos;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -29,8 +31,11 @@ public class StockManagerApplication extends Application {
         //FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
         //loader.setControllerFactory(springContext::getBean);
         //Parent root = loader.load();
-        Scene scene = new Scene(new VBox(), 100, 100);
-        stage.setTitle("Hello world");
+        Label label = new Label("Teste");
+
+        VBox vbox = new VBox(label);
+        Scene scene = new Scene(vbox, 1920, 1080);
+        stage.setTitle("PEllET LOUCURA");
         stage.setScene(scene);
         stage.show();
     }

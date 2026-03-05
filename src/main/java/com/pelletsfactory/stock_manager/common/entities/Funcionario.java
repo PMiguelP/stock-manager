@@ -1,9 +1,7 @@
-package com.pelletsfactory.stock_manager.entities;
+package com.pelletsfactory.stock_manager.common.entities;
 
-import com.pelletsfactory.stock_manager.enums.Cargo;
+import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -12,10 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "funcionarios")
-@NoArgsConstructor
-@AllArgsConstructor
 public class Funcionario {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(updatable = false, nullable = false)
