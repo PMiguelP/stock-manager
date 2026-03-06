@@ -26,7 +26,7 @@ public class FormulaProducao {
     @Column(nullable = false)
     private Boolean ativa;
 
-    @OneToMany(mappedBy = "formula", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "formulaProducao", cascade = CascadeType.ALL)
     private List<ComposicaoPellet> composicao;
 
     @CreationTimestamp
@@ -49,10 +49,6 @@ public class FormulaProducao {
 
     public UUID getId() {
         return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 
     public TipoPellet getTipoPellet() {
@@ -91,15 +87,7 @@ public class FormulaProducao {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

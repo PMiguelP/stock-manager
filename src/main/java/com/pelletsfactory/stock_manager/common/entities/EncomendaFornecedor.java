@@ -48,19 +48,15 @@ public class EncomendaFornecedor {
     public EncomendaFornecedor() {
     }
 
-    public EncomendaFornecedor(Fornecedor fornecedor, LocalDate data, EstadoEncomendaFornecedor estado, Double totalEncomenda) {
+    public EncomendaFornecedor(Fornecedor fornecedor, LocalDate data, Double totalEncomenda, List<ItemEncomendaFornecedor> itens) {
         this.fornecedor = fornecedor;
         this.data = data;
-        this.estado = estado;
         this.totalEncomenda = totalEncomenda;
+        this.itens = itens; //TODO: check this
     }
 
     public UUID getId() {
         return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 
     public Fornecedor getFornecedor() {
@@ -107,15 +103,7 @@ public class EncomendaFornecedor {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

@@ -52,10 +52,6 @@ public class ItemEncomendaFornecedor {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public EncomendaFornecedor getEncomenda() {
         return encomenda;
     }
@@ -92,15 +88,7 @@ public class ItemEncomendaFornecedor {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

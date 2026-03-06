@@ -58,12 +58,9 @@ public class EncomendaCliente {
         this.itens = itens;
     }
 
+
     public UUID getId() {
         return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 
     public Cliente getCliente() {
@@ -118,15 +115,7 @@ public class EncomendaCliente {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

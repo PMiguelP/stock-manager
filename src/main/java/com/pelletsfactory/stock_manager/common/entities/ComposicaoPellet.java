@@ -7,6 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+//TODO clean up de constructor and remove setter from id, createdAt, updatedAt
+
 @Entity
 @Table(name = "composicao_pellet")
 public class ComposicaoPellet {
@@ -47,10 +49,6 @@ public class ComposicaoPellet {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public FormulaProducao getFormulaProducao() {
         return formulaProducao;
     }
@@ -79,15 +77,8 @@ public class ComposicaoPellet {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }
