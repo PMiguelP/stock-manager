@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import java.lang.String?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.FuncionarioController"
+            prefHeight="750.0" prefWidth="1200.0">
+
+    <left>
+        <VBox prefWidth="250" spacing="5" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-muted; -fx-border-width: 0 1 0 0;">
+            <padding>
+                <Insets top="20" right="10" bottom="20" left="10"/>
+            </padding>
+
+            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 0 20 10;">
+                <VBox HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="5">
+                        <Label text="STOCK" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
+                        <Label text="MANAGER" styleClass="text-accent" style="-fx-font-size: 18px;"/>
+                    </HBox>
+                </VBox>
+                <MenuButton fx:id="btnTheme" styleClass="button-icon, button-flat">
+                    <graphic><Label text="🎨" style="-fx-font-size: 14px;"/></graphic>
+                    <items>
+                        <MenuItem text="Primer Light" onAction="#changeToPrimerLight"/>
+                        <MenuItem text="Primer Dark" onAction="#changeToPrimerDark"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="Nord Light" onAction="#changeToNordLight"/>
+                        <MenuItem text="Nord Dark" onAction="#changeToNordDark"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="Cupertino Light" onAction="#changeToCupertinoLight"/>
+                        <MenuItem text="Cupertino Dark" onAction="#changeToCupertinoDark"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="Dracula" onAction="#changeToDracula"/>
+                    </items>
+                </MenuButton>
+            </HBox>
+
+            <TextField promptText="Search..." styleClass="search-box">
+                <VBox.margin><Insets bottom="15" left="5" right="5"/></VBox.margin>
+            </TextField>
+
+            <Label text="Geral" styleClass="caption" style="-fx-padding: 10 0 5 10;"/>
+            <Button text="Dashboard" maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"/>
+            <Button text="Funcionários" maxWidth="Infinity" alignment="CENTER_LEFT">
+                <styleClass><String fx:value="button-flat" /><String fx:value="accent" /></styleClass>
+            </Button>
+
+            <Label text="Inventário" styleClass="caption" style="-fx-padding: 20 0 5 10;"/>
+            <Button text="Produtos" maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"/>
+            <Button text="Encomendas" maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"/>
+
+            <Region VBox.vgrow="ALWAYS" />
+            <Separator/>
+            <Button text="Definições" maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"/>
+        </VBox>
+    </left>
+
+    <center>
+        <VBox spacing="20" style="-fx-padding: 30;">
+            <Label text="Gestão de Funcionários" styleClass="title-1"/>
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Filtrar por Cargo:"/>
+                <ComboBox fx:id="cmbFiltroCargo" prefWidth="200" promptText="Todos os Cargos"/>
+                <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined"/>
+                <Button text="Mostrar Todos" onAction="#handleMostrarTodos" styleClass="button-flat"/>
+            </HBox>
+
+            <GridPane hgap="15" vgap="15">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="120"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                <children>
+                    <Label text="Nome:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtNome" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="NIF:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtNif" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                    <Label text="Cargo:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="cmbCargo" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="250"/>
+                    <Label text="Contacto:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtContacto" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                    <Label text="Nº Funcionário:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtNumeroFuncionario" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                    <Label text="PIN de Acesso:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                    <PasswordField fx:id="txtPin" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                </children>
+            </GridPane>
+
+            <HBox spacing="10">
+                <Button fx:id="btnAdicionar" text="Adicionar" onAction="#handleAdicionar">
+                    <styleClass><String fx:value="success"/><String fx:value="accent"/></styleClass>
+                </Button>
+                <Button fx:id="btnAtualizar" text="Atualizar" styleClass="button-outlined" onAction="#handleAtualizar"/>
+                <Button fx:id="btnApagar" text="Apagar" styleClass="danger" onAction="#handleApagar"/>
+                <Button text="Limpar" onAction="#handleLimpar" styleClass="button-flat"/>
+            </HBox>
+
+            <Separator/>
+
+            <TableView fx:id="tblFuncionarios" VBox.vgrow="ALWAYS" styleClass="striped">
+                <columns>
+                    <TableColumn fx:id="colNome" text="Nome" prefWidth="200"/>
+                    <TableColumn fx:id="colNif" text="NIF" prefWidth="100"/>
+                    <TableColumn fx:id="colCargo" text="Cargo" prefWidth="150"/>
+                    <TableColumn fx:id="colNumero" text="Nº Func." prefWidth="100"/>
+                    <TableColumn fx:id="colContacto" text="Contacto" prefWidth="120"/>
+                    <TableColumn fx:id="colDataAdmissao" text="Admissão" prefWidth="120"/>
+                </columns>
+                <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+            </TableView>
+
+            <HBox style="-fx-padding: 5; -fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;">
+                <Label fx:id="lblStatus" text="Sistema Pronto" styleClass="text-caption"/>
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>
