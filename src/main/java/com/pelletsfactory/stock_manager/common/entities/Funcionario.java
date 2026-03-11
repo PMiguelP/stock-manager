@@ -1,15 +1,19 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
 @Table(name = "funcionarios")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Funcionario {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,13 +33,14 @@ public class Funcionario {
     @Column(nullable = false, length = 50)
     private Cargo cargo;
 
-    @Column(nullable = false, unique = true, length = 20)
-    private String numeroFuncionario;
+    @Column(name = "numero_funcionario", nullable = false, unique = true)
+    private Integer numeroFuncionario;
 
-    @Column(nullable = false)
-    private Instant dataAdmissao;
+    @Column(name = "data_admissao", nullable = false)
+    private LocalDate dataAdmissao;
 
-    @Column(nullable = false, length = 60)
+    @Column(name = "hashed_pin", nullable = false)
+    @JsonIgnore //para do lado do spring web nunca aparecer o hashpin
     private String pinHash;
 
     @CreationTimestamp
@@ -49,7 +54,8 @@ public class Funcionario {
     public Funcionario() {
     }
 
-    public Funcionario(UUID id, String nome, String nif, String contacto, Cargo cargo, String numeroFuncionario, Instant dataAdmissao, String pinHash, Instant createdAt, Instant updatedAt) {
+    public Funcionario(UUID id, String nome, String nif, String contacto, Cargo cargo, Integer numeroFuncionario,
+                       LocalDate dataAdmissao, String pinHash, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.nome = nome;
         this.nif = nif;
@@ -98,19 +104,19 @@ public class Funcionario {
         this.cargo = cargo;
     }
 
-    public String getNumeroFuncionario() {
+    public Integer getNumeroFuncionario() {
         return numeroFuncionario;
     }
 
-    public void setNumeroFuncionario(String numeroFuncionario) {
+    public void setNumeroFuncionario(Integer numeroFuncionario) {
         this.numeroFuncionario = numeroFuncionario;
     }
 
-    public Instant getDataAdmissao() {
+    public LocalDate getDataAdmissao() {
         return dataAdmissao;
     }
 
-    public void setDataAdmissao(Instant dataAdmissao) {
+    public void setDataAdmissao(LocalDate dataAdmissao) {
         this.dataAdmissao = dataAdmissao;
     }
 

@@ -1,12 +1,11 @@
 package com.pelletsfactory.stock_manager.common.enums;
 
 public enum Cargo {
-    //TODO change the roles names
-    GERENTE("Gerente"),
-    SUPERVISOR("Supervisor"),
-    OPERADOR("Operador"),
-    ADMINISTRATIVO("Administrativo"),
-    ARMAZEM("Armazém");
+    ADMINISTRADOR("Administrador"),
+    RESPONSAVEL_PRODUCAO("Responsavel Producao"),
+    OPERADOR_PRODUCAO("Operador Producao"),
+    RESPONSAVEL_LOGISTICA("Responsavel Logistica"),
+    ASSISTENTE_COMERCIAL("Assistente Comercial");
 
     private final String displayName;
 

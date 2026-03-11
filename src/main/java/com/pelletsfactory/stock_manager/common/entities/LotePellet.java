@@ -1,5 +1,7 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -10,6 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "lotes_pellet")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class LotePellet {
 
     @Id
@@ -23,6 +26,7 @@ public class LotePellet {
 
     @ManyToOne
     @JoinColumn(name = "ordem_id", nullable = false)
+    @JsonBackReference
     private OrdemProducao ordem;
 
     @Column(name = "quantidade_kg", nullable = false)

@@ -1,5 +1,7 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -12,6 +14,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "ordens_producao")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrdemProducao {
 
     @Id
@@ -31,8 +34,8 @@ public class OrdemProducao {
     @JoinColumn(name = "formula_id", nullable = false)
     private FormulaProducao formula;
 
-    @Column(name = "quantidade_pedida_kg", nullable = false)
-    private Double quantidadePedidaKg;
+    @Column(name = "quantidade_maxima", nullable = false)
+    private Double quantidadeMaxima;
 
     @Column(name = "quantidade_produzida_kg")
     private Double quantidadeProduzidaKg;
@@ -48,9 +51,11 @@ public class OrdemProducao {
     private EstadoOrdemProducao estado;
 
     @OneToMany(mappedBy = "ordem")
+    @JsonManagedReference
     private List<ConsumoProducao> consumos;
 
     @OneToMany(mappedBy = "ordem")
+    @JsonManagedReference
     private List<LotePellet> lotes;
 
     @CreationTimestamp
@@ -64,11 +69,13 @@ public class OrdemProducao {
     public OrdemProducao() {
     }
 
-    public OrdemProducao(TipoPellet tipoPellet, Funcionario funcionario, FormulaProducao formula, Double quantidadePedidaKg, LocalDate dataInicio, EstadoOrdemProducao estado) {
+    public OrdemProducao(TipoPellet tipoPellet, Funcionario funcionario, FormulaProducao formula, Double quantidadeMaxima
+            ,
+                         LocalDate dataInicio, EstadoOrdemProducao estado) {
         this.tipoPellet = tipoPellet;
         this.funcionario = funcionario;
         this.formula = formula;
-        this.quantidadePedidaKg = quantidadePedidaKg;
+        this.quantidadeMaxima = quantidadeMaxima;
         this.dataInicio = dataInicio;
         this.estado = estado;
     }
@@ -101,12 +108,12 @@ public class OrdemProducao {
         this.formula = formula;
     }
 
-    public Double getQuantidadePedidaKg() {
-        return quantidadePedidaKg;
+    public Double getQuantidadeMaxima() {
+        return quantidadeMaxima;
     }
 
-    public void setQuantidadePedidaKg(Double quantidadePedidaKg) {
-        this.quantidadePedidaKg = quantidadePedidaKg;
+    public void setQuantidadeMaxima(Double quantidadeMaxima) {
+        this.quantidadeMaxima = quantidadeMaxima;
     }
 
     public Double getQuantidadeProduzidaKg() {

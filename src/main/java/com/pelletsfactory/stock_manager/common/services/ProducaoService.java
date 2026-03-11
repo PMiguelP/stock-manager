@@ -4,47 +4,63 @@ import com.pelletsfactory.stock_manager.common.entities.FormulaProducao;
 import com.pelletsfactory.stock_manager.common.entities.Funcionario;
 import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
 import com.pelletsfactory.stock_manager.common.entities.TipoPellet;
-import com.pelletsfactory.stock_manager.common.repositories.FormulaProducaoRepository;
-import com.pelletsfactory.stock_manager.common.repositories.FuncionarioRepository;
-import com.pelletsfactory.stock_manager.common.repositories.OrdemProducaoRepository;
-import com.pelletsfactory.stock_manager.common.repositories.TipoPelletRepository;
+import com.pelletsfactory.stock_manager.common.repositories.*;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
 public class ProducaoService {
+    private final OrdemProducaoRepository ordemProducaoRepo;
+    private final ConsumoProducaoRepository consumoProducaoRepo;
+    private final LotePelletRepository lotePelletRepo;
+    private final FormulaProducaoRepository formulaProducaoRepo;
+    private final FuncionarioService funcService;
+    private final StockService stockService;
 
-    private final FuncionarioRepository funcRepo;
-    private final OrdemProducaoRepository ordemProdRepo;
-    private final TipoPelletRepository tipoPelletRepo;
-    private final FormulaProducaoRepository formulaProdRepo;
-
-    public ProducaoService(FuncionarioRepository funcRepo, OrdemProducaoRepository ordemProdRepo, TipoPelletRepository tipoPelletRepo, FormulaProducaoRepository formulaProdRepo) {
-        this.funcRepo = funcRepo;
-        this.ordemProdRepo = ordemProdRepo;
-        this.tipoPelletRepo = tipoPelletRepo;
-        this.formulaProdRepo = formulaProdRepo;
+    public ProducaoService(OrdemProducaoRepository ordemProducaoRepo, ConsumoProducaoRepository consumoProducaoRepo, LotePelletRepository lotePelletRepo, FormulaProducaoRepository formulaProducaoRepo, FuncionarioService funcService, StockService stockService) {
+        this.ordemProducaoRepo = ordemProducaoRepo;
+        this.consumoProducaoRepo = consumoProducaoRepo;
+        this.lotePelletRepo = lotePelletRepo;
+        this.formulaProducaoRepo = formulaProducaoRepo;
+        this.funcService = funcService;
+        this.stockService = stockService;
     }
 
     @Transactional
-    public UUID abrirNovaOrdem(UUID funcionarioId, UUID formulaId, UUID tipoPelletId, Double quantidade) {
-        Funcionario funcionario = funcRepo.findById(funcionarioId)
-                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado!"));
-
-        FormulaProducao formula = formulaProdRepo.findById(formulaId)
-                .orElseThrow(() -> new RuntimeException("Fórmula de produção não encontrada!"));
-
-        TipoPellet tipo = tipoPelletRepo.findById(tipoPelletId)
-                .orElseThrow(() -> new RuntimeException("Tipo de Pellet não encontrado!"));
-
-        if (quantidade <= 0) {
-            throw new IllegalArgumentException("A quantidade a produzir deve ser maior que zero.");
-        }
-
-        // TODO: implementar quando o construtor de OrdemProducao estiver pronto
-        throw new UnsupportedOperationException("Ainda não implementado");
+    public OrdemProducao abrirNovaOrdem(UUID funcionarioId, UUID formulaId, UUID tipoPelletId,
+                                        Double quantidadeMaxima) {
+        // TODO: Cria nova ordem de produção após validar:
+        // 1. Funcionário existe (via funcionarioService.buscarPorId())
+        // 2. Tipo de pellet existe (via stockService.buscarTipoPelletPorId())
+        // Retorna OrdemProducao criada
+        return new OrdemProducao();
     }
+
+    @Transactional
+    public void registarConsumo(UUID ordemId, UUID materiaPrimaId, Double quantidade) {
+            // TODO: Regista consumo de matérias-primas para uma ordem e:
+            // 1. Grava na tabela Consumo_Producao
+            // 2. Chama stockService.subtrairStockMateriaPrima() para cada item
+            // Retorna void
+    }
+
+    @Transactional
+    public OrdemProducao finalizarOrdem(UUID ordemId, String localizacao) {
+        // TODO: Finaliza ordem de produção:
+        // 1. Calcula produção
+        // 2. Cria LotePellet
+        // 3. Chama stockService.atualizarStockPellet(..., true) para adicionar ao stock
+        // Retorna OrdemProducao finalizada
+        return new OrdemProducao();
+    }
+
+
+    public FormulaProducao buscarFormulaPorId(UUID id) {
+        // TODO: Valida se fórmula existe antes de iniciar produção. Retorna FormulaProducao ou lança exceção
+        return new FormulaProducao();
+    }
+
+
 }

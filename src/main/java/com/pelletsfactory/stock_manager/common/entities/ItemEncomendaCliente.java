@@ -1,5 +1,7 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -9,6 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "itens_encomenda_cliente")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ItemEncomendaCliente {
 
     @Id
@@ -17,7 +20,12 @@ public class ItemEncomendaCliente {
     private UUID id;
 
     @ManyToOne
+    @JoinColumn(name = "ordem_producao_id")
+    private OrdemProducao ordemProducao;
+
+    @ManyToOne
     @JoinColumn(name = "encomenda_id", nullable = false)
+    @JsonBackReference //evita loop item -> encomenda -> item
     private EncomendaCliente encomenda;
 
     @ManyToOne
@@ -27,8 +35,8 @@ public class ItemEncomendaCliente {
     @Column(name = "quantidade_kg", nullable = false)
     private Double quantidadeKg;
 
-    @Column(name = "preco_unitario_aplicado", nullable = false)
-    private Double precoUnitarioAplicado;
+    @Column(name = "preco_venda_aplicado", nullable = false)
+    private Double precoVendaAplicado;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -41,11 +49,11 @@ public class ItemEncomendaCliente {
     public ItemEncomendaCliente() {
     }
 
-    public ItemEncomendaCliente(EncomendaCliente encomenda, TipoPellet tipoPellet, Double quantidadeKg, Double precoUnitarioAplicado) {
+    public ItemEncomendaCliente(EncomendaCliente encomenda, TipoPellet tipoPellet, Double quantidadeKg, Double precoVendaAplicado) {
         this.encomenda = encomenda;
         this.tipoPellet = tipoPellet;
         this.quantidadeKg = quantidadeKg;
-        this.precoUnitarioAplicado = precoUnitarioAplicado;
+        this.precoVendaAplicado = precoVendaAplicado;
     }
 
     public UUID getId() {
@@ -64,6 +72,14 @@ public class ItemEncomendaCliente {
         return tipoPellet;
     }
 
+    public OrdemProducao getOrdemProducao() {
+        return ordemProducao;
+    }
+
+    public void setOrdemProducao(OrdemProducao ordemProducao) {
+        this.ordemProducao = ordemProducao;
+    }
+
     public void setTipoPellet(TipoPellet tipoPellet) {
         this.tipoPellet = tipoPellet;
     }
@@ -76,12 +92,12 @@ public class ItemEncomendaCliente {
         this.quantidadeKg = quantidadeKg;
     }
 
-    public Double getPrecoUnitarioAplicado() {
-        return precoUnitarioAplicado;
+    public Double getPrecoVendaAplicado() {
+        return precoVendaAplicado;
     }
 
-    public void setPrecoUnitarioAplicado(Double precoUnitarioAplicado) {
-        this.precoUnitarioAplicado = precoUnitarioAplicado;
+    public void setPrecoVendaAplicado(Double precoVendaAplicado) {
+        this.precoVendaAplicado = precoVendaAplicado;
     }
 
     public Instant getCreatedAt() {

@@ -1,5 +1,6 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tipo_pellet")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TipoPellet {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -31,8 +33,8 @@ public class TipoPellet {
     @Column(name = "stock_minimo", nullable = false)
     private Double stockMinimo = 0.0;
 
-    @Column(name = "preco_por_kg")
-    private BigDecimal precoPorKg;
+    @Column(name = "custo_atual_por_kg")
+    private BigDecimal custoAtualPorKg;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -45,13 +47,13 @@ public class TipoPellet {
     public TipoPellet() {
     }
 
-    public TipoPellet(String nome, Double diametroMm, Double poderCalorifico, Double stockAtual, Double stockMinimo, BigDecimal precoPorKg) {
+    public TipoPellet(String nome, Double diametroMm, Double poderCalorifico, Double stockAtual, Double stockMinimo, BigDecimal custoAtualPorKg) {
         this.nome = nome;
         this.diametroMm = diametroMm;
         this.poderCalorifico = poderCalorifico;
         this.stockAtual = stockAtual;
         this.stockMinimo = stockMinimo;
-        this.precoPorKg = precoPorKg;
+        this.custoAtualPorKg = custoAtualPorKg;
     }
 
     public UUID getId() {
@@ -98,12 +100,12 @@ public class TipoPellet {
         this.stockMinimo = stockMinimo;
     }
 
-    public BigDecimal getPrecoPorKg() {
-        return precoPorKg;
+    public BigDecimal getCustoAtualPorKg() {
+        return custoAtualPorKg;
     }
 
-    public void setPrecoPorKg(BigDecimal precoPorKg) {
-        this.precoPorKg = precoPorKg;
+    public void setCustoAtualPorKg(BigDecimal custoAtualPorKg) {
+        this.custoAtualPorKg = custoAtualPorKg;
     }
 
     public Instant getCreatedAt() {

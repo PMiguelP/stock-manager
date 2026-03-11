@@ -1,5 +1,7 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaCliente;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -12,6 +14,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "encomendas_cliente")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class EncomendaCliente {
 
     @Id
@@ -30,13 +33,14 @@ public class EncomendaCliente {
     @Column(nullable = false, length = 50)
     private EstadoEncomendaCliente estado;
 
-    @Column(nullable = false)
-    private Double total;
+    @Column(name = "total_venda", nullable = false)
+    private Double totalVenda;
 
     @Column(name = "codigo_tracking", length = 50)
     private String codigoTracking;
 
     @OneToMany(mappedBy = "encomenda", cascade = CascadeType.ALL)
+    @JsonManagedReference //permite serializar os itens
     private List<ItemEncomendaCliente> itens;
 
     @CreationTimestamp
@@ -50,11 +54,12 @@ public class EncomendaCliente {
     public EncomendaCliente() {
     }
 
-    public EncomendaCliente(Cliente cliente, LocalDate data, EstadoEncomendaCliente estado, Double total, List<ItemEncomendaCliente> itens) {
+    public EncomendaCliente(Cliente cliente, LocalDate data, EstadoEncomendaCliente estado, Double totalVenda,
+                            List<ItemEncomendaCliente> itens) {
         this.cliente = cliente;
         this.data = data;
         this.estado = estado;
-        this.total = total;
+        this.totalVenda = totalVenda;
         this.itens = itens;
     }
 
@@ -87,12 +92,12 @@ public class EncomendaCliente {
         this.estado = estado;
     }
 
-    public Double getTotal() {
-        return total;
+    public Double getTotalVenda() {
+        return totalVenda;
     }
 
-    public void setTotal(Double total) {
-        this.total = total;
+    public void setTotalVenda(Double totalVenda) {
+        this.totalVenda = totalVenda;
     }
 
     public String getCodigoTracking() {

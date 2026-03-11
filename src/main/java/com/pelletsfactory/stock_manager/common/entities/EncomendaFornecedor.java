@@ -1,5 +1,7 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaFornecedor;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -13,6 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "encomendas_fornecedor")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class EncomendaFornecedor {
 
     @Id
@@ -35,6 +38,7 @@ public class EncomendaFornecedor {
     private Double totalEncomenda;
 
     @OneToMany(mappedBy = "encomenda", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<ItemEncomendaFornecedor> itens = new ArrayList<>();
 
     @CreationTimestamp
