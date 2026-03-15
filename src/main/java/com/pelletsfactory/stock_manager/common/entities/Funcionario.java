@@ -33,7 +33,7 @@ public class Funcionario {
     @Column(nullable = false, length = 50)
     private Cargo cargo;
 
-    @Column(name = "numero_funcionario", nullable = false, unique = true)
+    @Column(name = "numero_funcionario", unique = true)
     private Integer numeroFuncionario;
 
     @Column(name = "data_admissao", nullable = false)
@@ -54,16 +54,14 @@ public class Funcionario {
     public Funcionario() {
     }
 
-    public Funcionario(UUID id, String nome, String nif, String contacto, Cargo cargo, Integer numeroFuncionario,
-                       LocalDate dataAdmissao, String pinHash, Instant createdAt, Instant updatedAt) {
+    public Funcionario(UUID id, String nome, String nif, String contacto, Cargo cargo,
+                       LocalDate dataAdmissao, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.nome = nome;
         this.nif = nif;
         this.contacto = contacto;
         this.cargo = cargo;
-        this.numeroFuncionario = numeroFuncionario;
         this.dataAdmissao = dataAdmissao;
-        this.pinHash = pinHash;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

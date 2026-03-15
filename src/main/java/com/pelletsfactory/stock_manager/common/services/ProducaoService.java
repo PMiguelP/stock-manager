@@ -1,13 +1,13 @@
 package com.pelletsfactory.stock_manager.common.services;
 
-import com.pelletsfactory.stock_manager.common.entities.FormulaProducao;
-import com.pelletsfactory.stock_manager.common.entities.Funcionario;
-import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
-import com.pelletsfactory.stock_manager.common.entities.TipoPellet;
+import com.pelletsfactory.stock_manager.common.entities.*;
+import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import com.pelletsfactory.stock_manager.common.repositories.*;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -31,36 +31,58 @@ public class ProducaoService {
     @Transactional
     public OrdemProducao abrirNovaOrdem(UUID funcionarioId, UUID formulaId, UUID tipoPelletId,
                                         Double quantidadeMaxima) {
-        // TODO: Cria nova ordem de produção após validar:
-        // 1. Funcionário existe (via funcionarioService.buscarPorId())
-        // 2. Tipo de pellet existe (via stockService.buscarTipoPelletPorId())
-        // Retorna OrdemProducao criada
-        return new OrdemProducao();
+        Funcionario func = funcService.buscarPorId(funcionarioId);
+        FormulaProducao formula = buscarFormulaPorId(formulaId);
+        TipoPellet tipo = stockService.buscarTipoPelletPorId(tipoPelletId);
+
+        OrdemProducao ordem = new OrdemProducao();
+        ordem.setFuncionario(func);
+        ordem.setFormula(formula);
+        ordem.setTipoPellet(tipo);
+        ordem.setQuantidadeMaxima(quantidadeMaxima);
+        ordem.setEstado(EstadoOrdemProducao.EM_PRODUCAO);
+        ordem.setDataInicio(LocalDate.now());
+
+        return ordemProducaoRepo.save(ordem);
     }
 
     @Transactional
     public void registarConsumo(UUID ordemId, UUID materiaPrimaId, Double quantidade) {
-            // TODO: Regista consumo de matérias-primas para uma ordem e:
-            // 1. Grava na tabela Consumo_Producao
-            // 2. Chama stockService.subtrairStockMateriaPrima() para cada item
-            // Retorna void
+        OrdemProducao ordem = ordemProducaoRepo.findById(ordemId)
+                .orElseThrow(() -> new EntityNotFoundException("Ordem de produção não encontrada."));
+
+        ConsumoProducao consumo = new ConsumoProducao();
+        consumo.setOrdem(ordem);
+        consumo.setMateriaPrima(stockService.buscarMateriaPrimaPorId(materiaPrimaId));
+        consumo.setQuantidadeConsumida(quantidade);
+        consumoProducaoRepo.save(consumo);
+
+        stockService.subtrairStockMateriaPrima(materiaPrimaId, quantidade);
     }
 
     @Transactional
-    public OrdemProducao finalizarOrdem(UUID ordemId, String localizacao) {
-        // TODO: Finaliza ordem de produção:
-        // 1. Calcula produção
-        // 2. Cria LotePellet
-        // 3. Chama stockService.atualizarStockPellet(..., true) para adicionar ao stock
-        // Retorna OrdemProducao finalizada
-        return new OrdemProducao();
-    }
+    public OrdemProducao finalizarOrdem(UUID ordemId, Double qtdRealProduzida, String localizacao) {
+        OrdemProducao ordem = ordemProducaoRepo.findById(ordemId)
+                .orElseThrow(() -> new EntityNotFoundException("Ordem não encontrada."));
 
+        ordem.setQuantidadeProduzidaKg(qtdRealProduzida);
+        ordem.setDataFim(LocalDate.now());
+        ordem.setEstado(EstadoOrdemProducao.CONCLUIDA);
+
+        LotePellet lote = new LotePellet();
+        lote.setOrdem(ordem);
+        lote.setTipoPellet(ordem.getTipoPellet());
+        lote.setQuantidadeKg(qtdRealProduzida);
+        lote.setLocalizacao(localizacao);
+        lote.setDataProducao(LocalDate.now());
+        lotePelletRepo.save(lote);
+
+        stockService.atualizarStockPellet(ordem.getTipoPellet().getId(), qtdRealProduzida, true);
+        return ordemProducaoRepo.save(ordem);
+    }
 
     public FormulaProducao buscarFormulaPorId(UUID id) {
-        // TODO: Valida se fórmula existe antes de iniciar produção. Retorna FormulaProducao ou lança exceção
-        return new FormulaProducao();
+        return formulaProducaoRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Fórmula de produção " + id + " não encontrada."));
     }
-
-
 }

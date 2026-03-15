@@ -41,10 +41,10 @@ public class StockManagerApplication extends Application {
 
         Parent root = loader.load();
 
-        Scene scene = new Scene(root, 450, 600);
+        Scene scene = new Scene(root, 1920, 1080);
         stage.setTitle("Stock Manager - Login");
         stage.setScene(scene);
-        stage.setResizable(false); // Login não redimensionável
+        stage.setResizable(true);
         stage.centerOnScreen();
         stage.show();
     }
