@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import atlantafx.base.controls.Breadcrumbs?>
+
+<HBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.components.HeaderController"
+      alignment="CENTER_LEFT" prefHeight="100.0" spacing="20"
+      style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 1 0; -fx-padding: 0 30;">
+
+    <!-- Área de Título e Breadcrumbs -->
+    <VBox alignment="CENTER_LEFT" spacing="5">
+        <Breadcrumbs fx:id="breadcrumbs"/>
+        <Label fx:id="lblTitulo" text="Dashboard" styleClass="title-2"/>
+        <Label fx:id="lblSubtitulo" text="Visão geral do sistema" styleClass="text-muted"/>
+    </VBox>
+
+    <!-- Spacer -->
+    <Region HBox.hgrow="ALWAYS"/>
+
+    <!-- Menu de Temas -->
+    <MenuButton styleClass="button-icon, button-flat">
+        <graphic>
+            <FontIcon iconLiteral="mdi2p-palette" iconSize="18"/>
+        </graphic>
+        <items>
+            <MenuItem text="Primer Light" onAction="#changeToPrimerLight"/>
+            <MenuItem text="Primer Dark" onAction="#changeToPrimerDark"/>
+            <MenuItem text="Nord Light" onAction="#changeToNordLight"/>
+            <MenuItem text="Nord Dark" onAction="#changeToNordDark"/>
+            <MenuItem text="Cupertino Light" onAction="#changeToCupertinoLight"/>
+            <MenuItem text="Cupertino Dark" onAction="#changeToCupertinoDark"/>
+            <MenuItem text="Dracula" onAction="#changeToDracula"/>
+        </items>
+    </MenuButton>
+
+</HBox>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import java.lang.String?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.components.SidebarController"
+      prefWidth="250" spacing="5"
+      style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-muted; -fx-border-width: 0 1 0 0;">
+
+    <padding>
+        <Insets top="20" right="10" bottom="20" left="10"/>
+    </padding>
+
+    <!-- Logo -->
+    <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 0 20 10;">
+        <Label text="STOCK" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
+        <Label text="MANAGER" styleClass="text-accent" style="-fx-font-size: 18px;"/>
+    </HBox>
+
+    <!-- Menu Items -->
+    <Button fx:id="btnDashboard" text="Dashboard" onAction="#handleDashboard"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat">
+        <graphic>
+            <FontIcon iconLiteral="mdi2v-view-dashboard" iconSize="18"/>
+        </graphic>
+    </Button>
+
+    <Button fx:id="btnFuncionarios" text="Funcionários" onAction="#handleFuncionarios"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat">
+        <graphic>
+            <FontIcon iconLiteral="mdi2a-account-group" iconSize="18"/>
+        </graphic>
+    </Button>
+
+    <!-- Spacer -->
+    <Region VBox.vgrow="ALWAYS"/>
+
+    <!-- Separator -->
+    <Separator/>
+
+    <!-- Botão Sair -->
+    <Button text="Sair" onAction="#handleSair" maxWidth="Infinity"
+            alignment="CENTER_LEFT" styleClass="button-flat">
+        <graphic>
+            <FontIcon iconLiteral="mdi2l-logout" iconSize="18"/>
+        </graphic>
+    </Button>
+
+</VBox>

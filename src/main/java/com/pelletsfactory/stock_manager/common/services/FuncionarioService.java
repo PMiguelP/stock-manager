@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.entities.Funcionario;
+import com.pelletsfactory.stock_manager.common.entities.SessaoFuncionario;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.repositories.FuncionarioRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -20,14 +21,21 @@ public class FuncionarioService {
         this.funcRepo = funcRepo;
     }
 
-    public Funcionario autenticar(String numeroFuncionario, String pin) {
-        // TODO: Valida credenciais do funcionário (número + PIN) e retorna o Funcionario se válido, null se inválido
-        return new Funcionario();
-    }
-
     @Transactional
     public Funcionario adicionarFuncionario(Funcionario funcionario) {
         // TODO: Cria novo funcionário no sistema com hash do PIN e retorna o Funcionario criado
+
+        /*Funcionario userLogado = SessaoFuncionario.getFuncionarioLogado();
+
+        if (userLogado == null) {
+            throw new RuntimeException("Utilizador não autenticado");
+        }
+
+        if (userLogado.getCargo() != Cargo.ADMIN &&
+                userLogado.getCargo() != Cargo.HR) {
+
+            throw new RuntimeException("Sem permissões para criar funcionários");
+        }*/
         return new Funcionario();
     }
 
@@ -46,6 +54,9 @@ public class FuncionarioService {
         return new ArrayList<>();
     }
 
+    public List<Funcionario> listarTodos() {
+        return funcRepo.findAll();
+    }
 
     public Funcionario buscarPorId(UUID id) {
         // TODO: CRÍTICO - Busca funcionário por UUID e retorna entidade completa. Usado por TODOS os outros serviços para validar autor de ações

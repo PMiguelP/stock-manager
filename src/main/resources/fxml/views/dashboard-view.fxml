@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.DashboardController"
+      spacing="30" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+
+    <!-- Header da View -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <VBox spacing="5">
+            <Label text="Painel de Controlo" styleClass="title-2"/>
+            <Label text="Visão geral das métricas da fábrica" styleClass="text-muted"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Atualizar" onAction="#handleAtualizar" styleClass="button-outlined">
+            <graphic>
+                <FontIcon iconLiteral="mdi2r-refresh" iconSize="18"/>
+            </graphic>
+        </Button>
+    </HBox>
+
+    <!-- Cards de Estatísticas -->
+    <GridPane hgap="20" vgap="20">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="25"/>
+            <ColumnConstraints percentWidth="25"/>
+            <ColumnConstraints percentWidth="25"/>
+            <ColumnConstraints percentWidth="25"/>
+        </columnConstraints>
+
+        <!-- Card 1: Total Funcionários -->
+        <VBox spacing="15" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 25; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;"
+              GridPane.columnIndex="0" GridPane.rowIndex="0">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="mdi2a-account-group" iconSize="32" styleClass="text-accent"/>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Total Funcionários" styleClass="text-muted" style="-fx-font-size: 12px;"/>
+                    <Label fx:id="lblTotalFuncionarios" text="0" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
+                </VBox>
+            </HBox>
+            <Label text="+5% vs mês anterior" styleClass="success" style="-fx-font-size: 11px;"/>
+        </VBox>
+
+        <!-- Card 2: Funcionários Ativos -->
+        <VBox spacing="15" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 25; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;"
+              GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="mdi2a-account-check" iconSize="32" styleClass="success"/>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Ativos Hoje" styleClass="text-muted" style="-fx-font-size: 12px;"/>
+                    <Label fx:id="lblFuncionariosAtivos" text="0" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
+                </VBox>
+            </HBox>
+            <Label text="90.5% de presença" styleClass="success" style="-fx-font-size: 11px;"/>
+        </VBox>
+
+        <!-- Card 3: Produção do Mês -->
+        <VBox spacing="15" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 25; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;"
+              GridPane.columnIndex="2" GridPane.rowIndex="0">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="mdi2f-factory" iconSize="32" styleClass="warning"/>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Produção Mês" styleClass="text-muted" style="-fx-font-size: 12px;"/>
+                    <Label fx:id="lblProducaoMes" text="0 ton" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
+                </VBox>
+            </HBox>
+            <Label text="+12% vs meta" styleClass="success" style="-fx-font-size: 11px;"/>
+        </VBox>
+
+        <!-- Card 4: Stock Atual -->
+        <VBox spacing="15" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 25; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;"
+              GridPane.columnIndex="3" GridPane.rowIndex="0">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <FontIcon iconLiteral="mdi2p-package-variant" iconSize="32" styleClass="danger"/>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Stock Atual" styleClass="text-muted" style="-fx-font-size: 12px;"/>
+                    <Label fx:id="lblStockAtual" text="0 ton" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
+                </VBox>
+            </HBox>
+            <Label text="Nível baixo" styleClass="danger" style="-fx-font-size: 11px;"/>
+        </VBox>
+
+    </GridPane>
+
+    <!-- Área de Gráficos (Placeholder) -->
+    <VBox spacing="15" VBox.vgrow="ALWAYS"
+          style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 25; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
+        <Label text="Gráficos de Desempenho" styleClass="title-4"/>
+        <Label text="Em desenvolvimento..." styleClass="text-muted"/>
+
+        <!-- Placeholder para gráficos -->
+        <StackPane VBox.vgrow="ALWAYS" style="-fx-background-color: -color-bg-default; -fx-background-radius: 4;">
+            <VBox alignment="CENTER" spacing="10">
+                <FontIcon iconLiteral="mdi2c-chart-line" iconSize="64" styleClass="text-muted"/>
+                <Label text="Gráficos serão exibidos aqui" styleClass="text-muted"/>
+            </VBox>
+        </StackPane>
+    </VBox>
+
+</VBox>

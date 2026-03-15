@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.MainController"
+            prefHeight="900.0" prefWidth="1400.0">
+
+    <!-- Sidebar Esquerda -->
+    <left>
+        <fx:include source="components/sidebar.fxml"/>
+    </left>
+
+    <!-- Área Central (Header + Conteúdo Dinâmico) -->
+    <center>
+        <VBox spacing="0">
+            <!-- Header -->
+            <fx:include source="components/header.fxml"/>
+
+            <!-- Área de Conteúdo Dinâmico -->
+            <BorderPane fx:id="contentArea" VBox.vgrow="ALWAYS"
+                        style="-fx-background-color: -color-bg-default;"/>
+        </VBox>
+    </center>
+
+</BorderPane>
