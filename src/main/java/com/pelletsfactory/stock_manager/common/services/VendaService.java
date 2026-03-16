@@ -6,6 +6,7 @@ import com.pelletsfactory.stock_manager.common.entities.ItemEncomendaCliente;
 import com.pelletsfactory.stock_manager.common.repositories.ClienteRepository;
 import com.pelletsfactory.stock_manager.common.repositories.EncomendaClienteRepository;
 import com.pelletsfactory.stock_manager.common.repositories.ItemEncomendaClienteRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -50,5 +51,10 @@ public class VendaService {
     public Cliente buscarClientePorId(UUID id) {
         // TODO: Busca cliente por ID. Usado para preencher detalhes de faturação na venda. Retorna Cliente ou lança exceção
         return new Cliente();
+    }
+
+    public EncomendaCliente getEncomendaClienteById(UUID id) {
+        return encomendaClienteRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Encomenda não encontrado com o ID: " + id));
     }
 }

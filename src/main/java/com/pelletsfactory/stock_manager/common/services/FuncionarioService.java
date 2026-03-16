@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.pelletsfactory.stock_manager.common.utils.FuncoesAuxiliares.validarPermissaoAdmin;
+
 @Service
 public class FuncionarioService {
     private final FuncionarioRepository funcRepo;
@@ -121,19 +123,6 @@ public class FuncionarioService {
         }
         if (f.getContacto() == null || !f.getContacto().matches("[2789]\\d{8}")) {
             throw new RuntimeException("Contacto telefónico inválido.");
-        }
-    }
-
-    //TODO: remover isto para outro arquivo vai ser muito utilizado
-    private void validarPermissaoAdmin() {
-        Funcionario userLogado = SessaoFuncionario.getFuncionarioLogado();
-
-        if (userLogado == null) {
-            throw new RuntimeException("Utilizador não autenticado. Por favor, faça login.");
-        }
-
-        if (userLogado.getCargo() != Cargo.ADMINISTRADOR) {
-            throw new RuntimeException("Acesso negado: Operação exclusiva para Administradores.");
         }
     }
 }

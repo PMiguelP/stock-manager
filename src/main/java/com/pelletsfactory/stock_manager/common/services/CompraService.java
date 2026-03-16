@@ -4,6 +4,7 @@ import com.pelletsfactory.stock_manager.common.entities.EncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.entities.ItemEncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.repositories.EncomendaFornecedorRepository;
 import com.pelletsfactory.stock_manager.common.repositories.ItemEncomendaFornecedorRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -42,5 +43,10 @@ public class CompraService {
         // TODO: Lista encomendas pendentes de um fornecedor.
         // Retorna uma lista vazia temporariamente para não dar erro de compilação
         return new ArrayList<>();
+    }
+
+    public EncomendaFornecedor getEncomendaFornecedorById(UUID id) {
+        return encomendaFornecedorRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Encomenda não encontrado com o ID: " + id));
     }
 }
