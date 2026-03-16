@@ -4,7 +4,6 @@ import atlantafx.base.controls.ModalPane;
 import com.pelletsfactory.stock_manager.common.entities.Funcionario;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -15,15 +14,18 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.util.List;
+
 @Component
 public class FuncionarioController {
     private final FuncionarioService funcionarioService;
 
     @FXML private ComboBox<Cargo> cmbFiltroCargo;
+    @FXML private TextField txtFiltroNome;
+    @FXML private TextField txtFiltroNif;
     @FXML private ModalPane modalPane;
     @FXML private TableView<Funcionario> tblFuncionarios;
     @FXML private VBox vboxContainer;
@@ -33,18 +35,19 @@ public class FuncionarioController {
     @FXML private TableColumn<Funcionario, Cargo> colCargo;
     @FXML private TableColumn<Funcionario, LocalDate> colDataAdmissao;
 
-    //TODO atualizar os campos para a criacao do funcionario temos que retirar password vai gerar automaticamente
     private TextField txtNome, txtNif, txtContacto, txtNumeroFuncionario;
     private ComboBox<Cargo> cmbCargo;
     private PasswordField txtPin;
     private VBox drawerRoot;
 
     // Paginação
-    private Pagination pagination;
-    private ComboBox<Integer> cmbItemsPerPage;
     private Label lblPaginaStatus;
+    private ComboBox<Integer> cmbItemsPerPage;
+    private HBox paginationButtons;
     private int itemsPerPage = 10;
-    private ObservableList<Funcionario> todosFuncionarios = FXCollections.observableArrayList();
+    private int paginaAtual = 0;
+    private int totalPaginas = 0;
+
     private ObservableList<Funcionario> funcionarios = FXCollections.observableArrayList();
 
     public FuncionarioController(FuncionarioService funcionarioService) {
@@ -61,79 +64,259 @@ public class FuncionarioController {
 
     private void configurarTabela() {
         if (colNome == null || colNumero == null) return;
-        colNome.setCellValueFactory(new PropertyValueFactory<>("nome"));
-        colNif.setCellValueFactory(new PropertyValueFactory<>("nif"));
-        colCargo.setCellValueFactory(new PropertyValueFactory<>("cargo"));
+
+        // Configurar alinhamento e espaçamento para todas as colunas
         colNumero.setCellValueFactory(new PropertyValueFactory<>("numeroFuncionario"));
+        configurarColunaTexto(colNumero);
+
+        colNome.setCellValueFactory(new PropertyValueFactory<>("nome"));
+        configurarColunaTexto(colNome);
+
+        colNif.setCellValueFactory(new PropertyValueFactory<>("nif"));
+        configurarColunaTexto(colNif);
+
         colContacto.setCellValueFactory(new PropertyValueFactory<>("contacto"));
+        configurarColunaTexto(colContacto);
+
         colDataAdmissao.setCellValueFactory(new PropertyValueFactory<>("dataAdmissao"));
+        configurarColunaTexto(colDataAdmissao);
+
+        // Coluna Cargo com badge customizado
+        colCargo.setCellValueFactory(new PropertyValueFactory<>("cargo"));
+        colCargo.setCellFactory(column -> new TableCell<Funcionario, Cargo>() {
+            @Override
+            protected void updateItem(Cargo cargo, boolean empty) {
+                super.updateItem(cargo, empty);
+
+                if (empty || cargo == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    HBox badge = criarBadgeCargo(cargo);
+                    setGraphic(badge);
+                    setText(null);
+                }
+
+                // Padding e alinhamento
+                setPadding(new Insets(8, 10, 8, 10));
+                setAlignment(Pos.CENTER_LEFT);
+            }
+        });
+
+        // Ajustar altura das linhas
+        tblFuncionarios.setFixedCellSize(60);
         tblFuncionarios.setItems(funcionarios);
     }
 
-    private void configurarPaginacao(VBox container) {
-        HBox paginationBox = new HBox(20);
-        paginationBox.setAlignment(Pos.CENTER_LEFT);
-        paginationBox.setPadding(new Insets(20, 0, 10, 0));
+    // Método auxiliar para configurar colunas de texto
+    private <T> void configurarColunaTexto(TableColumn<Funcionario, T> coluna) {
+        coluna.setCellFactory(column -> new TableCell<Funcionario, T>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
 
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.toString());
+                }
+
+                // Padding e alinhamento
+                setPadding(new Insets(8, 10, 8, 10));
+                setAlignment(Pos.CENTER_LEFT);
+            }
+        });
+    }
+
+    private void configurarPaginacao(VBox container) {
+        HBox paginationContainer = new HBox(20);
+        paginationContainer.setAlignment(Pos.CENTER);
+        paginationContainer.setPadding(new Insets(20, 0, 20, 0));
+        paginationContainer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+
+        // Label à esquerda - "Showing 1 to 10 of 112 results"
         lblPaginaStatus = new Label();
         lblPaginaStatus.getStyleClass().add("text-muted");
+        HBox.setHgrow(lblPaginaStatus, Priority.NEVER);
 
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setPrefWidth(100);
-        cmbItemsPerPage.setOnAction(e -> {
-            itemsPerPage = cmbItemsPerPage.getValue();
-            atualizarPaginacao();
-        });
+        // Spacer para empurrar tudo
+        Region leftSpacer = new Region();
+        HBox.setHgrow(leftSpacer, Priority.ALWAYS);
+
+        // ComboBox "Per page" no CENTRO
+        HBox perPageBox = new HBox(10);
+        perPageBox.setAlignment(Pos.CENTER);
 
         Label lblPerPage = new Label("Por página");
         lblPerPage.getStyleClass().add("text-muted");
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        pagination = new Pagination();
-        pagination.setMaxPageIndicatorCount(5);
-        pagination.setPageFactory(pageIndex -> {
-            atualizarTabelaPaginada(pageIndex);
-            return new StackPane();
+        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
+        cmbItemsPerPage.setValue(itemsPerPage);
+        cmbItemsPerPage.setPrefWidth(80);
+        cmbItemsPerPage.getStyleClass().add("small");
+        cmbItemsPerPage.setOnAction(e -> {
+            itemsPerPage = cmbItemsPerPage.getValue();
+            paginaAtual = 0;
+            carregarFuncionarios();
         });
 
-        HBox itemsPerPageBox = new HBox(10, cmbItemsPerPage, lblPerPage);
-        itemsPerPageBox.setAlignment(Pos.CENTER_LEFT);
+        perPageBox.getChildren().addAll(lblPerPage, cmbItemsPerPage);
+        HBox.setHgrow(perPageBox, Priority.NEVER);
 
-        paginationBox.getChildren().addAll(lblPaginaStatus, spacer, itemsPerPageBox, pagination);
+        // Spacer direito
+        Region rightSpacer = new Region();
+        HBox.setHgrow(rightSpacer, Priority.ALWAYS);
 
-        pagination.currentPageIndexProperty().addListener((obs, oldVal, newVal) -> {
-            atualizarLabelStatus();
-        });
+        // Botões de paginação à DIREITA
+        paginationButtons = new HBox(5);
+        paginationButtons.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(paginationButtons, Priority.NEVER);
 
-        container.getChildren().add(paginationBox);
+        paginationContainer.getChildren().addAll(
+                lblPaginaStatus,
+                leftSpacer,
+                perPageBox,
+                rightSpacer,
+                paginationButtons
+        );
+
+        container.getChildren().add(paginationContainer);
     }
 
-    private void atualizarLabelStatus() {
-        if (lblPaginaStatus != null && pagination != null) {
-            int inicio = pagination.getCurrentPageIndex() * itemsPerPage + 1;
-            int fim = Math.min((pagination.getCurrentPageIndex() + 1) * itemsPerPage, todosFuncionarios.size());
-            lblPaginaStatus.setText(String.format("Showing %d to %d of %d results", inicio, fim, todosFuncionarios.size()));
+    private void atualizarBotoesPaginacao() {
+        paginationButtons.getChildren().clear();
+
+        // Botão "Anterior"
+        Button btnPrev = new Button();
+        btnPrev.setGraphic(new FontIcon("mdi2c-chevron-left"));
+        btnPrev.getStyleClass().addAll("button-icon", "flat");
+        btnPrev.setDisable(paginaAtual == 0);
+        btnPrev.setOnAction(e -> {
+            if (paginaAtual > 0) {
+                paginaAtual--;
+                carregarFuncionarios();
+            }
+        });
+        paginationButtons.getChildren().add(btnPrev);
+
+        // Botões numéricos
+        int maxButtons = 7; // máximo de botões a mostrar
+        int startPage = Math.max(0, paginaAtual - 3);
+        int endPage = Math.min(totalPaginas - 1, startPage + maxButtons - 1);
+
+        // Ajustar startPage se estivermos perto do fim
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(0, endPage - maxButtons + 1);
+        }
+
+        // Sempre mostrar página 1 se não estiver visível
+        if (startPage > 0) {
+            Button btn1 = criarBotaoPagina(0);
+            paginationButtons.getChildren().add(btn1);
+
+            if (startPage > 1) {
+                Label dots = new Label("...");
+                dots.getStyleClass().add("text-muted");
+                dots.setPadding(new Insets(5, 10, 5, 10));
+                paginationButtons.getChildren().add(dots);
+            }
+        }
+
+        // Páginas intermediárias
+        for (int i = startPage; i <= endPage; i++) {
+            Button btnPage = criarBotaoPagina(i);
+            paginationButtons.getChildren().add(btnPage);
+        }
+
+        // Sempre mostrar última página se não estiver visível
+        if (endPage < totalPaginas - 1) {
+            if (endPage < totalPaginas - 2) {
+                Label dots = new Label("...");
+                dots.getStyleClass().add("text-muted");
+                dots.setPadding(new Insets(5, 10, 5, 10));
+                paginationButtons.getChildren().add(dots);
+            }
+
+            Button btnLast = criarBotaoPagina(totalPaginas - 1);
+            paginationButtons.getChildren().add(btnLast);
+        }
+
+        // Botão "Próxima"
+        Button btnNext = new Button();
+        btnNext.setGraphic(new FontIcon("mdi2c-chevron-right"));
+        btnNext.getStyleClass().addAll("button-icon", "flat");
+        btnNext.setDisable(paginaAtual >= totalPaginas - 1);
+        btnNext.setOnAction(e -> {
+            if (paginaAtual < totalPaginas - 1) {
+                paginaAtual++;
+                carregarFuncionarios();
+            }
+        });
+        paginationButtons.getChildren().add(btnNext);
+    }
+
+    private Button criarBotaoPagina(int pageIndex) {
+        Button btn = new Button(String.valueOf(pageIndex + 1));
+        btn.setMinWidth(40);
+        btn.setPrefWidth(40);
+
+        if (pageIndex == paginaAtual) {
+            btn.getStyleClass().addAll("accent");
+        } else {
+            btn.getStyleClass().addAll("flat");
+        }
+
+        btn.setOnAction(e -> {
+            paginaAtual = pageIndex;
+            carregarFuncionarios();
+        });
+
+        return btn;
+    }
+
+    private void atualizarLabelStatus(Page<Funcionario> page) {
+        if (lblPaginaStatus != null) {
+            int inicio = page.getNumber() * page.getSize() + 1;
+            int fim = Math.min((page.getNumber() + 1) * page.getSize(), (int) page.getTotalElements());
+
+            lblPaginaStatus.setText(String.format("Showing %d to %d of %d results",
+                    inicio, fim, page.getTotalElements()));
         }
     }
 
-    private void atualizarPaginacao() {
-        int totalPages = (int) Math.ceil((double) todosFuncionarios.size() / itemsPerPage);
-        pagination.setPageCount(Math.max(1, totalPages));
-        pagination.setCurrentPageIndex(0);
-        atualizarLabelStatus();
-    }
+    private void carregarFuncionarios() {
+        try {
+            String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isEmpty())
+                    ? txtFiltroNome.getText() : null;
+            String nif = (txtFiltroNif != null && !txtFiltroNif.getText().isEmpty())
+                    ? txtFiltroNif.getText() : null;
+            Cargo cargo = (cmbFiltroCargo != null) ? cmbFiltroCargo.getValue() : null;
 
-    private void atualizarTabelaPaginada(int pageIndex) {
-        int fromIndex = pageIndex * itemsPerPage;
-        int toIndex = Math.min(fromIndex + itemsPerPage, todosFuncionarios.size());
+            Page<Funcionario> page = funcionarioService.listarFuncionarios(
+                    paginaAtual + 1,
+                    itemsPerPage,
+                    nome,
+                    nif,
+                    cargo,
+                    null,
+                    "dataAdmissao",
+                    "DESC"
+            );
 
-        if (fromIndex <= todosFuncionarios.size()) {
-            funcionarios.setAll(todosFuncionarios.subList(fromIndex, toIndex));
+            funcionarios.setAll(page.getContent());
+            totalPaginas = page.getTotalPages();
+
+            if (lblPaginaStatus == null) {
+                configurarPaginacao(vboxContainer);
+            }
+
+            atualizarLabelStatus(page);
+            atualizarBotoesPaginacao();
+
+        } catch (Exception e) {
+            System.err.println("Erro ao carregar lista: " + e.getMessage());
+            e.printStackTrace();
         }
-        atualizarLabelStatus();
     }
 
     private void configurarDrawerLateral() {
@@ -153,7 +336,7 @@ public class FuncionarioController {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Button btnFechar = new Button();
-        btnFechar.getStyleClass().addAll("button-icon", "button-flat");
+        btnFechar.getStyleClass().addAll("button-icon", "flat");
         btnFechar.setGraphic(new FontIcon("mdi2c-close:22"));
         btnFechar.setOnAction(e -> modalPane.hide(true));
         header.getChildren().addAll(titulo, spacer, btnFechar);
@@ -204,6 +387,90 @@ public class FuncionarioController {
         modalPane.show(drawerRoot);
     }
 
+    private HBox criarBadgeCargo(Cargo cargo) {
+        HBox badge = new HBox(8);
+        badge.setAlignment(Pos.CENTER_LEFT);
+        badge.setPadding(new Insets(4, 10, 4, 10));
+        badge.setMinWidth(150);
+        badge.setPrefWidth(150);
+        badge.setMaxWidth(200);
+        badge.setMinHeight(26);
+        badge.setPrefHeight(26);
+        badge.setMaxHeight(26);
+        badge.setStyle(
+                "-fx-background-radius: 6; " +
+                        "-fx-border-radius: 6; " +
+                        "-fx-border-width: 1.5;"
+        );
+
+        FontIcon icon = new FontIcon();
+        icon.setIconSize(14);
+
+        Label label = new Label(cargo.getDisplayName());
+        label.setStyle("-fx-font-weight: 500; -fx-font-size: 12px;");
+
+        // Cores e ícones diferentes por cargo
+        switch (cargo) {
+            case ADMINISTRADOR:
+                // Cor AMARELA/DOURADA (como "Contractor")
+                badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: rgba(234, 179, 8, 0.12); " +
+                        "-fx-border-color: #eab308;");
+                icon.setIconLiteral("mdi2s-shield-account");
+                icon.setIconColor(javafx.scene.paint.Color.web("#eab308"));
+                label.setStyle(label.getStyle() + "-fx-text-fill: #eab308;");
+                break;
+
+            case RESPONSAVEL_PRODUCAO:
+                badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: rgba(59, 130, 246, 0.12); " +
+                        "-fx-border-color: #3b82f6;");
+                icon.setIconLiteral("mdi2a-account-star");
+                icon.setIconColor(javafx.scene.paint.Color.web("#3b82f6"));
+                label.setStyle(label.getStyle() + "-fx-text-fill: #3b82f6;");
+                break;
+
+            case OPERADOR_PRODUCAO:
+                badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: rgba(34, 197, 94, 0.12); " +
+                        "-fx-border-color: #22c55e;");
+                icon.setIconLiteral("mdi2h-hammer-wrench");
+                icon.setIconColor(javafx.scene.paint.Color.web("#22c55e"));
+                label.setStyle(label.getStyle() + "-fx-text-fill: #22c55e;");
+                break;
+
+            case RESPONSAVEL_LOGISTICA:
+                badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: rgba(249, 115, 22, 0.12); " +
+                        "-fx-border-color: #f97316;");
+                icon.setIconLiteral("mdi2t-truck");
+                icon.setIconColor(javafx.scene.paint.Color.web("#f97316"));
+                label.setStyle(label.getStyle() + "-fx-text-fill: #f97316;");
+                break;
+
+            case ASSISTENTE_COMERCIAL:
+                badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: rgba(14, 165, 233, 0.12); " +
+                        "-fx-border-color: #0ea5e9;");
+                icon.setIconLiteral("mdi2c-cash-multiple");
+                icon.setIconColor(javafx.scene.paint.Color.web("#0ea5e9"));
+                label.setStyle(label.getStyle() + "-fx-text-fill: #0ea5e9;");
+                break;
+
+            default:
+                badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: rgba(107, 114, 128, 0.12); " +
+                        "-fx-border-color: #6b7280;");
+                icon.setIconLiteral("mdi2a-account");
+                icon.setIconColor(javafx.scene.paint.Color.web("#6b7280"));
+                label.setStyle(label.getStyle() + "-fx-text-fill: #6b7280;");
+                break;
+        }
+
+        badge.getChildren().addAll(icon, label);
+        return badge;
+    }
+
     private void handleAdicionar() {
         if (txtNome.getText().isEmpty() || cmbCargo.getValue() == null) {
             mostrarErro("Preencha os campos obrigatórios!");
@@ -219,27 +486,12 @@ public class FuncionarioController {
             f.setDataAdmissao(LocalDate.now());
 
             funcionarioService.adicionarFuncionario(f);
+            paginaAtual = 0;
             carregarFuncionarios();
             modalPane.hide(true);
             mostrarSucesso("Funcionário salvo!");
         } catch (Exception e) {
             mostrarErro("Erro: " + e.getMessage());
-        }
-    }
-
-    private void carregarFuncionarios() {
-        try {
-            List<Funcionario> lista = funcionarioService.listarTodos();
-            todosFuncionarios.setAll(lista);
-
-            if (pagination == null) {
-                configurarPaginacao(vboxContainer);
-            }
-
-            atualizarPaginacao();
-
-        } catch (Exception e) {
-            System.err.println("Erro ao carregar lista: " + e.getMessage());
         }
     }
 
@@ -259,53 +511,28 @@ public class FuncionarioController {
     }
 
     private void mostrarSucesso(String m) {
-        if (lblPaginaStatus != null) {
-            String oldText = lblPaginaStatus.getText();
-            lblPaginaStatus.setText(m);
-            lblPaginaStatus.setStyle("-fx-text-fill: -color-success-fg;");
-
-            new Thread(() -> {
-                try {
-                    Thread.sleep(3000);
-                    Platform.runLater(() -> {
-                        lblPaginaStatus.setText(oldText);
-                        lblPaginaStatus.setStyle("");
-                    });
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-        }
+        // Implementar toast ou notificação
+        System.out.println("SUCESSO: " + m);
     }
 
     private void mostrarErro(String m) {
-        if (lblPaginaStatus != null) {
-            String oldText = lblPaginaStatus.getText();
-            lblPaginaStatus.setText(m);
-            lblPaginaStatus.setStyle("-fx-text-fill: -color-danger-fg;");
-
-            new Thread(() -> {
-                try {
-                    Thread.sleep(3000);
-                    Platform.runLater(() -> {
-                        lblPaginaStatus.setText(oldText);
-                        lblPaginaStatus.setStyle("");
-                    });
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-        }
+        // Implementar toast ou notificação
+        System.err.println("ERRO: " + m);
     }
 
     @FXML
     private void handleFiltrar() {
-        // TODO: Implementar filtro por cargo
-        //TODO: Implementar outros filtros
+        paginaAtual = 0;
+        carregarFuncionarios();
     }
 
     @FXML
     private void handleMostrarTodos() {
+        if (txtFiltroNome != null) txtFiltroNome.clear();
+        if (txtFiltroNif != null) txtFiltroNif.clear();
+        if (cmbFiltroCargo != null) cmbFiltroCargo.setValue(null);
+
+        paginaAtual = 0;
         carregarFuncionarios();
     }
 }

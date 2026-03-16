@@ -26,11 +26,16 @@
 
         <!-- Filtros -->
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <ComboBox fx:id="cmbFiltroCargo" prefWidth="200" promptText="Filtrar Cargo"/>
-            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined"/>
-            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="button-flat"/>
+            <TextField fx:id="txtFiltroNome" promptText="Nome..." prefWidth="200"/>
+            <TextField fx:id="txtFiltroNif" promptText="NIF..." prefWidth="150"/>
+            <ComboBox fx:id="cmbFiltroCargo" prefWidth="180" promptText="Cargo"/>
+            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
+                <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
+            </Button>
+            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="button-flat">
+                <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
+            </Button>
             <Region HBox.hgrow="ALWAYS"/>
-            <TextField promptText="Pesquisa rápida..." prefWidth="250" styleClass="search-box"/>
         </HBox>
 
         <!-- Tabela -->

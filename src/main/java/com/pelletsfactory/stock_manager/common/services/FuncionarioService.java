@@ -6,9 +6,14 @@ import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.repositories.FuncionarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -76,8 +81,20 @@ public class FuncionarioService {
         funcRepo.delete(f);
     }
 
-    public List<Funcionario> listarTodos() {
-        return funcRepo.findAll();
+    public Page<Funcionario> listarFuncionarios(int page, int pageSize,
+                                                String nome, String nif,
+                                                Cargo cargo, Integer numeroFuncionario,
+                                                String sortBy, String direction) {
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "dataAdmissao";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ?
+                Sort.Direction.ASC : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        return funcRepo.findByFiltros(nome, nif, cargo, numeroFuncionario, pageable);
     }
 
     public Funcionario buscarPorId(UUID id) {
