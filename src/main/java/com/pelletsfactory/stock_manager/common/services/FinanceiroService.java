@@ -32,7 +32,7 @@ public class FinanceiroService {
         //TODO: vai ser chamado na funcao marcarEncomendaClienteComoConcluida do VendaService
         EncomendaCliente encomendaCliente = vendaService.getEncomendaClienteById(encomendaClienteId);
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
-        movimento.setTipoMovimento(TipoMovimento.E);
+        movimento.setTipoMovimento(TipoMovimento.ENTRADA);
         movimento.setValor(valor);
         movimento.setEncomendaCliente(encomendaCliente);
         return movimentoFinanceiroRepo.save(movimento);
@@ -44,7 +44,7 @@ public class FinanceiroService {
         //TODO: vai ser chamado na funcao marcarComoRecebida do CompraService
         EncomendaFornecedor encomendaFornecedor = compraService.getEncomendaFornecedorById(encomendaFornecedorId);
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
-        movimento.setTipoMovimento(TipoMovimento.S);
+        movimento.setTipoMovimento(TipoMovimento.SAIDA);
         movimento.setValor(valor);
         movimento.setEncomendaFornecedor(encomendaFornecedor);
         return movimentoFinanceiroRepo.save(movimento);
@@ -67,11 +67,11 @@ public class FinanceiroService {
         // TODO: Calcula saldo atual (soma de entradas - saídas). Retorna Double com o saldo
         List<MovimentoFinanceiro> movimentos = movimentoFinanceiroRepo.findAll();
         double entradas = movimentos.stream()
-                .filter(m -> m.getTipoMovimento() == TipoMovimento.E)
+                .filter(m -> m.getTipoMovimento() == TipoMovimento.ENTRADA)
                 .mapToDouble(MovimentoFinanceiro::getValor)
                 .sum();
         double saidas = movimentos.stream()
-                .filter(m -> m.getTipoMovimento() == TipoMovimento.S)
+                .filter(m -> m.getTipoMovimento() == TipoMovimento.SAIDA)
                 .mapToDouble(MovimentoFinanceiro::getValor)
                 .sum();
         return entradas - saidas;
