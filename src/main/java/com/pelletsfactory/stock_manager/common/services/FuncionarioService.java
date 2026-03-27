@@ -29,29 +29,29 @@ public class FuncionarioService {
         this.authService = authService;
     }
 
-    @Transactional
-    public Funcionario adicionarFuncionario(Funcionario funcionario) {
-        validarPermissaoAdmin();
-        //TODO: mudar as funcoes de validcao para outro ficheiro
-        validarDadosFuncionario(funcionario);
-        if (funcRepo.existsByNif(funcionario.getNif())) {
-            throw new RuntimeException("Já existe um funcionário registado com este NIF: " + funcionario.getNif());
+        @Transactional
+        public Funcionario adicionarFuncionario(Funcionario funcionario) {
+            validarPermissaoAdmin();
+            //TODO: mudar as funcoes de validcao para outro ficheiro
+            validarDadosFuncionario(funcionario);
+            if (funcRepo.existsByNif(funcionario.getNif())) {
+                throw new RuntimeException("Já existe um funcionário registado com este NIF: " + funcionario.getNif());
+            }
+
+            Integer ultimoNumero = funcRepo.findMaxNumeroFuncionario();
+            Integer proximoNumero = (ultimoNumero == null) ? 1000 : ultimoNumero + 1;
+            funcionario.setNumeroFuncionario(proximoNumero);
+
+            String pinInicial = String.valueOf(proximoNumero);
+            //Veiricar porque estou a usar a funcao do auth service veer se funcionou igual
+            String hashFinal = authService.gerarHashPin(pinInicial);
+            funcionario.setPinHash(hashFinal);
+
+            if (funcionario.getDataAdmissao() == null) {
+                funcionario.setDataAdmissao(LocalDate.now());
+            }
+            return funcRepo.save(funcionario);
         }
-
-        Integer ultimoNumero = funcRepo.findMaxNumeroFuncionario();
-        Integer proximoNumero = (ultimoNumero == null) ? 1000 : ultimoNumero + 1;
-        funcionario.setNumeroFuncionario(proximoNumero);
-
-        String pinInicial = String.valueOf(proximoNumero);
-        //Veiricar porque estou a usar a funcao do auth service veer se funcionou igual
-        String hashFinal = authService.gerarHashPin(pinInicial);
-        funcionario.setPinHash(hashFinal);
-
-        if (funcionario.getDataAdmissao() == null) {
-            funcionario.setDataAdmissao(LocalDate.now());
-        }
-        return funcRepo.save(funcionario);
-    }
 
     @Transactional
     public void atualizarFuncionario(Funcionario f) {

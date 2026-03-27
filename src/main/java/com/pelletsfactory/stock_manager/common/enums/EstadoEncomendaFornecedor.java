@@ -1,11 +1,10 @@
 package com.pelletsfactory.stock_manager.common.enums;
 
 public enum EstadoEncomendaFornecedor {
-    PENDENTE("Pendente", "warning"),
-    CONFIRMADA("Confirmada", "info"),
-    EM_TRANSITO("Em Trânsito", "primary"),
+    RASCUNHO("Rascunho", "warning"),
+    EFETIVA("Efetiva", "info"),
     RECEBIDA("Recebida", "success"),
-    CANCELADA("Cancelada", "danger");
+    ANULADA("Anulada", "danger");
 
     private final String displayName;
     private final String corEstilo;

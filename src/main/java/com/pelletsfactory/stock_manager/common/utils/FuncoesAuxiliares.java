@@ -19,4 +19,16 @@ public class FuncoesAuxiliares {
             throw new RuntimeException("Acesso negado: Operação exclusiva para Administradores.");
         }
     }
+
+    public static void validarPermissaoTratarFornecedores() {
+        Funcionario userLogado = SessaoFuncionario.getFuncionarioLogado();
+
+        if (userLogado == null) {
+            throw new RuntimeException("Utilizador não autenticado. Por favor, faça login.");
+        }
+
+        if (userLogado.getCargo() != Cargo.ADMINISTRADOR && userLogado.getCargo() != Cargo.RESPONSAVEL_LOGISTICA) {
+            throw new RuntimeException("Acesso negado: Operação exclusiva para Administradores e Gestores de Fornecedores.");
+        }
+    }
 }

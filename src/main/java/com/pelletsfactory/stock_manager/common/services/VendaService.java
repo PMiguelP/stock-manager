@@ -38,16 +38,6 @@ public class VendaService {
         return new EncomendaCliente();
     }
 
-    @Transactional
-    public EncomendaCliente expedirVenda(UUID encomendaId) {
-        // TODO: Expede venda (marca como enviada):
-        // 1. Verifica stock via stockService.buscarTipoPelletPorId()
-        // 2. Chama stockService.atualizarStockPellet(..., false) para subtrair stock
-        // 3. Atualiza estado para EXPEDIDA
-        // Retorna EncomendaCliente atualizada
-        return new EncomendaCliente();
-    }
-
     public Cliente buscarClientePorId(UUID id) {
         // TODO: Busca cliente por ID. Usado para preencher detalhes de faturação na venda. Retorna Cliente ou lança exceção
         return new Cliente();

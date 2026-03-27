@@ -8,6 +8,7 @@ import com.pelletsfactory.stock_manager.common.repositories.MovimentoFinanceiroR
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,7 +29,7 @@ public class FinanceiroService {
     @Transactional
     public MovimentoFinanceiro registarEntrada(UUID encomendaClienteId, Double valor) {
         // TODO: Regista movimento financeiro de entrada (venda) vinculado a EncomendaCliente. Retorna MovimentoFinanceiro criado
-        validarPermissaoAdmin();
+        //TODO: vai ser chamado na funcao marcarEncomendaClienteComoConcluida do VendaService
         EncomendaCliente encomendaCliente = vendaService.getEncomendaClienteById(encomendaClienteId);
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.setTipoMovimento(TipoMovimento.E);
@@ -40,7 +41,7 @@ public class FinanceiroService {
     @Transactional
     public MovimentoFinanceiro registarSaida(UUID encomendaFornecedorId, Double valor) {
         // TODO: Regista movimento financeiro de saída (compra) vinculado a EncomendaFornecedor. Retorna MovimentoFinanceiro criado
-        validarPermissaoAdmin();
+        //TODO: vai ser chamado na funcao marcarComoRecebida do CompraService
         EncomendaFornecedor encomendaFornecedor = compraService.getEncomendaFornecedorById(encomendaFornecedorId);
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.setTipoMovimento(TipoMovimento.S);
@@ -48,6 +49,19 @@ public class FinanceiroService {
         movimento.setEncomendaFornecedor(encomendaFornecedor);
         return movimentoFinanceiroRepo.save(movimento);
     }
+
+    @Transactional
+    public MovimentoFinanceiro atualizarMovimentoFinanceiro(UUID movimentoId, Double novoValor) {
+        //TODO: recebe um movimento financeiro e permite a um administrador e apenas ele atualizar algo como valor/data
+        validarPermissaoAdmin();
+        return new MovimentoFinanceiro();
+    }
+
+    public List<MovimentoFinanceiro> listarMovimentosFinanceiros() {
+        //TODO: lista todos os movimentos financeiros como temos a retornar todos os funcionarios no funcService!
+        return new ArrayList<>();
+    }
+
 
     public Double calcularSaldoAtual() {
         // TODO: Calcula saldo atual (soma de entradas - saídas). Retorna Double com o saldo

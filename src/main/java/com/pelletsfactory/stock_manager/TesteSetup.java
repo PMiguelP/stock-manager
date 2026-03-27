@@ -8,6 +8,7 @@ import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Page;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -52,8 +53,20 @@ public class TesteSetup {
                 System.out.println("-> SUCESSO!");
                 System.out.println("-> Criado: " + criado.getNome() + " | Nº: " + criado.getNumeroFuncionario());
 
-                List<Funcionario> todos = funcionarioService.listarTodos();
-                System.out.println("-> Total na BD: " + todos.size());
+                // Exemplo: public List<Funcionario> listarFuncionarios(String nome, String nif, Cargo cargo, String sortBy, String direction)
+                Page<Funcionario> page = funcionarioService.listarFuncionarios(
+                        1,                  // page
+                        10,                 // pageSize
+                        null,               // nome (ou o valor desejado)
+                        null,               // nif
+                        null,               // cargo
+                        null,               // numeroFuncionario
+                        "nome",             // sortBy
+                        "asc"               // direction
+                );
+
+
+                System.out.println("-> Total na BD: " + page);
                 System.out.println("==========================================\n");
 
             } catch (Exception e) {

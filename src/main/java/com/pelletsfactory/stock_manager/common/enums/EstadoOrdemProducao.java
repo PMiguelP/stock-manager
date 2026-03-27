@@ -5,7 +5,7 @@ public enum EstadoOrdemProducao {
     EM_PRODUCAO("Em Produção", "primary"),
     CONCLUIDA("Concluída", "success"),
     PAUSADA("Pausada", "info"),
-    CANCELADA("Cancelada", "danger");
+    ANULADA("Cancelada", "danger");
 
     private final String displayName;
     private final String corEstilo;
@@ -24,7 +24,7 @@ public enum EstadoOrdemProducao {
     }
 
     public boolean isFinalizado() {
-        return this == CONCLUIDA || this == CANCELADA;
+        return this == CONCLUIDA || this == ANULADA;
     }
 
     public boolean podeEditar() {

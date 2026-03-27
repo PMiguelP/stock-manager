@@ -21,6 +21,7 @@ public class ItemEncomendaCliente {
 
     @ManyToOne
     @JoinColumn(name = "ordem_producao_id")
+    @JsonBackReference
     private OrdemProducao ordemProducao;
 
     @ManyToOne

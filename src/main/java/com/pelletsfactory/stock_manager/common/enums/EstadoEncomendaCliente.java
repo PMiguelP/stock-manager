@@ -6,7 +6,6 @@ public enum EstadoEncomendaCliente {
     EM_PRODUCAO("Em Produção", "primary"),
     PRONTA("Pronta", "success"),
     ENVIADA("Enviada", "primary"),
-    ENTREGUE("Entregue", "success"),
     CANCELADA("Cancelada", "danger");
 
     private final String displayName;

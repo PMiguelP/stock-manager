@@ -7,6 +7,7 @@ import com.pelletsfactory.stock_manager.common.repositories.FormulaProducaoRepos
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +33,10 @@ public class FormulaService {
     public FormulaProducao alterarEstadoFormula(UUID formulaId, boolean ativa) {
         // TODO: Ativa/desativa fórmula. Apenas uma fórmula pode estar ativa por tipo de pellet. Retorna FormulaProducao atualizada
         return new FormulaProducao();
+    }
+
+    public List<FormulaProducao> listarFormulasProducao() {
+        return new ArrayList<>();
     }
 
     public Double calcularCustoProducao(UUID formulaId) {
