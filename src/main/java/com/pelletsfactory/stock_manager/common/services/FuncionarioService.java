@@ -1,9 +1,17 @@
 package com.pelletsfactory.stock_manager.common.services;
 
+import com.pelletsfactory.stock_manager.common.dto.request.FuncionarioRequestDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioDetailsDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.Funcionario;
 import com.pelletsfactory.stock_manager.common.entities.SessaoFuncionario;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
+import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
+import com.pelletsfactory.stock_manager.common.mapper.FuncionarioMapper;
 import com.pelletsfactory.stock_manager.common.repositories.FuncionarioRepository;
+import com.pelletsfactory.stock_manager.common.repositories.OrdemProducaoRepository;
+import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -13,116 +21,182 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import static com.pelletsfactory.stock_manager.common.utils.FuncoesAuxiliares.validarPermissaoAdmin;
+import java.util.stream.Collectors;
 
 @Service
 public class FuncionarioService {
     private final FuncionarioRepository funcRepo;
+    private final OrdemProducaoRepository ordemProducaoRepo;
+    private final FuncionarioMapper funcMapper;
     private final AuthService authService;
 
-    public FuncionarioService(FuncionarioRepository funcRepo, AuthService authService)   {
+    public FuncionarioService(FuncionarioRepository funcRepo, AuthService authService, FuncionarioMapper funcMapper,
+     OrdemProducaoRepository ordemProducaoRepo                         )   {
         this.funcRepo = funcRepo;
         this.authService = authService;
+        this.funcMapper = funcMapper;
+        this.ordemProducaoRepo = ordemProducaoRepo;
     }
 
-        @Transactional
-        public Funcionario adicionarFuncionario(Funcionario funcionario) {
-            validarPermissaoAdmin();
-            //TODO: mudar as funcoes de validcao para outro ficheiro
-            validarDadosFuncionario(funcionario);
-            if (funcRepo.existsByNif(funcionario.getNif())) {
-                throw new RuntimeException("Já existe um funcionário registado com este NIF: " + funcionario.getNif());
-            }
+    /**
+     * Criar novo funcionário
+     */
+    @Transactional
+    public FuncionarioResponseDTO criarFuncionario(FuncionarioRequestDTO dto) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
 
-            Integer ultimoNumero = funcRepo.findMaxNumeroFuncionario();
-            Integer proximoNumero = (ultimoNumero == null) ? 1000 : ultimoNumero + 1;
-            funcionario.setNumeroFuncionario(proximoNumero);
-
-            String pinInicial = String.valueOf(proximoNumero);
-            //Veiricar porque estou a usar a funcao do auth service veer se funcionou igual
-            String hashFinal = authService.gerarHashPin(pinInicial);
-            funcionario.setPinHash(hashFinal);
-
-            if (funcionario.getDataAdmissao() == null) {
-                funcionario.setDataAdmissao(LocalDate.now());
-            }
-            return funcRepo.save(funcionario);
+        // Validar NIF único
+        if (funcRepo.existsByNif(dto.nif())) {
+            throw new RuntimeException("Já existe um funcionário registado com este NIF: " + dto.nif());
         }
 
-    @Transactional
-    public void atualizarFuncionario(Funcionario f) {
-        validarPermissaoAdmin();
-        Funcionario existente = buscarPorId(f.getId());
-        validarDadosFuncionario(f);
+        // Criar entidade
+        Funcionario funcionario = funcMapper.toEntity(dto);
 
-        if (!existente.getNif().equals(f.getNif()) && funcRepo.existsByNif(f.getNif())) {
+        // Gerar número de funcionário automaticamente
+        Integer ultimoNumero = funcRepo.findMaxNumeroFuncionario();
+        Integer proximoNumero = (ultimoNumero == null) ? 1000 : ultimoNumero + 1;
+        funcionario.setNumeroFuncionario(proximoNumero);
+
+        // Gerar PIN inicial (mesmo número do funcionário)
+        String pinInicial = String.valueOf(proximoNumero);
+        String hashFinal = authService.gerarHashPin(pinInicial);
+        funcionario.setPinHash(hashFinal);
+
+        // Data de admissão = hoje
+        funcionario.setDataAdmissao(LocalDate.now());
+
+        Funcionario saved = funcRepo.save(funcionario);
+        return funcMapper.toResponseDTO(saved);
+    }
+
+    /**
+     * Atualizar funcionário existente
+     */
+    @Transactional
+    public FuncionarioResponseDTO atualizarFuncionario(UUID id, FuncionarioRequestDTO dto) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
+        Funcionario existente = buscarPorIdOuFalhar(id);
+
+        // Validar NIF único (se mudou)
+        if (!existente.getNif().equals(dto.nif()) && funcRepo.existsByNif(dto.nif())) {
             throw new RuntimeException("Este NIF já está em uso por outro funcionário.");
         }
 
-        existente.setNome(f.getNome());
-        existente.setNif(f.getNif());
-        existente.setContacto(f.getContacto());
-        existente.setCargo(f.getCargo());
-        existente.setDataAdmissao(f.getDataAdmissao());
-        funcRepo.save(existente);
+        // Atualizar campos
+        funcMapper.updateEntityFromDTO(dto, existente);
+
+        Funcionario atualizado = funcRepo.save(existente);
+        return funcMapper.toResponseDTO(atualizado);
     }
+
+    /**
+     * Eliminar funcionário
+     */
     @Transactional
     public void apagarFuncionario(UUID id) {
-        validarPermissaoAdmin();
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
 
-        Funcionario f = buscarPorId(id);
+        Funcionario funcionario = buscarPorIdOuFalhar(id);
 
-        if (f.getId().equals(SessaoFuncionario.getFuncionarioLogado().getId())) {
-            throw new RuntimeException("Não pode remover a sua própria conta de administrador.");
+        // Não pode eliminar a si próprio
+        if (funcionario.getId().equals(SessaoFuncionario.getFuncionarioLogado().getId())) {
+            throw new RuntimeException("Não pode remover a sua própria conta.");
         }
 
-        funcRepo.delete(f);
+        Long ordensEmCurso = ordemProducaoRepo.countByFuncionarioIdAndEstado(
+                id, EstadoOrdemProducao.EM_PRODUCAO
+        );
+        if (ordensEmCurso > 0) {
+            throw new RuntimeException(
+                    "Não é possível eliminar funcionário com ordens de produção em curso."
+            );
+        }
+
+        funcRepo.delete(funcionario);
     }
 
-    public Page<Funcionario> listarFuncionarios(int page, int pageSize,
-                                                String nome, String nif,
-                                                Cargo cargo, Integer numeroFuncionario,
-                                                String sortBy, String direction) {
+    /**
+     * Listar com paginação e filtros (retorna SimpleDTO)
+     */
+    public Page<FuncionarioSimpleDTO> listarFuncionarios(
+            int page,
+            int pageSize,
+            String nome,
+            String nif,
+            Cargo cargo,
+            Integer numeroFuncionario,
+            String sortBy,
+            String direction) {
+
+        // Default sort
         if (sortBy == null || sortBy.isEmpty()) {
             sortBy = "dataAdmissao";
         }
 
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ?
-                Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
 
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
 
-        return funcRepo.findByFiltros(nome, nif, cargo, numeroFuncionario, pageable);
+        Page<Funcionario> funcionariosPage = funcRepo.findByFiltros(
+                nome, nif, cargo, numeroFuncionario, pageable
+        );
+
+        return funcionariosPage.map(funcMapper::toSimpleDTO);
     }
 
-    public Funcionario buscarPorId(UUID id) {
-        // TODO: CRÍTICO - Busca funcionário por UUID e retorna entidade completa. Usado por TODOS os outros serviços para validar autor de ações
+    /**
+     * Listar todos (versão simples para dropdowns)
+     */
+    public List<FuncionarioSimpleDTO> listarTodosSimples() {
+        return funcRepo.findAll()
+                .stream()
+                .map(funcMapper::toSimpleDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Obter detalhes completos (com estatísticas de produção)
+     */
+    public FuncionarioDetailsDTO obterDetalhes(UUID id) {
+        Funcionario funcionario = buscarPorIdOuFalhar(id);
+        return funcMapper.toDetailsDTO(funcionario);
+    }
+
+
+    /**
+     * Verifica se NIF já existe
+     */
+    public boolean existeNif(String nif) {
+        return funcRepo.existsByNif(nif);
+    }
+
+    /**
+     * Verifica se número de funcionário já existe
+     */
+    public boolean existeNumeroFuncionario(Integer numero) {
+        return funcRepo.existsByNumeroFuncionario(numero);
+    }
+
+    /**
+     * Buscar por ID (retorna DTO básico)
+     */
+    public FuncionarioResponseDTO buscarPorId(UUID id) {
+        Funcionario funcionario = buscarPorIdOuFalhar(id);
+        return funcMapper.toResponseDTO(funcionario);
+    }
+
+    /**
+     * Buscar entidade por ID ou lançar exceção
+     */
+    public Funcionario buscarPorIdOuFalhar(UUID id) {
         return funcRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado com o ID: " + id));
-    }
-
-
-    public boolean validarCargo(UUID funcionarioId, Cargo cargoEsperado){
-        // TODO: Verifica se o funcionário tem permissão para executar operação baseado no cargo esperado. Retorna
-        //  true/false nao sei se ainda e necessario tenho que ver melhor
-        return true;
-    }
-
-    //Funcao auxiliar de validacao do formulario para criar um funcionario
-    private void validarDadosFuncionario(Funcionario f) {
-        if (f.getNome() == null || f.getNome().trim().length() < 3) {
-            throw new RuntimeException("O nome deve ter pelo menos 3 caracteres.");
-        }
-
-        if (f.getNif() == null || !f.getNif().matches("\\d{9}")) {
-            throw new RuntimeException("NIF inválido. Deve conter exatamente 9 dígitos numéricos.");
-        }
-        if (f.getContacto() == null || !f.getContacto().matches("[2789]\\d{8}")) {
-            throw new RuntimeException("Contacto telefónico inválido.");
-        }
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Funcionário não encontrado com o ID: " + id
+                ));
     }
 }

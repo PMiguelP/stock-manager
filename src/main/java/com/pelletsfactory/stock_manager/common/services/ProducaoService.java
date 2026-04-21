@@ -31,7 +31,7 @@ public class ProducaoService {
     @Transactional
     public OrdemProducao abrirNovaOrdem(UUID funcionarioId, UUID formulaId, UUID tipoPelletId,
                                         Double quantidadeMaxima) {
-        Funcionario func = funcService.buscarPorId(funcionarioId);
+        Funcionario func = funcService.buscarPorIdOuFalhar(funcionarioId);
         FormulaProducao formula = buscarFormulaPorId(formulaId);
         TipoPellet tipo = stockService.buscarTipoPelletPorId(tipoPelletId);
 

@@ -2,10 +2,12 @@ package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.entities.EncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.entities.ItemEncomendaFornecedor;
+import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.repositories.EncomendaClienteRepository;
 import com.pelletsfactory.stock_manager.common.repositories.EncomendaFornecedorRepository;
 import com.pelletsfactory.stock_manager.common.repositories.ItemEncomendaFornecedorRepository;
+import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -14,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static com.pelletsfactory.stock_manager.common.utils.FuncoesAuxiliares.validarPermissaoTratarFornecedores;
 
 @Service
 public class CompraService {
@@ -34,7 +35,7 @@ public class CompraService {
     public EncomendaFornecedor gerarEncomenda(UUID fornecedorId, List<ItemEncomendaFornecedor> itens) {
         // TODO: Cria pedido de matéria-prima ao fornecedor com lista de itens. Retorna EncomendaFornecedor criada
         //estado pendente
-        validarPermissaoTratarFornecedores(); //verifica se o user logado tem permissoes para tratar fornecedores
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL); //verifica se o user logado tem permissoes para tratar fornecedores
         //aqui depois vai gerar um pdf tambem
         return new EncomendaFornecedor();
     }

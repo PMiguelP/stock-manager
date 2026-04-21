@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.repositories;
 
 import com.pelletsfactory.stock_manager.common.entities.Funcionario;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
+import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,4 +30,7 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, UUID> 
                                     @Param("cargo") Cargo cargo,
                                     @Param("numeroFuncionario") Integer numeroFuncionario,
                                     Pageable pageable);
+
+    boolean existsByNumeroFuncionario(Integer numero);
+
 }

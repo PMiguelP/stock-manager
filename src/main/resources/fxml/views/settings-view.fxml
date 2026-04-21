@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox spacing="20" style="-fx-background-color: -color-bg-default;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.SettingsController">
+
+    <padding>
+        <Insets bottom="30" left="30" right="30" top="30" />
+    </padding>
+
+    <VBox spacing="5">
+        <Label styleClass="title-2" text="Settings" />
+        <Label styleClass="text-muted" text="Manage your account and visual preferences" />
+    </VBox>
+
+    <HBox spacing="30" VBox.vgrow="ALWAYS">
+        <VBox prefWidth="280" spacing="5" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 15; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+            <Button alignment="CENTER_LEFT" maxWidth="Infinity" styleClass="accent" text="Profile">
+                <graphic><FontIcon iconLiteral="mdi2a-account-outline" iconSize="18"/></graphic>
+                <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
+            </Button>
+            <Button alignment="CENTER_LEFT" maxWidth="Infinity" styleClass="button-flat" text="Appearance">
+                <graphic><FontIcon iconLiteral="mdi2p-palette-outline" iconSize="18"/></graphic>
+                <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
+            </Button>
+            <Button alignment="CENTER_LEFT" maxWidth="Infinity" styleClass="button-flat" text="Security">
+                <graphic><FontIcon iconLiteral="mdi2l-lock-outline" iconSize="18"/></graphic>
+                <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
+            </Button>
+            <Separator style="-fx-padding: 10 0 10 0;"/>
+            <Button alignment="CENTER_LEFT" maxWidth="Infinity" styleClass="button-flat" text="Notifications">
+                <graphic><FontIcon iconLiteral="mdi2b-bell-outline" iconSize="18"/></graphic>
+                <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
+            </Button>
+        </VBox>
+
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="edge-to-edge" style="-fx-background-color: transparent;" HBox.hgrow="ALWAYS">
+            <VBox spacing="25">
+
+                <VBox spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <FontIcon iconLiteral="mdi2a-account-circle-outline" iconSize="20" styleClass="text-accent"/>
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="Profile Information" />
+                    </HBox>
+
+                    <HBox alignment="CENTER_LEFT" spacing="20">
+                        <StackPane style="-fx-background-color: -color-accent-emphasis; -fx-background-radius: 50; -fx-min-width: 80; -fx-min-height: 80;">
+                            <Label style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;" text="AD" />
+                        </StackPane>
+                        <VBox spacing="10">
+                            <Button styleClass="button-outlined" text="Change Avatar" />
+                            <Label style="-fx-font-size: 11px;" styleClass="text-muted" text="JPG, PNG or GIF. Max 2MB" />
+                        </VBox>
+                    </HBox>
+
+                    <GridPane hgap="15" vgap="15">
+                        <columnConstraints>
+                            <ColumnConstraints percentWidth="50" />
+                            <ColumnConstraints percentWidth="50" />
+                        </columnConstraints>
+                        <VBox spacing="8" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <Label text="First Name" />
+                            <TextField text="Admin" />
+                        </VBox>
+                        <VBox spacing="8" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <Label text="Last Name" />
+                            <TextField text="User" />
+                        </VBox>
+                        <VBox spacing="8" GridPane.columnSpan="2" GridPane.rowIndex="1">
+                            <Label text="Email Address" />
+                            <TextField text="admin@pellets.com" />
+                        </VBox>
+                    </GridPane>
+
+                    <HBox spacing="10">
+                        <Button styleClass="success" text="Save Changes" />
+                        <Button styleClass="button-outlined" text="Cancel" />
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <FontIcon iconLiteral="mdi2p-palette-outline" iconSize="20" styleClass="text-accent"/>
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="Appearance &amp; Visuals" />
+                    </HBox>
+
+                    <VBox spacing="15">
+                        <Label style="-fx-font-weight: bold;" text="Active Theme" />
+                        <Label styleClass="text-muted" text="Choose the interface style that best fits your workspace." />
+
+                        <MenuButton maxWidth="300" prefHeight="40" styleClass="button-outlined" text="Select Application Theme">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2p-palette" iconSize="18"/>
+                            </graphic>
+                            <items>
+                                <MenuItem onAction="#changeToPrimerLight" text="Primer Light" />
+                                <MenuItem onAction="#changeToPrimerDark" text="Primer Dark" />
+                                <MenuItem onAction="#changeToNordLight" text="Nord Light" />
+                                <MenuItem onAction="#changeToNordDark" text="Nord Dark" />
+                                <MenuItem onAction="#changeToCupertinoLight" text="Cupertino Light" />
+                                <MenuItem onAction="#changeToCupertinoDark" text="Cupertino Dark" />
+                                <MenuItem onAction="#changeToDracula" text="Dracula" />
+                            </items>
+                        </MenuButton>
+                    </VBox>
+
+                    <Separator />
+
+                    <VBox spacing="10">
+                        <Label style="-fx-font-weight: bold;" text="Accent Color" />
+                        <HBox spacing="12">
+                            <Button style="-fx-background-color: #4361ee; -fx-min-width: 32; -fx-min-height: 32; -fx-background-radius: 20;" />
+                            <Button style="-fx-background-color: #2ec4b6; -fx-min-width: 32; -fx-min-height: 32; -fx-background-radius: 20;" />
+                            <Button style="-fx-background-color: #ff9f1c; -fx-min-width: 32; -fx-min-height: 32; -fx-background-radius: 20;" />
+                            <Button style="-fx-background-color: #e71d36; -fx-min-width: 32; -fx-min-height: 32; -fx-background-radius: 20;" />
+                        </HBox>
+                    </VBox>
+                </VBox>
+
+                <VBox spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <FontIcon iconLiteral="mdi2l-lock-outline" iconSize="20" styleClass="danger"/>
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="Security" />
+                    </HBox>
+                    <VBox spacing="8">
+                        <Label text="New Password" />
+                        <PasswordField promptText="Enter new password" />
+                    </VBox>
+                    <Button styleClass="danger" text="Update Password" />
+                </VBox>
+
+            </VBox>
+        </ScrollPane>
+    </HBox>
+</VBox>

@@ -2,51 +2,137 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import java.lang.String?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.components.SidebarController"
-      prefWidth="250" spacing="5"
+      prefWidth="250" spacing="2"
       style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-muted; -fx-border-width: 0 1 0 0;">
 
     <padding>
         <Insets top="20" right="10" bottom="20" left="10"/>
     </padding>
 
-    <!-- Logo -->
-    <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 0 20 10;">
-        <Label text="STOCK" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
-        <Label text="MANAGER" styleClass="text-accent" style="-fx-font-size: 18px;"/>
-    </HBox>
+    <style>
+        .button-flat {
+        -fx-border-color: transparent !important;
+        -fx-background-color: transparent !important;
+        }
+        .button-flat:hover {
+        -fx-background-color: -color-base-3 !important;
+        }
+    </style>
 
-    <!-- Menu Items -->
+    <VBox spacing="5" style="-fx-padding: 0 0 30 10;">
+        <Label text="STOCK MANAGER" style="-fx-font-weight: bold; -fx-font-size: 18px; -fx-text-fill: -color-fg-default;"/>
+        <Label text="Pellets Factory" style="-fx-font-size: 12px; -fx-text-fill: -color-fg-muted; -fx-opacity: 0.7;"/>
+    </VBox>
+
+    <Label text="MAIN" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
+
     <Button fx:id="btnDashboard" text="Dashboard" onAction="#handleDashboard"
-            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat">
-        <graphic>
-            <FontIcon iconLiteral="mdi2v-view-dashboard" iconSize="18"/>
-        </graphic>
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2v-view-dashboard" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </Button>
 
-    <Button fx:id="btnFuncionarios" text="Funcionários" onAction="#handleFuncionarios"
-            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat">
-        <graphic>
-            <FontIcon iconLiteral="mdi2a-account-group" iconSize="18"/>
-        </graphic>
+    <Button fx:id="btnFuncionarios" text="Employees" onAction="#handleFuncionarios"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="accent">
+        <graphic><FontIcon iconLiteral="mdi2a-account-group" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </Button>
 
-    <!-- Spacer -->
+    <Button fx:id="btnOrders" text="Orders" onAction="#handleOrders"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2c-cart" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnProduction" text="Production" onAction="#handleProduction"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2f-factory" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnStock" text="Stock" onAction="#handleStock"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2p-package-variant" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnClients" text="Clients" onAction="#handleClients"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2b-briefcase" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Label text="PROCUREMENT" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
+
+    <Button fx:id="btnSuppliers" text="Suppliers" onAction="#handleSuppliers"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2t-truck-delivery" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnPurchaseOrders" text="Purchase Orders" onAction="#handlePurchaseOrders"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2c-clipboard-list" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnRawMaterials" text="Raw Materials" onAction="#handleRawMaterials"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2p-package-variant" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Label text="PRODUCT CATALOG" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
+
+    <Button fx:id="btnPelletTypes" text="Pellet Types" onAction="#handlePelletTypes"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2g-grain" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnFormulas" text="Formulas" onAction="#handleFormulas"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2f-flask" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
+    <Button fx:id="btnBatches" text="Batches" onAction="#handleBatches"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2c-cube-outline" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
+
     <Region VBox.vgrow="ALWAYS"/>
 
-    <!-- Separator -->
-    <Separator/>
+    <Button fx:id="btnSettings" text="Settings" onAction="#handleSettings"
+            maxWidth="Infinity" alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2c-cog" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </Button>
 
-    <!-- Botão Sair -->
-    <Button text="Sair" onAction="#handleSair" maxWidth="Infinity"
-            alignment="CENTER_LEFT" styleClass="button-flat">
-        <graphic>
-            <FontIcon iconLiteral="mdi2l-logout" iconSize="18"/>
-        </graphic>
+    <Separator style="-fx-padding: 5 0 5 0;"/>
+
+    <Button fx:id="btnSair" text="Sair" onAction="#handleSair" maxWidth="Infinity"
+            alignment="CENTER_LEFT" styleClass="button-flat"
+            style="-fx-border-color: transparent; -fx-background-color: transparent;">
+        <graphic><FontIcon iconLiteral="mdi2l-logout" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </Button>
 
 </VBox>

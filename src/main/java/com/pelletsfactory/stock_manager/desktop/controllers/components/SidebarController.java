@@ -4,13 +4,17 @@ import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import org.springframework.stereotype.Component;
+
 @Component
 public class SidebarController {
 
     private final NavigationService navigationService;
 
-    @FXML private Button btnDashboard;
-    @FXML private Button btnFuncionarios;
+    // Injeção de todos os botões do FXML
+    @FXML private Button btnDashboard, btnFuncionarios, btnOrders, btnProduction,
+            btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
+            btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches,
+            btnSettings, btnSair;
 
     private Button currentActiveButton;
 
@@ -20,8 +24,11 @@ public class SidebarController {
 
     @FXML
     public void initialize() {
+        // Define o Dashboard como ativo ao iniciar
         setActiveButton(btnDashboard);
     }
+
+    // --- MÉTODOS DE NAVEGAÇÃO PRINCIPAL ---
 
     @FXML
     private void handleDashboard() {
@@ -29,26 +36,94 @@ public class SidebarController {
         setActiveButton(btnDashboard);
     }
 
-    //CArrega funcionario
     @FXML
     private void handleFuncionarios() {
         navigationService.navigateTo("/funcionarios");
         setActiveButton(btnFuncionarios);
     }
 
-    private void setActiveButton(Button button) {
-        if (currentActiveButton != null) {
-            currentActiveButton.getStyleClass().remove("accent");
-        }
+    // --- NOVOS MÉTODOS (Resolvem o LoadException) ---
 
-        if (button != null && !button.getStyleClass().contains("accent")) {
-            button.getStyleClass().add("accent");
-        }
-
-        currentActiveButton = button;
+    @FXML
+    private void handleOrders() {
+        System.out.println("Navegando para Orders...");
+        setActiveButton(btnOrders);
+        // navigationService.navigateTo("/orders");
     }
 
-    //Logout ainda por fazer
+    @FXML
+    private void handleProduction() {
+        setActiveButton(btnProduction);
+    }
+
+    @FXML
+    private void handleStock() {
+        setActiveButton(btnStock);
+    }
+
+    @FXML
+    private void handleClients() {
+        setActiveButton(btnClients);
+    }
+
+    @FXML
+    private void handleSuppliers() {
+        setActiveButton(btnSuppliers);
+    }
+
+    @FXML
+    private void handlePurchaseOrders() {
+        setActiveButton(btnPurchaseOrders);
+    }
+
+    @FXML
+    private void handleRawMaterials() {
+        setActiveButton(btnRawMaterials);
+    }
+
+    @FXML
+    private void handlePelletTypes() {
+        setActiveButton(btnPelletTypes);
+    }
+
+    @FXML
+    private void handleFormulas() {
+        setActiveButton(btnFormulas);
+    }
+
+    @FXML
+    private void handleBatches() {
+        setActiveButton(btnBatches);
+    }
+
+    @FXML
+    private void handleSettings() {
+        navigationService.navigateTo("/settings");
+        setActiveButton(btnSettings);
+    }
+
+    // --- LÓGICA DE ESTILO E LOGOUT ---
+
+    private void setActiveButton(Button button) {
+        if (currentActiveButton != null) {
+            // Remove a classe de destaque do botão anterior
+            currentActiveButton.getStyleClass().remove("accent");
+            // Se usares botões flat, podes querer readicionar a classe original aqui
+            if (!currentActiveButton.getStyleClass().contains("button-flat")) {
+                currentActiveButton.getStyleClass().add("button-flat");
+            }
+        }
+
+        if (button != null) {
+            // Remove o estilo flat para aplicar o estilo accent (destaque)
+            button.getStyleClass().remove("button-flat");
+            if (!button.getStyleClass().contains("accent")) {
+                button.getStyleClass().add("accent");
+            }
+            currentActiveButton = button;
+        }
+    }
+
     @FXML
     private void handleSair() {
         try {
@@ -56,7 +131,8 @@ public class SidebarController {
                     getClass().getResource("/fxml/login-view.fxml")
             );
 
-            javafx.stage.Stage stage = (javafx.stage.Stage) btnDashboard.getScene().getWindow();
+            // Importante: Usar o Stage atual para trocar a cena
+            javafx.stage.Stage stage = (javafx.stage.Stage) btnSair.getScene().getWindow();
             javafx.scene.Scene scene = new javafx.scene.Scene(loader.load(), 450, 600);
             stage.setScene(scene);
             stage.centerOnScreen();

@@ -3,17 +3,16 @@ package com.pelletsfactory.stock_manager.common.services;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaCliente;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.entities.MovimentoFinanceiro;
+import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import com.pelletsfactory.stock_manager.common.repositories.MovimentoFinanceiroRepository;
+import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import static com.pelletsfactory.stock_manager.common.utils.FuncoesAuxiliares.validarPermissaoAdmin;
-
 @Service
 public class FinanceiroService {
     private final MovimentoFinanceiroRepository movimentoFinanceiroRepo;
@@ -53,7 +52,7 @@ public class FinanceiroService {
     @Transactional
     public MovimentoFinanceiro atualizarMovimentoFinanceiro(UUID movimentoId, Double novoValor) {
         //TODO: recebe um movimento financeiro e permite a um administrador e apenas ele atualizar algo como valor/data
-        validarPermissaoAdmin();
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
         return new MovimentoFinanceiro();
     }
 

@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -13,8 +11,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "funcionarios")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Funcionario {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(updatable = false, nullable = false)
@@ -26,21 +24,20 @@ public class Funcionario {
     @Column(nullable = false, unique = true, length = 9)
     private String nif;
 
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private String contacto;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private Cargo cargo;
 
-    @Column(name = "numero_funcionario", unique = true)
+    @Column(name = "numero_funcionario", unique = true, nullable = false)
     private Integer numeroFuncionario;
 
     @Column(name = "data_admissao", nullable = false)
     private LocalDate dataAdmissao;
 
     @Column(name = "hashed_pin", nullable = false)
-    @JsonIgnore //para do lado do spring web nunca aparecer o hashpin
     private String pinHash;
 
     @CreationTimestamp
@@ -51,86 +48,57 @@ public class Funcionario {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public Funcionario() {
-    }
+    // --- CONSTRUTORES ---
 
-    public Funcionario(UUID id, String nome, String nif, String contacto, Cargo cargo,
-                       LocalDate dataAdmissao, Instant createdAt, Instant updatedAt) {
-        this.id = id;
+    /**
+     * Construtor Padrão: Obrigatório para o Hibernate.
+     */
+    public Funcionario() {}
+
+    /**
+     * Construtor de Criação: Usado no Service para instanciar um novo funcionário.
+     * Repara que NÃO incluímos ID, createdAt ou updatedAt, pois são automáticos.
+     */
+    public Funcionario(String nome, String nif, String contacto, Cargo cargo,
+                       Integer numeroFuncionario, LocalDate dataAdmissao, String pinHash) {
         this.nome = nome;
         this.nif = nif;
         this.contacto = contacto;
         this.cargo = cargo;
-        this.dataAdmissao = dataAdmissao;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getNif() {
-        return nif;
-    }
-
-    public void setNif(String nif) {
-        this.nif = nif;
-    }
-
-    public String getContacto() {
-        return contacto;
-    }
-
-    public void setContacto(String contacto) {
-        this.contacto = contacto;
-    }
-
-    public Cargo getCargo() {
-        return cargo;
-    }
-
-    public void setCargo(Cargo cargo) {
-        this.cargo = cargo;
-    }
-
-    public Integer getNumeroFuncionario() {
-        return numeroFuncionario;
-    }
-
-    public void setNumeroFuncionario(Integer numeroFuncionario) {
         this.numeroFuncionario = numeroFuncionario;
-    }
-
-    public LocalDate getDataAdmissao() {
-        return dataAdmissao;
-    }
-
-    public void setDataAdmissao(LocalDate dataAdmissao) {
         this.dataAdmissao = dataAdmissao;
-    }
-
-    public String getPinHash() {
-        return pinHash;
-    }
-
-    public void setPinHash(String pinHash) {
         this.pinHash = pinHash;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+    // --- GETTERS E SETTERS ---
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+    public UUID getId() { return id; }
+    // Não há setId(id) porque o Hibernate gera o UUID sozinho.
+
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+
+    public String getNif() { return nif; }
+    public void setNif(String nif) { this.nif = nif; }
+
+    public String getContacto() { return contacto; }
+    public void setContacto(String contacto) { this.contacto = contacto; }
+
+    public Cargo getCargo() { return cargo; }
+    public void setCargo(Cargo cargo) { this.cargo = cargo; }
+
+    public Integer getNumeroFuncionario() { return numeroFuncionario; }
+    public void setNumeroFuncionario(Integer numeroFuncionario) { this.numeroFuncionario = numeroFuncionario; }
+
+    public LocalDate getDataAdmissao() { return dataAdmissao; }
+    public void setDataAdmissao(LocalDate dataAdmissao) { this.dataAdmissao = dataAdmissao; }
+
+    public String getPinHash() { return pinHash; }
+    public void setPinHash(String pinHash) { this.pinHash = pinHash; }
+
+    public Instant getCreatedAt() { return createdAt; }
+    // Sem setCreatedAt: @CreationTimestamp trata disso.
+
+    public Instant getUpdatedAt() { return updatedAt; }
+    // Sem setUpdatedAt: @UpdateTimestamp trata disso.
 }
