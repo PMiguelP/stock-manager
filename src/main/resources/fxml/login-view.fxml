@@ -1,62 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.LoginController"
-           style="-fx-background-color: -color-bg-default;">
+<HBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.LoginController"
+      fx:id="rootPane">
 
-    <VBox alignment="CENTER" spacing="0" maxWidth="400">
+    <StackPane fx:id="formSide" minWidth="520" prefWidth="620" HBox.hgrow="ALWAYS">
+        <VBox fx:id="formBox" alignment="CENTER_LEFT" maxWidth="420" spacing="18">
+            <padding>
+                <Insets top="30" right="36" bottom="30" left="36"/>
+            </padding>
 
-        <!-- Logo e Header -->
-        <VBox alignment="CENTER" spacing="10" style="-fx-padding: 0 0 40 0;">
-            <FontIcon iconLiteral="mdi2f-factory" iconSize="64" styleClass="text-accent"/>
-            <HBox alignment="CENTER" spacing="8">
-                <Label text="STOCK" style="-fx-font-weight: bold; -fx-font-size: 24px;"/>
-                <Label text="MANAGER" styleClass="text-accent" style="-fx-font-size: 24px;"/>
+            <VBox fx:id="logoBox" spacing="8"/>
+
+            <VBox spacing="5">
+                <Label fx:id="lblWelcome" text="Welcome"/>
+                <Label fx:id="lblSubtitle" text="Sign in with your employee credentials"/>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="Employee Number"/>
+                <HBox fx:id="employeeFieldBox" alignment="CENTER_LEFT" spacing="10">
+                    <padding>
+                        <Insets top="0" right="12" bottom="0" left="12"/>
+                    </padding>
+                    <FontIcon fx:id="employeeIcon" iconLiteral="mdi2b-badge-account" iconSize="17"/>
+                    <TextField fx:id="txtEmployeeNumber" promptText="e.g. 1042" HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="PIN"/>
+                <HBox fx:id="pinFieldBox" alignment="CENTER_LEFT" spacing="10">
+                    <padding>
+                        <Insets top="0" right="12" bottom="0" left="12"/>
+                    </padding>
+                    <FontIcon fx:id="pinIcon" iconLiteral="mdi2k-key" iconSize="17"/>
+                    <PasswordField fx:id="txtPin" promptText="4-digit PIN" HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </VBox>
+
+            <HBox alignment="CENTER_RIGHT">
+                <Hyperlink fx:id="lnkForgotPin" text="Forgot PIN?" onAction="#handleForgotPin"/>
             </HBox>
-            <Label text="Pellets Factory" styleClass="text-muted" style="-fx-font-size: 14px;"/>
+
+            <Label fx:id="lblErro" visible="false" managed="false"/>
+
+            <Button fx:id="btnLogin" text="Login" onAction="#handleLogin" maxWidth="Infinity" prefHeight="46"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+            <Label text="v1.0.0  Pellets Factory"/>
         </VBox>
+    </StackPane>
 
-        <!-- Card de Login -->
-        <VBox spacing="25" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 40; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-
-            <VBox spacing="8">
-                <Label text="Bem-vindo" styleClass="title-3"/>
-                <Label text="Inicie sessão para continuar" styleClass="text-muted"/>
-            </VBox>
-
-            <!-- Campo Username -->
-            <VBox spacing="8">
-                <Label text="Utilizador"/>
-                <TextField fx:id="txtUsername" promptText="Digite seu nome de utilizador" prefHeight="40"/>
-            </VBox>
-
-            <!-- Campo Password -->
-            <VBox spacing="8">
-                <Label text="Palavra-passe"/>
-                <PasswordField fx:id="txtPassword" promptText="Digite sua palavra-passe" prefHeight="40"/>
-            </VBox>
-
-            <!-- Mensagem de Erro -->
-            <Label fx:id="lblErro" styleClass="danger" style="-fx-font-size: 12px;" visible="false"/>
-
-            <!-- Botão Entrar -->
-            <Button text="Entrar" onAction="#handleLogin" maxWidth="Infinity" prefHeight="45" styleClass="accent">
-                <graphic>
-                    <FontIcon iconLiteral="mdi2l-login" iconSize="18"/>
-                </graphic>
-            </Button>
-
-            <Separator/>
-
-            <!-- Footer -->
-            <Label text="v1.0.0 • Pellets Factory © 2025" styleClass="text-muted" style="-fx-font-size: 11px;" alignment="CENTER" maxWidth="Infinity"/>
-
+    <StackPane fx:id="visualSide" HBox.hgrow="ALWAYS">
+        <ImageView fx:id="heroImage" preserveRatio="false" smooth="true"/>
+        <Region fx:id="heroOverlay"/>
+        <VBox alignment="BOTTOM_LEFT" spacing="8" maxWidth="560" StackPane.alignment="BOTTOM_LEFT">
+            <padding>
+                <Insets top="36" right="36" bottom="36" left="36"/>
+            </padding>
+            <Label fx:id="lblVisualTitle" text="Operations Intelligence"/>
+            <Label fx:id="lblVisualSubtitle" text="Control procurement, production, and stock in one place."/>
         </VBox>
+    </StackPane>
 
-    </VBox>
+</HBox>
 
-</StackPane>
