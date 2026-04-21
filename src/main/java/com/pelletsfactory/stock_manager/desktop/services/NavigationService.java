@@ -1,10 +1,10 @@
 package com.pelletsfactory.stock_manager.desktop.services;
 
-import atlantafx.base.controls.ModalPane; // Importante adicionar este import
+import atlantafx.base.controls.ModalPane;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
-import javafx.scene.Node; // Importante adicionar este import
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.layout.BorderPane;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,8 +22,6 @@ public class NavigationService {
     private final ConfigurableApplicationContext springContext;
     private final ApplicationEventPublisher eventPublisher;
     private BorderPane contentArea;
-
-    // --- ADICIONA ESTA LINHA ---
     private ModalPane modalPane;
 
     private final Map<String, Parent> viewCache = new HashMap<>();
@@ -37,32 +35,77 @@ public class NavigationService {
     }
 
     private void initializeRoutes() {
-        routes.put("/dashboard", new RouteInfo(
-                "/fxml/views/dashboard-view.fxml",
-                "Dashboard",
-                "Visão geral do sistema",
-                List.of("Home", "Dashboard")
-        ));
+        addRoute("/dashboard", "/fxml/views/dashboard-view.fxml", "Dashboard",
+                "Visao geral do sistema", ViewId.DASHBOARD,
+                "Home", "Dashboard");
 
-        routes.put("/funcionarios", new RouteInfo(
-                "/fxml/views/funcionario-view.fxml",
-                "Gestão de Funcionários",
-                "Administração da equipa Pellets Factory",
-                List.of("Home", "Administração", "Funcionários")
-        ));
-        routes.put("/settings", new RouteInfo(
-                "/fxml/views/settings-view.fxml",
-                "Settings Page",
-                "Settings",
-                List.of("Home", "Administração", "Funcionários")
+        addRoute("/funcionarios", "/fxml/views/funcionario-view.fxml", "Employees",
+                "Team management", ViewId.FUNCIONARIOS,
+                "Home", "Administration", "Employees");
+
+        addRoute("/settings", "/fxml/views/settings-view.fxml", "Settings",
+                "Application preferences", ViewId.SETTINGS,
+                "Home", "Administration", "Settings");
+
+        addRoute("/orders", "/fxml/views/orders-view.fxml", "Orders",
+                "Customer orders and fulfillment", ViewId.ORDERS,
+                "Home", "Operations", "Orders");
+
+        addRoute("/production", "/fxml/views/production-view.fxml", "Production",
+                "Production planning and batches", ViewId.PRODUCTION,
+                "Home", "Operations", "Production");
+
+        addRoute("/stock", "/fxml/views/stock-view.fxml", "Stock",
+                "Inventory levels and turnover", ViewId.STOCK,
+                "Home", "Inventory", "Stock");
+
+        addRoute("/clients", "/fxml/views/clients-view.fxml", "Clients",
+                "Customer portfolio", ViewId.CLIENTS,
+                "Home", "Sales", "Clients");
+
+        addRoute("/suppliers", "/fxml/views/suppliers-view.fxml", "Suppliers",
+                "Supplier directory", ViewId.SUPPLIERS,
+                "Home", "Procurement", "Suppliers");
+
+        addRoute("/purchase-orders", "/fxml/views/purchase-orders-view.fxml", "Purchase Orders",
+                "Inbound order tracking", ViewId.PURCHASE_ORDERS,
+                "Home", "Procurement", "Purchase Orders");
+
+        addRoute("/raw-materials", "/fxml/views/raw-materials-view.fxml", "Raw Materials",
+                "Material stock and reorder points", ViewId.RAW_MATERIALS,
+                "Home", "Inventory", "Raw Materials");
+
+        addRoute("/pellet-types", "/fxml/views/pellet-types-view.fxml", "Pellet Types",
+                "Product variants and specs", ViewId.PELLET_TYPES,
+                "Home", "Catalog", "Pellet Types");
+
+        addRoute("/formulas", "/fxml/views/formulas-view.fxml", "Formulas",
+                "Production recipes", ViewId.FORMULAS,
+                "Home", "Catalog", "Formulas");
+
+        addRoute("/batches", "/fxml/views/batches-view.fxml", "Batches",
+                "Batch traceability", ViewId.BATCHES,
+                "Home", "Catalog", "Batches");
+    }
+
+    private void addRoute(String route,
+                          String fxmlPath,
+                          String titulo,
+                          String subtitulo,
+                          ViewId viewId,
+                          String... breadcrumbs) {
+        routes.put(route, new RouteInfo(
+                fxmlPath,
+                titulo,
+                subtitulo,
+                List.of(breadcrumbs),
+                viewId
         ));
     }
 
     public void setContentArea(BorderPane contentArea) {
         this.contentArea = contentArea;
     }
-
-    // --- ADICIONA ESTES TRÊS MÉTODOS ABAIXO ---
 
     public void setModalPane(ModalPane modalPane) {
         this.modalPane = modalPane;
@@ -74,7 +117,7 @@ public class NavigationService {
         if (modalPane != null) {
             modalPane.show(content);
         } else {
-            System.err.println("Erro: ModalPane não foi injetado no NavigationService!");
+            System.err.println("Erro: ModalPane nao foi injetado no NavigationService!");
         }
     }
 
@@ -84,16 +127,14 @@ public class NavigationService {
         }
     }
 
-    // ------------------------------------------
-
     public void navigateTo(String route) {
         if (contentArea == null) {
-            throw new IllegalStateException("Content area não foi definida!");
+            throw new IllegalStateException("Content area nao foi definida!");
         }
 
         RouteInfo routeInfo = routes.get(route);
         if (routeInfo == null) {
-            System.err.println("Rota não encontrada: " + route);
+            System.err.println("Rota nao encontrada: " + route);
             return;
         }
 
@@ -104,7 +145,8 @@ public class NavigationService {
             eventPublisher.publishEvent(new NavigationEvent(
                     routeInfo.titulo,
                     routeInfo.subtitulo,
-                    routeInfo.breadcrumbs
+                    routeInfo.breadcrumbs,
+                    routeInfo.viewId
             ));
 
         } catch (IOException e) {
@@ -130,21 +172,23 @@ public class NavigationService {
         viewCache.clear();
     }
 
+    public Node loadExternalView(String fxmlPath) {
+        String normalizedPath = fxmlPath.startsWith("/") ? fxmlPath : "/fxml/views/" + fxmlPath;
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(normalizedPath));
+            loader.setControllerFactory(springContext::getBean);
+            return loader.load();
+        } catch (IOException e) {
+            System.err.println("Erro ao carregar FXML externo: " + normalizedPath);
+            return null;
+        }
+    }
+
     private record RouteInfo(
             String fxmlPath,
             String titulo,
             String subtitulo,
-            List<String> breadcrumbs
+            List<String> breadcrumbs,
+            ViewId viewId
     ) {}
-
-    public Node loadExternalView(String fxmlPath) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
-            loader.setControllerFactory(springContext::getBean);
-            return loader.load();
-        } catch (IOException e) {
-            System.err.println("Erro ao carregar FXML externo: " + fxmlPath);
-            return null;
-        }
-    }
 }

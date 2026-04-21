@@ -1,22 +1,49 @@
 package com.pelletsfactory.stock_manager.desktop.controllers.components;
 
+import atlantafx.base.theme.Styles;
+import com.pelletsfactory.stock_manager.desktop.services.NavigationEvent;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.ViewId;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
+import javafx.scene.layout.Border;
+import javafx.scene.layout.CornerRadii;
+import javafx.scene.paint.Color;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBase;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class SidebarController {
 
     private final NavigationService navigationService;
 
-    // Injeção de todos os botões do FXML
-    @FXML private Button btnDashboard, btnFuncionarios, btnOrders, btnProduction,
+    @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction,
             btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
-            btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches,
-            btnSettings, btnSair;
+            btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches, btnSettings;
+    @FXML private Button btnSair;
 
-    private Button currentActiveButton;
+    private final ToggleGroup navigationGroup = new ToggleGroup();
+    private final Map<ViewId, ToggleButton> navByViewId = new EnumMap<>(ViewId.class);
+    private List<ToggleButton> navButtons;
+
+    private static final Background TRANSPARENT_BG =
+            new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY));
+    private static final String INACTIVE_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-background-insets: 0; -fx-border-insets: 0; -fx-effect: null;";
+    private static final String ACTIVE_STYLE =
+            "-fx-background-insets: 0; -fx-border-insets: 0;";
 
     public SidebarController(NavigationService navigationService) {
         this.navigationService = navigationService;
@@ -24,103 +51,201 @@ public class SidebarController {
 
     @FXML
     public void initialize() {
-        // Define o Dashboard como ativo ao iniciar
-        setActiveButton(btnDashboard);
+        navButtons = List.of(
+                btnDashboard, btnFuncionarios, btnOrders, btnProduction,
+                btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
+                btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches,
+                btnSettings
+        );
+
+        navButtons.forEach(this::prepareSidebarButton);
+        btnSair.setFocusTraversable(false);
+        applyAtlantaFlatStyle(btnSair);
+        clearInactiveVisuals(btnSair);
+
+        navigationGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            ToggleButton selected = (newToggle instanceof ToggleButton tb) ? tb : null;
+            refreshSidebarVisualState(selected);
+        });
+
+        navByViewId.put(ViewId.DASHBOARD, btnDashboard);
+        navByViewId.put(ViewId.FUNCIONARIOS, btnFuncionarios);
+        navByViewId.put(ViewId.ORDERS, btnOrders);
+        navByViewId.put(ViewId.PRODUCTION, btnProduction);
+        navByViewId.put(ViewId.STOCK, btnStock);
+        navByViewId.put(ViewId.CLIENTS, btnClients);
+        navByViewId.put(ViewId.SUPPLIERS, btnSuppliers);
+        navByViewId.put(ViewId.PURCHASE_ORDERS, btnPurchaseOrders);
+        navByViewId.put(ViewId.RAW_MATERIALS, btnRawMaterials);
+        navByViewId.put(ViewId.PELLET_TYPES, btnPelletTypes);
+        navByViewId.put(ViewId.FORMULAS, btnFormulas);
+        navByViewId.put(ViewId.BATCHES, btnBatches);
+        navByViewId.put(ViewId.SETTINGS, btnSettings);
+
+        setActiveView(ViewId.DASHBOARD);
+    }
+
+    private void prepareSidebarButton(ToggleButton button) {
+        button.setToggleGroup(navigationGroup);
+        button.setFocusTraversable(false);
+        applyAtlantaFlatStyle(button);
+        clearInactiveVisuals(button);
+    }
+
+    private void applyAtlantaFlatStyle(ButtonBase button) {
+        if (!button.getStyleClass().contains(Styles.FLAT)) {
+            button.getStyleClass().add(Styles.FLAT);
+        }
     }
 
     // --- MÉTODOS DE NAVEGAÇÃO PRINCIPAL ---
 
     @FXML
     private void handleDashboard() {
+        switchView(btnDashboard);
         navigationService.navigateTo("/dashboard");
-        setActiveButton(btnDashboard);
     }
 
     @FXML
     private void handleFuncionarios() {
+        switchView(btnFuncionarios);
         navigationService.navigateTo("/funcionarios");
-        setActiveButton(btnFuncionarios);
     }
-
-    // --- NOVOS MÉTODOS (Resolvem o LoadException) ---
 
     @FXML
     private void handleOrders() {
-        System.out.println("Navegando para Orders...");
-        setActiveButton(btnOrders);
-        // navigationService.navigateTo("/orders");
+        switchView(btnOrders);
+        navigationService.navigateTo("/orders");
     }
 
     @FXML
     private void handleProduction() {
-        setActiveButton(btnProduction);
+        switchView(btnProduction);
+        navigationService.navigateTo("/production");
     }
 
     @FXML
     private void handleStock() {
-        setActiveButton(btnStock);
+        switchView(btnStock);
+        navigationService.navigateTo("/stock");
     }
 
     @FXML
     private void handleClients() {
-        setActiveButton(btnClients);
+        switchView(btnClients);
+        navigationService.navigateTo("/clients");
     }
 
     @FXML
     private void handleSuppliers() {
-        setActiveButton(btnSuppliers);
+        switchView(btnSuppliers);
+        navigationService.navigateTo("/suppliers");
     }
 
     @FXML
     private void handlePurchaseOrders() {
-        setActiveButton(btnPurchaseOrders);
+        switchView(btnPurchaseOrders);
+        navigationService.navigateTo("/purchase-orders");
     }
 
     @FXML
     private void handleRawMaterials() {
-        setActiveButton(btnRawMaterials);
+        switchView(btnRawMaterials);
+        navigationService.navigateTo("/raw-materials");
     }
 
     @FXML
     private void handlePelletTypes() {
-        setActiveButton(btnPelletTypes);
+        switchView(btnPelletTypes);
+        navigationService.navigateTo("/pellet-types");
     }
 
     @FXML
     private void handleFormulas() {
-        setActiveButton(btnFormulas);
+        switchView(btnFormulas);
+        navigationService.navigateTo("/formulas");
     }
 
     @FXML
     private void handleBatches() {
-        setActiveButton(btnBatches);
+        switchView(btnBatches);
+        navigationService.navigateTo("/batches");
     }
 
     @FXML
     private void handleSettings() {
+        switchView(btnSettings);
         navigationService.navigateTo("/settings");
-        setActiveButton(btnSettings);
     }
 
-    // --- LÓGICA DE ESTILO E LOGOUT ---
-
-    private void setActiveButton(Button button) {
-        if (currentActiveButton != null) {
-            // Remove a classe de destaque do botão anterior
-            currentActiveButton.getStyleClass().remove("accent");
-            // Se usares botões flat, podes querer readicionar a classe original aqui
-            if (!currentActiveButton.getStyleClass().contains("button-flat")) {
-                currentActiveButton.getStyleClass().add("button-flat");
+    @EventListener
+    public void onNavigationEvent(NavigationEvent event) {
+        Platform.runLater(() -> {
+            if (event.viewId() != null) {
+                setActiveView(event.viewId());
             }
+        });
+    }
+
+    public void setSelectedButton(ToggleButton button) {
+        if (button != null) {
+            switchView(button);
+        }
+    }
+
+    public ToggleGroup getNavigationGroup() {
+        return navigationGroup;
+    }
+
+    private void setActiveView(ViewId viewId) {
+        ToggleButton target = navByViewId.get(viewId);
+        if (target != null) {
+            switchView(target);
+        }
+    }
+
+    public void switchView(ToggleButton targetBtn) {
+        if (targetBtn == null) {
+            return;
         }
 
-        if (button != null) {
-            // Remove o estilo flat para aplicar o estilo accent (destaque)
-            button.getStyleClass().remove("button-flat");
-            if (!button.getStyleClass().contains("accent")) {
-                button.getStyleClass().add("accent");
+        navigationGroup.selectToggle(targetBtn);
+        targetBtn.setSelected(true);
+        refreshSidebarVisualState(targetBtn);
+    }
+
+    private void refreshSidebarVisualState(ToggleButton selectedButton) {
+        for (ToggleButton navButton : navButtons) {
+            boolean active = navButton == selectedButton;
+            if (active) {
+                if (!navButton.getStyleClass().contains("accent")) {
+                    navButton.getStyleClass().add("accent");
+                }
+                navButton.setStyle(ACTIVE_STYLE);
+            } else {
+                navButton.getStyleClass().remove("accent");
+                clearInactiveVisuals(navButton);
             }
-            currentActiveButton = button;
+        }
+    }
+
+    private void clearInactiveVisuals(ButtonBase button) {
+        if (button instanceof Node node) {
+            node.setStyle(INACTIVE_STYLE);
+        }
+        if (button instanceof ToggleButton toggleButton) {
+            toggleButton.setBackground(TRANSPARENT_BG);
+            toggleButton.setBorder(Border.EMPTY);
+        } else if (button instanceof Button normalButton) {
+            normalButton.setBackground(TRANSPARENT_BG);
+            normalButton.setBorder(Border.EMPTY);
+        }
+    }
+
+    // Fallback for plain Button usage: manually mark active pseudo-class.
+    public void applyManualPseudoClass(ButtonBase activeButton, List<? extends ButtonBase> allButtons) {
+        for (ButtonBase candidate : allButtons) {
+            candidate.pseudoClassStateChanged(javafx.css.PseudoClass.getPseudoClass("active"), candidate == activeButton);
         }
     }
 
@@ -131,7 +256,6 @@ public class SidebarController {
                     getClass().getResource("/fxml/login-view.fxml")
             );
 
-            // Importante: Usar o Stage atual para trocar a cena
             javafx.stage.Stage stage = (javafx.stage.Stage) btnSair.getScene().getWindow();
             javafx.scene.Scene scene = new javafx.scene.Scene(loader.load(), 450, 600);
             stage.setScene(scene);
@@ -143,3 +267,5 @@ public class SidebarController {
         }
     }
 }
+
+

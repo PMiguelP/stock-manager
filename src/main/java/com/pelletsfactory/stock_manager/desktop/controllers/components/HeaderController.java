@@ -191,8 +191,17 @@ public class HeaderController {
     @EventListener
     public void onNavigationEvent(NavigationEvent event) {
         Platform.runLater(() -> {
-            if (breadcrumbs != null) configurarBreadcrumbs(event.breadcrumbs());
+            if (breadcrumbs != null && event.breadcrumbs() != null && !event.breadcrumbs().isEmpty()) {
+                configurarBreadcrumbs(event.breadcrumbs());
+            }
         });
+    }
+
+    public void updateBreadcrumbPath(String... breadcrumbPath) {
+        if (breadcrumbPath == null || breadcrumbPath.length == 0) {
+            return;
+        }
+        configurarBreadcrumbs(List.of(breadcrumbPath));
     }
 
     private void configurarBreadcrumbs(List<String> items) {

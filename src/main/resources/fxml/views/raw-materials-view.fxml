@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.RawMaterialsController">
+    <VBox spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+        <HBox alignment="CENTER_LEFT">
+            <VBox>
+                <Label text="Raw Materials" styleClass="title-2"/>
+                <Label text="Inventory and reorder tracking" styleClass="text-muted"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Refresh" onAction="#handleRefresh" styleClass="button-outlined">
+                <graphic><FontIcon iconLiteral="mdi2r-refresh" iconSize="16"/></graphic>
+            </Button>
+        </HBox>
+
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField promptText="Search material..." prefWidth="320"/>
+            <Region HBox.hgrow="ALWAYS"/>
+        </HBox>
+
+        <TableView fx:id="tblRawMaterials" VBox.vgrow="ALWAYS" styleClass="striped">
+            <columns>
+                <TableColumn fx:id="colMaterial" text="Material" prefWidth="260"/>
+                <TableColumn fx:id="colCategory" text="Category" prefWidth="180"/>
+                <TableColumn fx:id="colUnit" text="Unit" prefWidth="120"/>
+                <TableColumn fx:id="colStock" text="Stock" prefWidth="180"/>
+                <TableColumn fx:id="colReorder" text="Reorder Point" prefWidth="180"/>
+            </columns>
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
+        </TableView>
+    </VBox>
+</StackPane>
+

@@ -6,9 +6,9 @@
            fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.MainController"
            prefHeight="900.0" prefWidth="1400.0">
     <HBox>
-        <fx:include source="components/sidebar.fxml"/>
+        <fx:include fx:id="sidebarInclude" source="components/sidebar.fxml"/>
         <VBox HBox.hgrow="ALWAYS">
-            <fx:include source="components/header.fxml"/>
+            <fx:include fx:id="headerInclude" source="components/header.fxml"/>
             <BorderPane fx:id="contentArea" VBox.vgrow="ALWAYS" />
         </VBox>
     </HBox>
