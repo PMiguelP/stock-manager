@@ -199,4 +199,33 @@ public class FuncionarioService {
                         "Funcionário não encontrado com o ID: " + id
                 ));
     }
+
+    @Transactional
+    public void alterarPin(UUID id, String pinAntigo, String pinNovo) {
+        Funcionario logged = SessaoFuncionario.getFuncionarioLogado();
+        if (logged == null) {
+            throw new RuntimeException("Sessão expirada. Faça login novamente.");
+        }
+
+        if (!logged.getId().equals(id) && logged.getCargo() != Cargo.ADMINISTRADOR) {
+            throw new RuntimeException("Não tem permissão para alterar este PIN.");
+        }
+
+        Funcionario funcionario = buscarPorIdOuFalhar(id);
+
+        if (!authService.verificarPin(pinAntigo, funcionario.getPinHash())) {
+            throw new RuntimeException("PIN atual incorreto.");
+        }
+
+        if (pinNovo == null || !pinNovo.matches("\\d{4}")) {
+            throw new RuntimeException("O novo PIN deve conter exatamente 4 dígitos.");
+        }
+
+        funcionario.setPinHash(authService.gerarHashPin(pinNovo));
+        Funcionario atualizado = funcRepo.save(funcionario);
+
+        if (logged.getId().equals(atualizado.getId())) {
+            SessaoFuncionario.login(atualizado);
+        }
+    }
 }

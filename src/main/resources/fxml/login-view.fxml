@@ -7,7 +7,6 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
@@ -36,7 +35,7 @@
                     <padding>
                         <Insets top="0" right="12" bottom="0" left="12"/>
                     </padding>
-                    <FontIcon fx:id="employeeIcon" iconLiteral="mdi2b-badge-account" iconSize="17"/>
+                    <FontIcon fx:id="employeeIcon"/>
                     <TextField fx:id="txtEmployeeNumber" promptText="e.g. 1042" HBox.hgrow="ALWAYS"/>
                 </HBox>
             </VBox>
@@ -47,7 +46,7 @@
                     <padding>
                         <Insets top="0" right="12" bottom="0" left="12"/>
                     </padding>
-                    <FontIcon fx:id="pinIcon" iconLiteral="mdi2k-key" iconSize="17"/>
+                    <FontIcon fx:id="pinIcon"/>
                     <PasswordField fx:id="txtPin" promptText="4-digit PIN" HBox.hgrow="ALWAYS"/>
                 </HBox>
             </VBox>
@@ -78,4 +77,3 @@
     </StackPane>
 
 </HBox>
-

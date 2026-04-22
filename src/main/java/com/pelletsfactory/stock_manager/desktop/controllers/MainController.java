@@ -36,6 +36,7 @@ public class MainController {
         navigationService.navigateTo("/dashboard");
     }
 
+
     public void MapsTo(String fxmlFile, ToggleButton sidebarBtn, String... breadcrumbPath) {
         Node view = navigationService.loadExternalView(fxmlFile);
         if (view != null) {

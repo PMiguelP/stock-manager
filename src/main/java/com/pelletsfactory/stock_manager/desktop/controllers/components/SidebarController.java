@@ -3,11 +3,14 @@ package com.pelletsfactory.stock_manager.desktop.controllers.components;
 import atlantafx.base.theme.Styles;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationEvent;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
 import com.pelletsfactory.stock_manager.desktop.services.ViewId;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.Border;
@@ -20,6 +23,7 @@ import javafx.scene.control.ToggleGroup;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.net.URL;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -28,11 +32,13 @@ import java.util.Map;
 public class SidebarController {
 
     private final NavigationService navigationService;
+    private final ThemePreferencesService themePreferencesService;
 
     @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction,
             btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
             btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches, btnSettings;
     @FXML private Button btnSair;
+    @FXML private ImageView sidebarLogoImage;
 
     private final ToggleGroup navigationGroup = new ToggleGroup();
     private final Map<ViewId, ToggleButton> navByViewId = new EnumMap<>(ViewId.class);
@@ -45,12 +51,16 @@ public class SidebarController {
     private static final String ACTIVE_STYLE =
             "-fx-background-insets: 0; -fx-border-insets: 0;";
 
-    public SidebarController(NavigationService navigationService) {
+    public SidebarController(NavigationService navigationService, ThemePreferencesService themePreferencesService) {
         this.navigationService = navigationService;
+        this.themePreferencesService = themePreferencesService;
     }
 
     @FXML
     public void initialize() {
+        loadThemeLogo();
+        themePreferencesService.addThemeChangeListener(() -> Platform.runLater(this::loadThemeLogo));
+
         navButtons = List.of(
                 btnDashboard, btnFuncionarios, btnOrders, btnProduction,
                 btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
@@ -83,6 +93,19 @@ public class SidebarController {
         navByViewId.put(ViewId.SETTINGS, btnSettings);
 
         setActiveView(ViewId.DASHBOARD);
+    }
+
+    private void loadThemeLogo() {
+        if (sidebarLogoImage == null) {
+            return;
+        }
+
+        URL logoUrl = getClass().getResource(themePreferencesService.getThemeLogoResource());
+        if (logoUrl == null) {
+            return;
+        }
+
+        sidebarLogoImage.setImage(new Image(logoUrl.toExternalForm(), true));
     }
 
     private void prepareSidebarButton(ToggleButton button) {

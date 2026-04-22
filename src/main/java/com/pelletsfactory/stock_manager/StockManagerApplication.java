@@ -1,13 +1,16 @@
 package com.pelletsfactory.stock_manager;
 
-import atlantafx.base.theme.PrimerDark;
+import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Rectangle2D;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.stage.StageStyle;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -32,21 +35,50 @@ public class StockManagerApplication extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        // Aplica o tema AtlantaFX (Primer Dark por padrão)
-        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+
+        ThemePreferencesService themePreferencesService = springContext.getBean(ThemePreferencesService.class);
+        themePreferencesService.applyCurrentTheme();
+
+        stage.initStyle(StageStyle.UNDECORATED);
 
         //Carrega
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login-view.fxml"));
         loader.setControllerFactory(springContext::getBean);
 
         Parent root = loader.load();
+        enableWindowDrag(root, stage);
 
         Scene scene = new Scene(root, 1920, 1080);
+        themePreferencesService.applyToScene(scene);
         stage.setTitle("Stock Manager - Login");
         stage.setScene(scene);
         stage.setResizable(true);
-        stage.centerOnScreen();
+        stage.setFullScreen(false);
+        stage.setMaximized(false);
         stage.show();
+        Platform.runLater(() -> fillToVisibleBounds(stage));
+    }
+
+    private void fillToVisibleBounds(Stage stage) {
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        stage.setX(bounds.getMinX());
+        stage.setY(bounds.getMinY());
+        stage.setWidth(bounds.getWidth());
+        stage.setHeight(bounds.getHeight());
+    }
+
+    private void enableWindowDrag(Parent root, Stage stage) {
+        final double[] dragOffset = new double[2];
+
+        root.setOnMousePressed(event -> {
+            dragOffset[0] = event.getSceneX();
+            dragOffset[1] = event.getSceneY();
+        });
+
+        root.setOnMouseDragged(event -> {
+            stage.setX(event.getScreenX() - dragOffset[0]);
+            stage.setY(event.getScreenY() - dragOffset[1]);
+        });
     }
 
     @Override

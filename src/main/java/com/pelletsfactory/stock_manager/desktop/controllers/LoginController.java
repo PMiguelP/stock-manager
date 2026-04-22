@@ -2,10 +2,14 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 
 import atlantafx.base.theme.Styles;
 import com.pelletsfactory.stock_manager.common.services.AuthService;
+import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.paint.Color;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
@@ -20,8 +24,11 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.Screen;
 import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignA;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignL;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
 
@@ -33,11 +40,12 @@ import java.net.URL;
 @Component
 public class LoginController {
 
-    private static final String WRAPPER_BASE_STYLE = "-fx-background-color: white; -fx-border-color: #d8dde8; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;";
-    private static final String WRAPPER_FOCUS_STYLE = "-fx-background-color: white; -fx-border-color: -color-accent-emphasis; -fx-border-width: 1.2; -fx-background-radius: 10; -fx-border-radius: 10;";
+    private static final String WRAPPER_BASE_STYLE = "-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;";
+    private static final String WRAPPER_FOCUS_STYLE = "-fx-background-color: -color-bg-subtle; -fx-border-color: -color-accent-emphasis; -fx-border-width: 1.2; -fx-background-radius: 10; -fx-border-radius: 10;";
 
     private final ConfigurableApplicationContext springContext;
     private final AuthService authService;
+    private final ThemePreferencesService themePreferencesService;
 
     @FXML private HBox rootPane;
     @FXML private StackPane formSide;
@@ -60,9 +68,14 @@ public class LoginController {
     @FXML private Label lblVisualTitle;
     @FXML private Label lblVisualSubtitle;
 
-    public LoginController(ConfigurableApplicationContext springContext, AuthService authService) {
+    public LoginController(
+            ConfigurableApplicationContext springContext,
+            AuthService authService,
+            ThemePreferencesService themePreferencesService
+    ) {
         this.springContext = springContext;
         this.authService = authService;
+        this.themePreferencesService = themePreferencesService;
     }
 
     @FXML
@@ -78,11 +91,12 @@ public class LoginController {
         lblErro.setManaged(false);
     }
 
-    private void styleLayout() {
-        rootPane.setStyle("-fx-background-color: #f3f5f9;");
 
-        formSide.setStyle("-fx-background-color: white;");
-        formBox.setStyle("-fx-background-color: white;");
+    private void styleLayout() {
+        rootPane.setStyle("-fx-background-color: -color-bg-default;");
+
+        formSide.setStyle("-fx-background-color: -color-bg-default;");
+        formBox.setStyle("-fx-background-color: -color-bg-default;");
 
         lblWelcome.getStyleClass().add(Styles.TITLE_1);
         lblSubtitle.getStyleClass().add(Styles.TEXT_MUTED);
@@ -90,11 +104,16 @@ public class LoginController {
         employeeFieldBox.setStyle(WRAPPER_BASE_STYLE);
         pinFieldBox.setStyle(WRAPPER_BASE_STYLE);
 
+        employeeIcon.setIconCode(MaterialDesignA.ACCOUNT_GROUP);
+        employeeIcon.setIconSize(18);
+        pinIcon.setIconCode(MaterialDesignL.LOCK_OUTLINE);
+        pinIcon.setIconSize(17);
+
         txtEmployeeNumber.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 12 0 12 0;");
         txtPin.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 12 0 12 0;");
 
-        employeeIcon.setStyle("-fx-icon-color: #7f8a9b;");
-        pinIcon.setStyle("-fx-icon-color: #7f8a9b;");
+        employeeIcon.setIconColor(Color.web("#7f8a9b"));
+        pinIcon.setIconColor(Color.web("#7f8a9b"));
 
         lnkForgotPin.getStyleClass().add(Styles.ACCENT);
         lnkForgotPin.setFocusTraversable(false);
@@ -115,6 +134,17 @@ public class LoginController {
 
     private void buildBrandLogo() {
         logoBox.getChildren().clear();
+
+        URL logoUrl = getClass().getResource(themePreferencesService.getThemeLogoResource());
+        if (logoUrl != null) {
+            ImageView logoImage = new ImageView(new Image(logoUrl.toExternalForm(), true));
+            logoImage.setFitWidth(220);
+            logoImage.setPreserveRatio(true);
+            logoImage.setSmooth(true);
+            logoImage.setFocusTraversable(false);
+            logoBox.getChildren().add(logoImage);
+            return;
+        }
 
         FontIcon logoIcon = new FontIcon("mdi2f-factory:30");
         logoIcon.setStyle("-fx-icon-color: -color-accent-emphasis;");
@@ -173,9 +203,9 @@ public class LoginController {
             transition.setToValue(focused ? 1.0 : 0.75);
             transition.play();
 
-            icon.setStyle(focused
-                    ? "-fx-icon-color: -color-accent-emphasis;"
-                    : "-fx-icon-color: #7f8a9b;");
+            icon.setIconColor(focused
+                    ? Color.web("#216fe5")
+                    : Color.web("#7f8a9b"));
         });
     }
 
@@ -263,10 +293,13 @@ public class LoginController {
             loader.setControllerFactory(springContext::getBean);
 
             Scene scene = new Scene(loader.load(), 1400, 900);
+            themePreferencesService.applyToScene(scene);
             Stage stage = (Stage) btnLogin.getScene().getWindow();
             stage.setTitle("Pellets Factory - Stock Manager");
             stage.setScene(scene);
-            stage.centerOnScreen();
+            stage.setFullScreen(false);
+            stage.setMaximized(false);
+            Platform.runLater(() -> applyVisibleBounds(stage));
 
         } catch (Exception e) {
             System.err.println("Erro ao carregar tela principal: " + e.getMessage());
@@ -285,5 +318,13 @@ public class LoginController {
             lblErro.setManaged(false);
         });
         pause.play();
+    }
+
+    private void applyVisibleBounds(Stage stage) {
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        stage.setX(bounds.getMinX());
+        stage.setY(bounds.getMinY());
+        stage.setWidth(bounds.getWidth());
+        stage.setHeight(bounds.getHeight());
     }
 }
