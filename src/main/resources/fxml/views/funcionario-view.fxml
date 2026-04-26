@@ -14,7 +14,7 @@
                 <Label text="Administração da equipa" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Novo Funcionário" onAction="#handleAbrirModal" styleClass="accent, primary"/>
+            <Button text="Novo Funcionário" onAction="#handleAbrirModal" styleClass="accent"/>
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">

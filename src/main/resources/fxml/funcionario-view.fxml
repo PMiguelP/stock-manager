@@ -7,6 +7,7 @@
 <?import atlantafx.base.controls.ModalPane?>
 <?import atlantafx.base.controls.Breadcrumbs?>
 
+<!-- LEGACY VIEW: not routed by NavigationService (active route uses /fxml/views/funcionario-view.fxml). -->
 <StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.FuncionarioController">
 
@@ -54,7 +55,7 @@
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Button text="Novo Funcionário" onAction="#handleAbrirModal" prefHeight="40">
-                        <styleClass><String fx:value="accent"/><String fx:value="success"/></styleClass>
+                        <styleClass><String fx:value="accent"/></styleClass>
                         <graphic><FontIcon iconLiteral="mdi2p-plus" iconSize="18"/></graphic>
                     </Button>
                 </HBox>

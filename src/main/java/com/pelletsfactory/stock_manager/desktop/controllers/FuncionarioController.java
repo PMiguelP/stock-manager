@@ -1,6 +1,5 @@
 package com.pelletsfactory.stock_manager.desktop.controllers;
 
-import atlantafx.base.controls.ModalPane;
 import com.pelletsfactory.stock_manager.common.dto.request.FuncionarioRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioSimpleDTO;
@@ -28,7 +27,6 @@ public class FuncionarioController {
 
     @FXML private ComboBox<Cargo> cmbFiltroCargo;
     @FXML private TextField txtFiltroNome;
-    @FXML private ModalPane modalPane;
     @FXML private TableView<FuncionarioSimpleDTO> tblFuncionarios;
     @FXML private VBox vboxContainer;
 
@@ -255,7 +253,7 @@ public class FuncionarioController {
         footer.setAlignment(Pos.CENTER_RIGHT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
         Button btnS = new Button("Guardar Funcionário");
-        btnS.getStyleClass().addAll("accent", "success");
+        btnS.getStyleClass().add("accent");
         btnS.setPrefHeight(40);
         btnS.setOnAction(e -> handleAdicionar());
         footer.getChildren().add(btnS);
@@ -274,7 +272,7 @@ public class FuncionarioController {
             ));
             paginaAtual = 0;
             carregarFuncionarios();
-            modalPane.hide(true);
+            navigationService.hideModal();
             mostrarSucesso("Funcionário criado!");
         } catch (Exception e) { mostrarErro("Erro: " + e.getMessage()); }
     }
