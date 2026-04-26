@@ -18,6 +18,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 
 @Component
@@ -48,6 +49,7 @@ public class FuncionarioController {
     private int totalPaginas = 0;
 
     private final ObservableList<FuncionarioSimpleDTO> funcionarios = FXCollections.observableArrayList();
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public FuncionarioController(FuncionarioService funcionarioService, NavigationService navigationService) {
         this.funcionarioService = funcionarioService;
@@ -165,13 +167,10 @@ public class FuncionarioController {
     }
 
     private VBox criarDrawerVisualizacao(FuncionarioDetailsDTO d) {
-        VBox root = new VBox();
-
-        // CORREÇÃO DE LARGURA
+        VBox root = new VBox(0);
         root.setMinWidth(550);
         root.setPrefWidth(550);
         root.setMaxWidth(550);
-
         root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
 
         HBox header = new HBox();
@@ -186,29 +185,136 @@ public class FuncionarioController {
         btnClose.setOnAction(e -> navigationService.hideModal());
         header.getChildren().addAll(titulo, sp, btnClose);
 
-        VBox content = new VBox(25);
-        content.setPadding(new Insets(30));
+        TextField txtNomeDetalhes = new TextField(valorOuVazio(d.nome()));
+        ComboBox<Cargo> cmbCargoDetalhes = new ComboBox<>(FXCollections.observableArrayList(Cargo.values()));
+        cmbCargoDetalhes.setValue(d.cargo());
+        cmbCargoDetalhes.setMaxWidth(Double.MAX_VALUE);
+        TextField txtNifDetalhes = new TextField(valorOuVazio(d.nif()));
+        TextField txtContactoDetalhes = new TextField(valorOuVazio(d.contacto()));
+        TextField txtNumeroDetalhes = new TextField(d.numeroFuncionario() != null ? String.valueOf(d.numeroFuncionario()) : "");
+        TextField txtDataAdmissaoDetalhes = new TextField(d.dataAdmissao() != null ? d.dataAdmissao().format(DATE_FORMATTER) : "");
 
-        content.getChildren().addAll(
-                criarInfoBox("NOME COMPLETO", d.nome()),
-                criarInfoBox("CARGO", d.cargo() != null ? d.cargo().getDisplayName() : "N/A"),
-                criarInfoBox("NIF", d.nif()),
-                criarInfoBox("TELEMÓVEL", d.contacto() != null ? d.contacto() : "Não registado"),
-                new Separator(),
-                criarInfoBox("NÚMERO INTERNO", String.valueOf(d.numeroFuncionario())),
-                criarInfoBox("DATA DE ADMISSÃO", d.dataAdmissao() != null ? d.dataAdmissao().toString() : "N/A")
+        txtNumeroDetalhes.setEditable(false);
+        txtDataAdmissaoDetalhes.setEditable(false);
+        txtNumeroDetalhes.setFocusTraversable(false);
+        txtDataAdmissaoDetalhes.setFocusTraversable(false);
+
+        setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
+
+        VBox form = new VBox(20,
+                criarCampoFormulario("Nome Completo", txtNomeDetalhes),
+                criarCampoFormulario("Cargo", cmbCargoDetalhes),
+                criarCampoFormulario("NIF", txtNifDetalhes),
+                criarCampoFormulario("Telemóvel", txtContactoDetalhes),
+                criarCampoFormulario("Número Interno", txtNumeroDetalhes),
+                criarCampoFormulario("Data de Entrada", txtDataAdmissaoDetalhes)
         );
+        form.setPadding(new Insets(30));
 
-        root.getChildren().addAll(header, content);
+        ScrollPane scrollPane = new ScrollPane(form);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        HBox footer = new HBox(12);
+        footer.setPadding(new Insets(25));
+        footer.setAlignment(Pos.CENTER_LEFT);
+        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+
+        Button btnGuardar = new Button("Guardar Funcionário");
+        btnGuardar.getStyleClass().add("accent");
+        btnGuardar.setPrefHeight(44);
+        btnGuardar.setMaxWidth(Double.MAX_VALUE);
+        btnGuardar.setDisable(true);
+
+        Button btnEditar = new Button("Editar");
+        btnEditar.getStyleClass().add("button-outlined");
+        btnEditar.setPrefHeight(44);
+        btnEditar.setMaxWidth(Double.MAX_VALUE);
+
+        Button btnEliminar = new Button("Eliminar");
+        btnEliminar.setPrefHeight(44);
+        btnEliminar.setMaxWidth(Double.MAX_VALUE);
+        btnEliminar.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+
+        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
+        HBox.setHgrow(btnEditar, Priority.ALWAYS);
+        HBox.setHgrow(btnEliminar, Priority.ALWAYS);
+        footer.getChildren().addAll(btnGuardar, btnEditar, btnEliminar);
+
+        btnEditar.setOnAction(e -> {
+            setCamposDetalhesEditaveis(true, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
+            btnGuardar.setDisable(false);
+            btnEditar.setDisable(true);
+            txtNomeDetalhes.requestFocus();
+        });
+
+        btnGuardar.setOnAction(e -> {
+            String nome = txtNomeDetalhes.getText().trim();
+            Cargo cargo = cmbCargoDetalhes.getValue();
+            String nif = txtNifDetalhes.getText().trim();
+            String contacto = txtContactoDetalhes.getText().trim();
+
+            if (!validarFormulario(nome, cargo, nif, contacto)) {
+                return;
+            }
+
+            try {
+                funcionarioService.atualizarFuncionario(d.id(), new FuncionarioRequestDTO(
+                        cargo.name(), nome, nif, contacto
+                ));
+                carregarFuncionarios();
+                setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
+                btnGuardar.setDisable(true);
+                btnEditar.setDisable(false);
+                mostrarSucesso("Funcionário atualizado!");
+            } catch (Exception ex) {
+                mostrarErro("Erro ao atualizar: " + ex.getMessage());
+            }
+        });
+
+        btnEliminar.setOnAction(e -> {
+            Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmacao.setTitle("Eliminar Funcionário");
+            confirmacao.setHeaderText("Tem a certeza?");
+            confirmacao.setContentText("Esta ação é irreversível e vai eliminar o funcionário selecionado.");
+
+            if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                return;
+            }
+
+            try {
+                funcionarioService.apagarFuncionario(d.id());
+                carregarFuncionarios();
+                navigationService.hideModal();
+                mostrarSucesso("Funcionário eliminado!");
+            } catch (Exception ex) {
+                mostrarErro("Erro ao eliminar: " + ex.getMessage());
+            }
+        });
+
+        root.getChildren().addAll(header, scrollPane, footer);
         return root;
     }
 
-    private VBox criarInfoBox(String label, String value) {
-        Label lblL = new Label(label);
-        lblL.setStyle("-fx-font-size: 11px; -fx-text-fill: -color-fg-muted; -fx-font-weight: bold;");
-        Label lblV = new Label(value != null ? value : "---");
-        lblV.setStyle("-fx-font-size: 15px; -fx-font-weight: 500;");
-        return new VBox(5, lblL, lblV);
+    private VBox criarCampoFormulario(String label, Control input) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(8, lbl, input);
+    }
+
+    private void setCamposDetalhesEditaveis(boolean editavel, TextField txtNomeDetalhes, ComboBox<Cargo> cmbCargoDetalhes,
+                                            TextField txtNifDetalhes, TextField txtContactoDetalhes) {
+        txtNomeDetalhes.setEditable(editavel);
+        txtNifDetalhes.setEditable(editavel);
+        txtContactoDetalhes.setEditable(editavel);
+
+        cmbCargoDetalhes.setMouseTransparent(!editavel);
+        cmbCargoDetalhes.setFocusTraversable(editavel);
+    }
+
+    private String valorOuVazio(String value) {
+        return value != null ? value : "";
     }
 
     private void configurarDrawerAdicionar() {
@@ -250,11 +356,13 @@ public class FuncionarioController {
 
         HBox footer = new HBox();
         footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
         Button btnS = new Button("Guardar Funcionário");
         btnS.getStyleClass().add("accent");
-        btnS.setPrefHeight(40);
+        btnS.setPrefHeight(44);
+        btnS.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnS, Priority.ALWAYS);
         btnS.setOnAction(e -> handleAdicionar());
         footer.getChildren().add(btnS);
 
@@ -262,19 +370,38 @@ public class FuncionarioController {
     }
 
     private void handleAdicionar() {
-        if (txtNome.getText().isEmpty() || cmbCargo.getValue() == null || txtNif.getText().isEmpty()) {
-            mostrarErro("Preencha os campos obrigatórios!");
+        String nome = txtNome.getText().trim();
+        Cargo cargo = cmbCargo.getValue();
+        String nif = txtNif.getText().trim();
+        String contacto = txtContacto.getText().trim();
+
+        if (!validarFormulario(nome, cargo, nif, contacto)) {
             return;
         }
+
         try {
             funcionarioService.criarFuncionario(new FuncionarioRequestDTO(
-                    cmbCargo.getValue().name(), txtNome.getText(), txtNif.getText(), txtContacto.getText()
+                    cargo.name(), nome, nif, contacto
             ));
             paginaAtual = 0;
             carregarFuncionarios();
             navigationService.hideModal();
             mostrarSucesso("Funcionário criado!");
         } catch (Exception e) { mostrarErro("Erro: " + e.getMessage()); }
+    }
+
+    private boolean validarFormulario(String nome, Cargo cargo, String nif, String contacto) {
+        if (nome.isEmpty() || cargo == null || nif.isEmpty() || contacto.isEmpty()) {
+            mostrarErro("Preencha os campos obrigatórios!");
+            return false;
+        }
+
+        if (!nif.matches("\\d{9}")) {
+            mostrarErro("NIF deve ter exatamente 9 dígitos.");
+            return false;
+        }
+
+        return true;
     }
 
     private void configurarPaginacao(VBox container) {
