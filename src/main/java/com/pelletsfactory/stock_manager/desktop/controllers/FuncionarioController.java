@@ -5,13 +5,14 @@ import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioDetailsDT
 import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioSimpleDTO;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
+import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -25,6 +26,8 @@ import java.time.LocalDate;
 public class FuncionarioController {
     private final FuncionarioService funcionarioService;
     private final NavigationService navigationService;
+    private final FormValidationService formValidationService;
+    private final ToastService toastService;
 
     @FXML private ComboBox<Cargo> cmbFiltroCargo;
     @FXML private TextField txtFiltroNome;
@@ -40,6 +43,10 @@ public class FuncionarioController {
     private TextField txtNome, txtNif, txtContacto;
     private ComboBox<Cargo> cmbCargo;
     private VBox drawerRoot;
+    private Label lblErroNomeAdicionar;
+    private Label lblErroCargoAdicionar;
+    private Label lblErroNifAdicionar;
+    private Label lblErroContactoAdicionar;
 
     private Label lblPaginaStatus;
     private ComboBox<Integer> cmbItemsPerPage;
@@ -51,9 +58,14 @@ public class FuncionarioController {
     private final ObservableList<FuncionarioSimpleDTO> funcionarios = FXCollections.observableArrayList();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public FuncionarioController(FuncionarioService funcionarioService, NavigationService navigationService) {
+    public FuncionarioController(FuncionarioService funcionarioService,
+                                 NavigationService navigationService,
+                                 FormValidationService formValidationService,
+                                 ToastService toastService) {
         this.funcionarioService = funcionarioService;
         this.navigationService = navigationService;
+        this.formValidationService = formValidationService;
+        this.toastService = toastService;
     }
 
     @FXML
@@ -186,13 +198,22 @@ public class FuncionarioController {
         header.getChildren().addAll(titulo, sp, btnClose);
 
         TextField txtNomeDetalhes = new TextField(valorOuVazio(d.nome()));
+        Label lblErroNomeDetalhes = formValidationService.createErrorLabel();
         ComboBox<Cargo> cmbCargoDetalhes = new ComboBox<>(FXCollections.observableArrayList(Cargo.values()));
+        Label lblErroCargoDetalhes = formValidationService.createErrorLabel();
         cmbCargoDetalhes.setValue(d.cargo());
         cmbCargoDetalhes.setMaxWidth(Double.MAX_VALUE);
         TextField txtNifDetalhes = new TextField(valorOuVazio(d.nif()));
+        Label lblErroNifDetalhes = formValidationService.createErrorLabel();
         TextField txtContactoDetalhes = new TextField(valorOuVazio(d.contacto()));
+        Label lblErroContactoDetalhes = formValidationService.createErrorLabel();
         TextField txtNumeroDetalhes = new TextField(d.numeroFuncionario() != null ? String.valueOf(d.numeroFuncionario()) : "");
         TextField txtDataAdmissaoDetalhes = new TextField(d.dataAdmissao() != null ? d.dataAdmissao().format(DATE_FORMATTER) : "");
+
+        formValidationService.attachTextAutoClear(txtNomeDetalhes, lblErroNomeDetalhes);
+        formValidationService.attachComboAutoClear(cmbCargoDetalhes, lblErroCargoDetalhes);
+        formValidationService.attachTextAutoClear(txtNifDetalhes, lblErroNifDetalhes);
+        formValidationService.attachTextAutoClear(txtContactoDetalhes, lblErroContactoDetalhes);
 
         txtNumeroDetalhes.setEditable(false);
         txtDataAdmissaoDetalhes.setEditable(false);
@@ -202,10 +223,10 @@ public class FuncionarioController {
         setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
 
         VBox form = new VBox(20,
-                criarCampoFormulario("Nome Completo", txtNomeDetalhes),
-                criarCampoFormulario("Cargo", cmbCargoDetalhes),
-                criarCampoFormulario("NIF", txtNifDetalhes),
-                criarCampoFormulario("Telemóvel", txtContactoDetalhes),
+                criarCampoFormulario("Nome Completo", txtNomeDetalhes, lblErroNomeDetalhes),
+                criarCampoFormulario("Cargo", cmbCargoDetalhes, lblErroCargoDetalhes),
+                criarCampoFormulario("NIF", txtNifDetalhes, lblErroNifDetalhes),
+                criarCampoFormulario("Telemóvel", txtContactoDetalhes, lblErroContactoDetalhes),
                 criarCampoFormulario("Número Interno", txtNumeroDetalhes),
                 criarCampoFormulario("Data de Entrada", txtDataAdmissaoDetalhes)
         );
@@ -250,18 +271,21 @@ public class FuncionarioController {
         });
 
         btnGuardar.setOnAction(e -> {
-            String nome = txtNomeDetalhes.getText().trim();
-            Cargo cargo = cmbCargoDetalhes.getValue();
-            String nif = txtNifDetalhes.getText().trim();
-            String contacto = txtContactoDetalhes.getText().trim();
-
-            if (!validarFormulario(nome, cargo, nif, contacto)) {
+            if (!validarFormulario(
+                    txtNomeDetalhes, lblErroNomeDetalhes,
+                    cmbCargoDetalhes, lblErroCargoDetalhes,
+                    txtNifDetalhes, lblErroNifDetalhes,
+                    txtContactoDetalhes, lblErroContactoDetalhes
+            )) {
                 return;
             }
 
             try {
                 funcionarioService.atualizarFuncionario(d.id(), new FuncionarioRequestDTO(
-                        cargo.name(), nome, nif, contacto
+                        cmbCargoDetalhes.getValue().name(),
+                        txtNomeDetalhes.getText().trim(),
+                        txtNifDetalhes.getText().trim(),
+                        txtContactoDetalhes.getText().trim()
                 ));
                 carregarFuncionarios();
                 setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
@@ -303,6 +327,12 @@ public class FuncionarioController {
         return new VBox(8, lbl, input);
     }
 
+    private VBox criarCampoFormulario(String label, Control input, Label erroLabel) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(6, lbl, input, erroLabel);
+    }
+
     private void setCamposDetalhesEditaveis(boolean editavel, TextField txtNomeDetalhes, ComboBox<Cargo> cmbCargoDetalhes,
                                             TextField txtNifDetalhes, TextField txtContactoDetalhes) {
         txtNomeDetalhes.setEditable(editavel);
@@ -342,16 +372,25 @@ public class FuncionarioController {
         VBox form = new VBox(20);
         form.setPadding(new Insets(30));
         txtNome = new TextField();
+        lblErroNomeAdicionar = formValidationService.createErrorLabel();
         cmbCargo = new ComboBox<>(FXCollections.observableArrayList(Cargo.values()));
+        lblErroCargoAdicionar = formValidationService.createErrorLabel();
         cmbCargo.setMaxWidth(Double.MAX_VALUE);
         txtNif = new TextField();
+        lblErroNifAdicionar = formValidationService.createErrorLabel();
         txtContacto = new TextField();
+        lblErroContactoAdicionar = formValidationService.createErrorLabel();
+
+        formValidationService.attachTextAutoClear(txtNome, lblErroNomeAdicionar);
+        formValidationService.attachComboAutoClear(cmbCargo, lblErroCargoAdicionar);
+        formValidationService.attachTextAutoClear(txtNif, lblErroNifAdicionar);
+        formValidationService.attachTextAutoClear(txtContacto, lblErroContactoAdicionar);
 
         form.getChildren().addAll(
-                new VBox(8, new Label("Nome Completo"), txtNome),
-                new VBox(8, new Label("Cargo"), cmbCargo),
-                new VBox(8, new Label("NIF"), txtNif),
-                new VBox(8, new Label("Telemóvel"), txtContacto)
+                criarCampoFormulario("Nome Completo", txtNome, lblErroNomeAdicionar),
+                criarCampoFormulario("Cargo", cmbCargo, lblErroCargoAdicionar),
+                criarCampoFormulario("NIF", txtNif, lblErroNifAdicionar),
+                criarCampoFormulario("Telemóvel", txtContacto, lblErroContactoAdicionar)
         );
 
         HBox footer = new HBox();
@@ -370,18 +409,21 @@ public class FuncionarioController {
     }
 
     private void handleAdicionar() {
-        String nome = txtNome.getText().trim();
-        Cargo cargo = cmbCargo.getValue();
-        String nif = txtNif.getText().trim();
-        String contacto = txtContacto.getText().trim();
-
-        if (!validarFormulario(nome, cargo, nif, contacto)) {
+        if (!validarFormulario(
+                txtNome, lblErroNomeAdicionar,
+                cmbCargo, lblErroCargoAdicionar,
+                txtNif, lblErroNifAdicionar,
+                txtContacto, lblErroContactoAdicionar
+        )) {
             return;
         }
 
         try {
             funcionarioService.criarFuncionario(new FuncionarioRequestDTO(
-                    cargo.name(), nome, nif, contacto
+                    cmbCargo.getValue().name(),
+                    txtNome.getText().trim(),
+                    txtNif.getText().trim(),
+                    txtContacto.getText().trim()
             ));
             paginaAtual = 0;
             carregarFuncionarios();
@@ -390,18 +432,27 @@ public class FuncionarioController {
         } catch (Exception e) { mostrarErro("Erro: " + e.getMessage()); }
     }
 
-    private boolean validarFormulario(String nome, Cargo cargo, String nif, String contacto) {
-        if (nome.isEmpty() || cargo == null || nif.isEmpty() || contacto.isEmpty()) {
-            mostrarErro("Preencha os campos obrigatórios!");
-            return false;
+    private boolean validarFormulario(TextField nomeField, Label nomeErro,
+                                      ComboBox<Cargo> cargoField, Label cargoErro,
+                                      TextField nifField, Label nifErro,
+                                      TextField contactoField, Label contactoErro) {
+        boolean valido = true;
+
+        valido = formValidationService.validateRequiredText(nomeField, nomeErro, "Nome e obrigatório") && valido;
+        valido = formValidationService.validateRequiredCombo(cargoField, cargoErro, "Cargo e obrigatório") && valido;
+        valido = formValidationService.validateRequiredText(nifField, nifErro, "NIF e obrigatório") && valido;
+        valido = formValidationService.validateRequiredText(contactoField, contactoErro, "Telemovel e obrigatório") && valido;
+
+        if (valido || !nifField.getText().trim().isEmpty()) {
+            valido = formValidationService.validateRegex(
+                    nifField,
+                    nifErro,
+                    "\\d{9}",
+                    "NIF deve ter exatamente 9 digitos"
+            ) && valido;
         }
 
-        if (!nif.matches("\\d{9}")) {
-            mostrarErro("NIF deve ter exatamente 9 dígitos.");
-            return false;
-        }
-
-        return true;
+        return valido;
     }
 
     private void configurarPaginacao(VBox container) {
@@ -473,9 +524,19 @@ public class FuncionarioController {
     }
 
     private void configurarComboBoxes() { cmbFiltroCargo.setItems(FXCollections.observableArrayList(Cargo.values())); }
-    private void limparFormulario() { txtNome.clear(); txtNif.clear(); txtContacto.clear(); cmbCargo.setValue(null); }
-    private void mostrarSucesso(String m) { System.out.println("SUCESSO: " + m); }
-    private void mostrarErro(String m) { System.err.println("ERRO: " + m); }
+    private void limparFormulario() {
+        txtNome.clear();
+        txtNif.clear();
+        txtContacto.clear();
+        cmbCargo.setValue(null);
+
+        formValidationService.clearError(txtNome, lblErroNomeAdicionar);
+        formValidationService.clearError(cmbCargo, lblErroCargoAdicionar);
+        formValidationService.clearError(txtNif, lblErroNifAdicionar);
+        formValidationService.clearError(txtContacto, lblErroContactoAdicionar);
+    }
+    private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
+    private void mostrarErro(String m) { toastService.showError("Erro", m); }
     @FXML private void handleFiltrar() { paginaAtual = 0; carregarFuncionarios(); }
     @FXML private void handleMostrarTodos() { txtFiltroNome.clear(); cmbFiltroCargo.setValue(null); handleFiltrar(); }
 }

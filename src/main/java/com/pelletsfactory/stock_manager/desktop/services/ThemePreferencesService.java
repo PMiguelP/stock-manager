@@ -9,6 +9,8 @@ import javafx.scene.Scene;
 import javafx.stage.Window;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
@@ -101,6 +103,25 @@ public class ThemePreferencesService {
     }
 
     private boolean isSystemDarkPreferred() {
+        String osName = System.getProperty("os.name", "").toLowerCase();
+
+        if (osName.contains("mac")) {
+            String appearance = readCommandOutput("defaults", "read", "-g", "AppleInterfaceStyle");
+            if (appearance != null) {
+                return appearance.toLowerCase().contains("dark");
+            }
+        }
+
+        if (osName.contains("win")) {
+            String windowsAppsUseLightTheme = readCommandOutput(
+                    "reg", "query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                    "/v", "AppsUseLightTheme"
+            );
+            if (windowsAppsUseLightTheme != null) {
+                return windowsAppsUseLightTheme.contains("0x0");
+            }
+        }
+
         String macAppearance = System.getProperty("apple.awt.application.appearance", "");
         if (macAppearance.toLowerCase().contains("dark")) {
             return true;
@@ -113,6 +134,30 @@ public class ThemePreferencesService {
 
         LocalTime now = LocalTime.now();
         return now.isAfter(LocalTime.of(18, 0)) || now.isBefore(LocalTime.of(7, 0));
+    }
+
+    private String readCommandOutput(String... command) {
+        try {
+            Process process = new ProcessBuilder(command).start();
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                return null;
+            }
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                StringBuilder output = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!output.isEmpty()) {
+                        output.append('\n');
+                    }
+                    output.append(line.trim());
+                }
+                return output.isEmpty() ? null : output.toString();
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private void applyAccentToAllOpenScenes() {

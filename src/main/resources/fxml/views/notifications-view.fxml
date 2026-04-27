@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.NotificationsController"
+      spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+
+    <VBox spacing="6">
+        <Label text="Notifications Center" styleClass="title-2"/>
+        <Label fx:id="lblNotificationsSummary" text="0 unread notifications • 0 total" styleClass="text-muted"/>
+    </VBox>
+
+    <HBox spacing="12" alignment="CENTER_LEFT"
+          style="-fx-padding: 16; -fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;">
+        <HBox spacing="10" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS"
+              style="-fx-padding: 0 12 0 12; -fx-background-color: -color-bg-default; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;">
+            <FontIcon iconLiteral="mdi2m-magnify" iconSize="18" styleClass="text-muted"/>
+            <TextField fx:id="txtSearch" promptText="Search notifications..." HBox.hgrow="ALWAYS"
+                       style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 10 0 10 0;"/>
+        </HBox>
+
+        <ComboBox fx:id="cmbType" prefWidth="145" prefHeight="42"/>
+        <ComboBox fx:id="cmbStatus" prefWidth="145" prefHeight="42"/>
+
+        <Button fx:id="btnMarkAllRead" text="Mark All Read" styleClass="accent" prefHeight="42">
+            <graphic>
+                <FontIcon iconLiteral="mdi2c-check-all" iconSize="16"/>
+            </graphic>
+        </Button>
+    </HBox>
+
+    <ScrollPane fx:id="notificationsScroll" fitToWidth="true" VBox.vgrow="ALWAYS"
+                style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;">
+        <content>
+            <VBox fx:id="notificationsList" spacing="12" style="-fx-padding: 4 0 4 0;"/>
+        </content>
+        <padding>
+            <Insets right="2"/>
+        </padding>
+    </ScrollPane>
+
+</VBox>
+

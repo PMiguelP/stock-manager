@@ -178,6 +178,10 @@ public class HeaderController {
             footer.setPadding(new Insets(20));
             Hyperlink viewAll = new Hyperlink("View All Notifications");
             viewAll.setStyle("-fx-text-fill: -color-accent-fg; -fx-font-weight: bold;");
+            viewAll.setOnAction(e -> {
+                navigationService.hideModal();
+                navigationService.navigateTo("/notifications");
+            });
             footer.getChildren().add(viewAll);
             notificationsDrawer.getChildren().add(footer);
 

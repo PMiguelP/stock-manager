@@ -13,6 +13,7 @@ public enum ViewId {
     RAW_MATERIALS,
     PELLET_TYPES,
     FORMULAS,
-    BATCHES
+    BATCHES,
+    NOTIFICATIONS
 }
 

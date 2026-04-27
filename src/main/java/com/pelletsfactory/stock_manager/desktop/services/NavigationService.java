@@ -86,6 +86,10 @@ public class NavigationService {
         addRoute("/batches", "/fxml/views/batches-view.fxml", "Batches",
                 "Batch traceability", ViewId.BATCHES,
                 "Home", "Catalog", "Batches");
+
+        addRoute("/notifications", "/fxml/views/notifications-view.fxml", "Notifications",
+                "Notifications center", ViewId.NOTIFICATIONS,
+                "Home", "Notifications");
     }
 
     private void addRoute(String route,

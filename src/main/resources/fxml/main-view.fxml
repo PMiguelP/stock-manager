@@ -14,4 +14,12 @@
     </HBox>
 
     <ModalPane fx:id="modalPane"/>
+
+    <VBox fx:id="toastContainer"
+          alignment="TOP_RIGHT"
+          spacing="10"
+          StackPane.alignment="TOP_RIGHT"
+          pickOnBounds="false"
+          mouseTransparent="true"
+          style="-fx-padding: 24;"/>
 </StackPane>

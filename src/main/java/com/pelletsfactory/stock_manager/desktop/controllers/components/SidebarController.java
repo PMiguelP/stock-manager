@@ -205,6 +205,11 @@ public class SidebarController {
     public void onNavigationEvent(NavigationEvent event) {
         Platform.runLater(() -> {
             if (event.viewId() != null) {
+                if (event.viewId() == ViewId.NOTIFICATIONS) {
+                    navigationGroup.selectToggle(null);
+                    refreshSidebarVisualState(null);
+                    return;
+                }
                 setActiveView(event.viewId());
             }
         });
