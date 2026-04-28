@@ -48,17 +48,8 @@ public class Funcionario {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    // --- CONSTRUTORES ---
-
-    /**
-     * Construtor Padrão: Obrigatório para o Hibernate.
-     */
     public Funcionario() {}
 
-    /**
-     * Construtor de Criação: Usado no Service para instanciar um novo funcionário.
-     * Repara que NÃO incluímos ID, createdAt ou updatedAt, pois são automáticos.
-     */
     public Funcionario(String nome, String nif, String contacto, Cargo cargo,
                        Integer numeroFuncionario, LocalDate dataAdmissao, String pinHash) {
         this.nome = nome;
@@ -70,10 +61,7 @@ public class Funcionario {
         this.pinHash = pinHash;
     }
 
-    // --- GETTERS E SETTERS ---
-
     public UUID getId() { return id; }
-    // Não há setId(id) porque o Hibernate gera o UUID sozinho.
 
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
@@ -97,8 +85,6 @@ public class Funcionario {
     public void setPinHash(String pinHash) { this.pinHash = pinHash; }
 
     public Instant getCreatedAt() { return createdAt; }
-    // Sem setCreatedAt: @CreationTimestamp trata disso.
 
     public Instant getUpdatedAt() { return updatedAt; }
-    // Sem setUpdatedAt: @UpdateTimestamp trata disso.
 }
