@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.TipoPelletRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.TipoPellet;
 import org.springframework.stereotype.Component;
 
@@ -43,6 +44,19 @@ public class TipoPelletMapper {
         );
     }
 
+    public TipoPelletSimpleDTO toSimpleDTO(TipoPellet entity) {
+        if (entity == null) return null;
+
+        return new TipoPelletSimpleDTO(
+                entity.getId(),
+                entity.getNome(),
+                entity.getDiametroMm(),
+                entity.getStockAtual(),
+                entity.getStockMinimo(),
+                entity.getMoeda() != null ? entity.getMoeda().getCodigo() : null
+        );
+    }
+
     public void updateEntityFromDTO(TipoPelletRequestDTO dto, TipoPellet entity) {
         if (dto == null) return;
 
@@ -66,4 +80,3 @@ public class TipoPelletMapper {
         }
     }
 }
-

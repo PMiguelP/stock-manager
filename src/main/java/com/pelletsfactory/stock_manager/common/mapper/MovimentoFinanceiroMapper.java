@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.MovimentoFinanceiroRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.MovimentoFinanceiro;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +39,18 @@ public class MovimentoFinanceiroMapper {
         );
     }
 
+    public MovimentoFinanceiroSimpleDTO toSimpleDTO(MovimentoFinanceiro entity) {
+        if (entity == null) return null;
+
+        return new MovimentoFinanceiroSimpleDTO(
+                entity.getId(),
+                entity.getTipoMovimento(),
+                entity.getValorTotal(),
+                entity.getMoeda() != null ? entity.getMoeda().getCodigo() : null,
+                entity.getCreatedAt()
+        );
+    }
+
     public void updateEntityFromDTO(MovimentoFinanceiroRequestDTO dto, MovimentoFinanceiro entity) {
         if (dto == null) return;
 
@@ -49,4 +62,3 @@ public class MovimentoFinanceiroMapper {
         }
     }
 }
-

@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.ComposicaoPelletRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ComposicaoPelletResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ComposicaoPelletSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.ComposicaoPellet;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,17 @@ public class ComposicaoPelletMapper {
                 entity.getId(),
                 entity.getFormulaProducao() != null ? entity.getFormulaProducao().getId() : null,
                 entity.getMateriaPrima() != null ? entity.getMateriaPrima().getId() : null,
+                entity.getMateriaPrima() != null ? entity.getMateriaPrima().getNome() : null,
+                entity.getMateriaPrima() != null ? entity.getMateriaPrima().getUnidade() : null,
+                entity.getQuantidadePorKg()
+        );
+    }
+
+    public ComposicaoPelletSimpleDTO toSimpleDTO(ComposicaoPellet entity) {
+        if (entity == null) return null;
+
+        return new ComposicaoPelletSimpleDTO(
+                entity.getId(),
                 entity.getMateriaPrima() != null ? entity.getMateriaPrima().getNome() : null,
                 entity.getMateriaPrima() != null ? entity.getMateriaPrima().getUnidade() : null,
                 entity.getQuantidadePorKg()

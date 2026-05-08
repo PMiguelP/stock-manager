@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.AlocacaoOrdemEncomendaRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoOrdemEncomendaResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoOrdemEncomendaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.AlocacaoOrdemEncomenda;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +31,17 @@ public class AlocacaoOrdemEncomendaMapper {
                 entity.getOrdem() != null ? entity.getOrdem().getId() : null,
                 entity.getOrdem() != null ? "Ordem-" + entity.getOrdem().getId().toString().substring(0, 8) : null,
                 entity.getEncomendaCliente() != null ? entity.getEncomendaCliente().getId() : null,
+                entity.getEncomendaCliente() != null ? entity.getEncomendaCliente().getCliente().getNome() : null,
+                entity.getQuantidadeReservada()
+        );
+    }
+
+    public AlocacaoOrdemEncomendaSimpleDTO toSimpleDTO(AlocacaoOrdemEncomenda entity) {
+        if (entity == null) return null;
+
+        return new AlocacaoOrdemEncomendaSimpleDTO(
+                entity.getId(),
+                entity.getOrdem() != null ? "Ordem-" + entity.getOrdem().getId().toString().substring(0, 8) : null,
                 entity.getEncomendaCliente() != null ? entity.getEncomendaCliente().getCliente().getNome() : null,
                 entity.getQuantidadeReservada()
         );

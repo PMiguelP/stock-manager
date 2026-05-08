@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.request.AlocacaoOrdemEncomendaRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoOrdemEncomendaResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoOrdemEncomendaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.AlocacaoOrdemEncomenda;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaCliente;
 import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
@@ -193,6 +194,66 @@ public class AlocacaoOrdemEncomendaService {
         Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
         Page<AlocacaoOrdemEncomenda> alocacoesPage = alocacaoRepo.findByEncomendaClienteId(encomendaClienteId, pageable);
         return alocacoesPage.map(mapper::toResponseDTO);
+    }
+
+    /**
+     * Listar alocações de uma ordem (paginado e simples)
+     */
+    public Page<AlocacaoOrdemEncomendaSimpleDTO> listarAlocacoesDeOrdemSimples(UUID ordemId, int page, int pageSize) {
+        return listarAlocacoesDeOrdemSimples(ordemId, page, pageSize, "createdAt", "DESC");
+    }
+
+    /**
+     * Listar alocações de uma ordem (paginado, ordenado e simples)
+     */
+    public Page<AlocacaoOrdemEncomendaSimpleDTO> listarAlocacoesDeOrdemSimples(
+            UUID ordemId,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Page<AlocacaoOrdemEncomenda> alocacoesPage = alocacaoRepo.findByOrdemId(ordemId, pageable);
+        return alocacoesPage.map(mapper::toSimpleDTO);
+    }
+
+    /**
+     * Listar alocações de uma encomenda (paginado e simples)
+     */
+    public Page<AlocacaoOrdemEncomendaSimpleDTO> listarAlocacoesDeEncomendaSimples(UUID encomendaClienteId, int page, int pageSize) {
+        return listarAlocacoesDeEncomendaSimples(encomendaClienteId, page, pageSize, "createdAt", "DESC");
+    }
+
+    /**
+     * Listar alocações de uma encomenda (paginado, ordenado e simples)
+     */
+    public Page<AlocacaoOrdemEncomendaSimpleDTO> listarAlocacoesDeEncomendaSimples(
+            UUID encomendaClienteId,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Page<AlocacaoOrdemEncomenda> alocacoesPage = alocacaoRepo.findByEncomendaClienteId(encomendaClienteId, pageable);
+        return alocacoesPage.map(mapper::toSimpleDTO);
     }
 
     /**

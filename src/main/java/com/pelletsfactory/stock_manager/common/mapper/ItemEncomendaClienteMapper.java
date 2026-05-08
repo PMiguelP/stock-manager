@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.ItemEncomendaClienteRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaClienteResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaClienteSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.ItemEncomendaCliente;
 import org.springframework.stereotype.Component;
 
@@ -42,6 +43,18 @@ public class ItemEncomendaClienteMapper {
         );
     }
 
+    public ItemEncomendaClienteSimpleDTO toSimpleDTO(ItemEncomendaCliente entity) {
+        if (entity == null) return null;
+
+        return new ItemEncomendaClienteSimpleDTO(
+                entity.getId(),
+                entity.getTipoPellet() != null ? entity.getTipoPellet().getNome() : null,
+                entity.getQuantidadeKg(),
+                entity.getPrecoUnitarioNet(),
+                entity.getTaxaIva()
+        );
+    }
+
     public void updateEntityFromDTO(ItemEncomendaClienteRequestDTO dto, ItemEncomendaCliente entity) {
         if (dto == null) return;
 
@@ -59,4 +72,3 @@ public class ItemEncomendaClienteMapper {
         }
     }
 }
-

@@ -1,12 +1,20 @@
 package com.pelletsfactory.stock_manager.common.services;
 
+import com.pelletsfactory.stock_manager.common.dto.response.ClienteDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ClienteSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaClienteResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoOrdemEncomendaResponseDTO;
 import com.pelletsfactory.stock_manager.common.entities.*;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaCliente;
+import com.pelletsfactory.stock_manager.common.mapper.AlocacaoOrdemEncomendaMapper;
 import com.pelletsfactory.stock_manager.common.mapper.ClienteMapper;
 import com.pelletsfactory.stock_manager.common.mapper.EncomendaClienteMapper;
+import com.pelletsfactory.stock_manager.common.mapper.ItemEncomendaClienteMapper;
 import com.pelletsfactory.stock_manager.common.repositories.*;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
@@ -34,6 +42,8 @@ public class VendaService {
     private final AlocacaoOrdemEncomendaRepository alocacaoRepo;
     private final ClienteMapper clienteMapper;
     private final EncomendaClienteMapper encomendaClienteMapper;
+    private final ItemEncomendaClienteMapper itemEncomendaClienteMapper;
+    private final AlocacaoOrdemEncomendaMapper alocacaoOrdemEncomendaMapper;
 
     public VendaService(
             ClienteRepository clienteRepo,
@@ -46,7 +56,9 @@ public class VendaService {
             MoedaRepository moedaRepo,
             AlocacaoOrdemEncomendaRepository alocacaoRepo,
             ClienteMapper clienteMapper,
-            EncomendaClienteMapper encomendaClienteMapper) {
+            EncomendaClienteMapper encomendaClienteMapper,
+            ItemEncomendaClienteMapper itemEncomendaClienteMapper,
+            AlocacaoOrdemEncomendaMapper alocacaoOrdemEncomendaMapper) {
         this.clienteRepo = clienteRepo;
         this.encomendaClienteRepo = encomendaClienteRepo;
         this.itemEncomendaClienteRepo = itemEncomendaClienteRepo;
@@ -58,6 +70,8 @@ public class VendaService {
         this.alocacaoRepo = alocacaoRepo;
         this.clienteMapper = clienteMapper;
         this.encomendaClienteMapper = encomendaClienteMapper;
+        this.itemEncomendaClienteMapper = itemEncomendaClienteMapper;
+        this.alocacaoOrdemEncomendaMapper = alocacaoOrdemEncomendaMapper;
     }
 
     /**
@@ -331,5 +345,108 @@ public class VendaService {
         encomenda.setTotalFinal(totalFinal);
 
         encomendaClienteRepo.save(encomenda);
+    }
+
+    /**
+     * Listar clientes com paginação e filtros (SimpleDTO)
+     */
+    public Page<ClienteSimpleDTO> listarClientesComFiltros(
+            int page,
+            int pageSize,
+            String nome,
+            String nif,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "nome";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        return clienteRepo.findByFiltros(nome, nif, pageable)
+                .map(clienteMapper::toSimpleDTO);
+    }
+
+    /**
+     * Listar todos os clientes (SimpleDTO)
+     */
+    public List<ClienteSimpleDTO> listarTodosClientesSimples() {
+        return clienteRepo.findAll().stream()
+                .map(clienteMapper::toSimpleDTO)
+                .toList();
+    }
+
+    /**
+     * Listar encomendas com filtros (SimpleDTO)
+     */
+    public Page<EncomendaClienteSimpleDTO> listarEncomendasComFiltrosSimples(
+            UUID clienteId,
+            EstadoEncomendaCliente estado,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "data";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        return encomendaClienteRepo.findByFiltros(clienteId, estado, pageable)
+                .map(encomendaClienteMapper::toSimpleDTO);
+    }
+
+    public ClienteDetailsDTO obterDetalhesCliente(UUID clienteId) {
+        Cliente cliente = clienteRepo.findById(clienteId)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado"));
+
+        List<EncomendaClienteSimpleDTO> encomendas = encomendaClienteRepo.findByClienteId(clienteId).stream()
+                .map(encomendaClienteMapper::toSimpleDTO)
+                .toList();
+
+        return new ClienteDetailsDTO(
+                cliente.getId(),
+                cliente.getNome(),
+                cliente.getNif(),
+                cliente.getContacto(),
+                cliente.getEmail(),
+                encomendas,
+                cliente.getCreatedAt(),
+                cliente.getUpdatedAt()
+        );
+    }
+
+    public EncomendaClienteDetailsDTO obterDetalhesEncomendaCliente(UUID encomendaId) {
+        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+
+        List<ItemEncomendaClienteResponseDTO> itens = itemEncomendaClienteRepo.findByEncomendaId(encomendaId).stream()
+                .map(itemEncomendaClienteMapper::toResponseDTO)
+                .toList();
+
+        List<AlocacaoOrdemEncomendaResponseDTO> alocacoes = alocacaoRepo.findByEncomendaClienteId(encomendaId).stream()
+                .map(alocacaoOrdemEncomendaMapper::toResponseDTO)
+                .toList();
+
+        return new EncomendaClienteDetailsDTO(
+                encomenda.getId(),
+                encomenda.getCliente() != null ? encomenda.getCliente().getId() : null,
+                encomenda.getCliente() != null ? encomenda.getCliente().getNome() : null,
+                encomenda.getData(),
+                encomenda.getEstado(),
+                encomenda.getTotalNet(),
+                encomenda.getTotalIva(),
+                encomenda.getTotalFinal(),
+                encomenda.getMoeda() != null ? encomenda.getMoeda().getId() : null,
+                encomenda.getMoeda() != null ? encomenda.getMoeda().getCodigo() : null,
+                encomenda.getCodigoTracking(),
+                itens,
+                alocacoes,
+                encomenda.getCreatedAt(),
+                encomenda.getUpdatedAt()
+        );
     }
 }

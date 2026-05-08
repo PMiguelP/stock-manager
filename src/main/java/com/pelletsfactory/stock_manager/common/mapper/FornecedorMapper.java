@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.FornecedorRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.FornecedorSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.Fornecedor;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +29,17 @@ public class FornecedorMapper {
                 entity.getNif(),
                 entity.getContacto(),
                 entity.getEmail()
+        );
+    }
+
+    public FornecedorSimpleDTO toSimpleDTO(Fornecedor entity) {
+        if (entity == null) return null;
+
+        return new FornecedorSimpleDTO(
+                entity.getId(),
+                entity.getNome(),
+                entity.getNif(),
+                entity.getContacto()
         );
     }
 

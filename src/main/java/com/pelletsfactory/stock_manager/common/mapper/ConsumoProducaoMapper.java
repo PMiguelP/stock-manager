@@ -2,9 +2,8 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.ConsumoProducaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ConsumoResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ConsumoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.ConsumoProducao;
-import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
-import com.pelletsfactory.stock_manager.common.entities.MateriaPrima;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -40,6 +39,18 @@ public class ConsumoProducaoMapper {
         );
     }
 
+    public ConsumoSimpleDTO toSimpleDTO(ConsumoProducao entity) {
+        if (entity == null) return null;
+
+        return new ConsumoSimpleDTO(
+                entity.getId(),
+                entity.getOrdem() != null ? entity.getOrdem().getId() : null,
+                entity.getMateriaPrima() != null ? entity.getMateriaPrima().getNome() : null,
+                entity.getMateriaPrima() != null ? entity.getMateriaPrima().getUnidade() : null,
+                entity.getQuantidadeConsumidaReal()
+        );
+    }
+
     /**
      * Atualiza entidade existente
      */
@@ -51,4 +62,3 @@ public class ConsumoProducaoMapper {
         }
     }
 }
-

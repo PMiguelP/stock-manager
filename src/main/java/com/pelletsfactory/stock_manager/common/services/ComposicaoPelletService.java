@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.request.ComposicaoPelletRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ComposicaoPelletResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ComposicaoPelletSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.ComposicaoPellet;
 import com.pelletsfactory.stock_manager.common.entities.FormulaProducao;
 import com.pelletsfactory.stock_manager.common.entities.MateriaPrima;
@@ -131,6 +132,29 @@ public class ComposicaoPelletService {
         Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
         Page<ComposicaoPellet> composicaoPage = composicaoRepo.findByFormulaId(formulaId, pageable);
         return composicaoPage.map(mapper::toResponseDTO);
+    }
+
+    /**
+     * Listar composição de uma fórmula (com paginação) - SimpleDTO
+     */
+    public Page<ComposicaoPelletSimpleDTO> listarComposicaoDeFormulaSimples(
+            UUID formulaId,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Page<ComposicaoPellet> composicaoPage = composicaoRepo.findByFormulaId(formulaId, pageable);
+        return composicaoPage.map(mapper::toSimpleDTO);
     }
 
     /**

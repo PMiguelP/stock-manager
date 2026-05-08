@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.request.MoedaRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MoedaResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.MoedaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.Moeda;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.mapper.MoedaMapper;
@@ -93,12 +94,48 @@ public class MoedaService {
     }
 
     /**
+     * Listar moedas com filtros (SimpleDTO)
+     */
+    public Page<MoedaSimpleDTO> listarMoedasComFiltrosSimples(
+            int page,
+            int pageSize,
+            String codigo,
+            String simbolo,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "codigo";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        Page<Moeda> moedasPage = moedaRepo.findByFiltros(codigo, simbolo, pageable);
+
+        return moedasPage.map(mapper::toSimpleDTO);
+    }
+
+    /**
      * Listar todos (para combobox)
      */
     public java.util.List<MoedaResponseDTO> listarTodosSimples() {
         return moedaRepo.findAll()
                 .stream()
                 .map(mapper::toResponseDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Listar todos (SimpleDTO)
+     */
+    public java.util.List<MoedaSimpleDTO> listarTodosSimplesDTO() {
+        return moedaRepo.findAll()
+                .stream()
+                .map(mapper::toSimpleDTO)
                 .collect(java.util.stream.Collectors.toList());
     }
 
@@ -129,4 +166,3 @@ public class MoedaService {
                 ));
     }
 }
-

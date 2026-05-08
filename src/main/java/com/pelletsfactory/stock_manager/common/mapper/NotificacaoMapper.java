@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.NotificacaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.Notificacao;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +34,19 @@ public class NotificacaoMapper {
         );
     }
 
+    public NotificacaoSimpleDTO toSimpleDTO(Notificacao entity) {
+        if (entity == null) return null;
+
+        return new NotificacaoSimpleDTO(
+                entity.getId(),
+                entity.getTitulo(),
+                entity.getTipoEvento(),
+                entity.getCargoAlvo(),
+                entity.getLida(),
+                entity.getCreatedAt()
+        );
+    }
+
     public void updateEntityFromDTO(NotificacaoRequestDTO dto, Notificacao entity) {
         if (dto == null) return;
 
@@ -53,5 +67,3 @@ public class NotificacaoMapper {
         }
     }
 }
-
-

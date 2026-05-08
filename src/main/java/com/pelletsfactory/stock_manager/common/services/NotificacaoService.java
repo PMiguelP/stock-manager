@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.request.NotificacaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.Notificacao;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.TipoEventoNotificacao;
@@ -131,5 +132,40 @@ public class NotificacaoService {
     public long contarNotLidas() {
         return notificacaoRepo.countByLida(false);
     }
-}
 
+    public Page<NotificacaoSimpleDTO> listarNotLidasSimples(int page, int pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
+        Page<Notificacao> notificacoesPage = notificacaoRepo.findNotLidas(pageable);
+        return notificacoesPage.map(mapper::toSimpleDTO);
+    }
+
+    public Page<NotificacaoSimpleDTO> listarNotLidasParaCargoSimples(Cargo cargo, int page, int pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
+        Page<Notificacao> notificacoesPage = notificacaoRepo.findNotLidasParaCargo(cargo, pageable);
+        return notificacoesPage.map(mapper::toSimpleDTO);
+    }
+
+    public Page<NotificacaoSimpleDTO> listarNotificacoesComFiltrosSimples(
+            int page,
+            int pageSize,
+            TipoEventoNotificacao tipoEvento,
+            Cargo cargoAlvo,
+            Boolean lida,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        Page<Notificacao> notificacoesPage = notificacaoRepo.findByFiltros(tipoEvento, cargoAlvo, lida, pageable);
+
+        return notificacoesPage.map(mapper::toSimpleDTO);
+    }
+}

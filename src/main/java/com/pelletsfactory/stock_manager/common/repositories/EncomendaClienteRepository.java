@@ -1,11 +1,24 @@
 package com.pelletsfactory.stock_manager.common.repositories;
 
 import com.pelletsfactory.stock_manager.common.entities.EncomendaCliente;
+import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaCliente;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
 public interface EncomendaClienteRepository extends JpaRepository<EncomendaCliente, UUID> {
-    org.springframework.data.domain.Page<EncomendaCliente> findByClienteId(UUID clienteId,
-            org.springframework.data.domain.Pageable pageable);
+    Page<EncomendaCliente> findByClienteId(UUID clienteId, Pageable pageable);
+
+    java.util.List<EncomendaCliente> findByClienteId(UUID clienteId);
+
+    @Query("SELECT e FROM EncomendaCliente e WHERE " +
+            "(:clienteId IS NULL OR e.cliente.id = :clienteId) AND " +
+            "(:estado IS NULL OR e.estado = :estado)")
+    Page<EncomendaCliente> findByFiltros(@Param("clienteId") UUID clienteId,
+                                        @Param("estado") EstadoEncomendaCliente estado,
+                                        Pageable pageable);
 }

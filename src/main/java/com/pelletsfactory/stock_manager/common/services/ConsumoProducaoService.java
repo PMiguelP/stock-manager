@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.request.ConsumoProducaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ConsumoResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ConsumoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.ConsumoProducao;
 import com.pelletsfactory.stock_manager.common.entities.MateriaPrima;
 import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
@@ -167,6 +168,29 @@ public class ConsumoProducaoService {
         Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
         Page<ConsumoProducao> consumosPage = consumoRepo.findByOrdemId(ordemId, pageable);
         return consumosPage.map(mapper::toResponseDTO);
+    }
+
+    /**
+     * Listar consumos de uma ordem (com paginação) - SimpleDTO
+     */
+    public Page<ConsumoSimpleDTO> listarConsumosDeOrdemSimples(
+            UUID ordemId,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Page<ConsumoProducao> consumosPage = consumoRepo.findByOrdemId(ordemId, pageable);
+        return consumosPage.map(mapper::toSimpleDTO);
     }
 
     /**

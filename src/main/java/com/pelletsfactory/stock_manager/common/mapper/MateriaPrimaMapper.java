@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.MateriaPrimaRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.MateriaPrima;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,18 @@ public class MateriaPrimaMapper {
         );
     }
 
+    public MateriaPrimaSimpleDTO toSimpleDTO(MateriaPrima entity) {
+        if (entity == null) return null;
+
+        return new MateriaPrimaSimpleDTO(
+                entity.getId(),
+                entity.getNome(),
+                entity.getUnidade(),
+                entity.getStockAtual(),
+                entity.getStockMinimo()
+        );
+    }
+
     public void updateEntityFromDTO(MateriaPrimaRequestDTO dto, MateriaPrima entity) {
         if (dto == null) return;
 
@@ -48,4 +61,3 @@ public class MateriaPrimaMapper {
         }
     }
 }
-

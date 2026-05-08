@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.ClienteRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ClienteSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.Cliente;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,17 @@ public class ClienteMapper {
         );
     }
 
+    public ClienteSimpleDTO toSimpleDTO(Cliente entity) {
+        if (entity == null) return null;
+
+        return new ClienteSimpleDTO(
+                entity.getId(),
+                entity.getNome(),
+                entity.getNif(),
+                entity.getContacto()
+        );
+    }
+
     public void updateEntityFromDTO(ClienteRequestDTO dto, Cliente entity) {
         if (dto == null) return;
 
@@ -48,4 +60,3 @@ public class ClienteMapper {
         }
     }
 }
-

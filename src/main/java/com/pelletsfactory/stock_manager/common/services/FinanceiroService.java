@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaCliente;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.entities.MovimentoFinanceiro;
@@ -76,6 +77,29 @@ public class FinanceiroService {
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
         return movimentoFinanceiroRepo.findAll(pageable).map(movimentoMapper::toResponseDTO);
+    }
+
+    public org.springframework.data.domain.Page<MovimentoFinanceiroSimpleDTO> listarMovimentosFinanceirosSimples(
+            int page,
+            int pageSize,
+            TipoMovimento tipoMovimento,
+            UUID moedaId,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+
+        return movimentoFinanceiroRepo.findByFiltros(tipoMovimento, moedaId, pageable)
+                .map(movimentoMapper::toSimpleDTO);
     }
 
     public java.util.List<MovimentoFinanceiroResponseDTO> listarMovimentosFinanceirosSimples() {

@@ -1,10 +1,16 @@
 package com.pelletsfactory.stock_manager.common.services;
 
+import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.FornecedorDetailsDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.FornecedorSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaFornecedorResponseDTO;
 import com.pelletsfactory.stock_manager.common.entities.*;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.mapper.EncomendaFornecedorMapper;
+import com.pelletsfactory.stock_manager.common.mapper.ItemEncomendaFornecedorMapper;
 import com.pelletsfactory.stock_manager.common.repositories.*;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
@@ -30,6 +36,7 @@ public class CompraService {
     private final NotificacaoService notificacaoService;
     private final MoedaRepository moedaRepo;
     private final EncomendaFornecedorMapper encomendaFornecedorMapper;
+    private final ItemEncomendaFornecedorMapper itemEncomendaFornecedorMapper;
 
     public CompraService(
             EncomendaFornecedorRepository encomendaFornecedorRepo,
@@ -40,7 +47,8 @@ public class CompraService {
             FinanceiroService financeiroService,
             NotificacaoService notificacaoService,
             MoedaRepository moedaRepo,
-            EncomendaFornecedorMapper encomendaFornecedorMapper) {
+            EncomendaFornecedorMapper encomendaFornecedorMapper,
+            ItemEncomendaFornecedorMapper itemEncomendaFornecedorMapper) {
         this.encomendaFornecedorRepo = encomendaFornecedorRepo;
         this.itemEncomendaFornecedorRepo = itemEncomendaFornecedorRepo;
         this.fornecedorRepo = fornecedorRepo;
@@ -50,6 +58,7 @@ public class CompraService {
         this.notificacaoService = notificacaoService;
         this.moedaRepo = moedaRepo;
         this.encomendaFornecedorMapper = encomendaFornecedorMapper;
+        this.itemEncomendaFornecedorMapper = itemEncomendaFornecedorMapper;
     }
 
     /**
@@ -273,5 +282,112 @@ public class CompraService {
         encomenda.setTotalFinal(totalFinal);
 
         encomendaFornecedorRepo.save(encomenda);
+    }
+
+    /**
+     * Listar fornecedores com paginação e filtros (SimpleDTO)
+     */
+    public Page<FornecedorSimpleDTO> listarFornecedoresComFiltros(
+            int page,
+            int pageSize,
+            String nome,
+            String nif,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "nome";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        return fornecedorRepo.findByFiltros(nome, nif, pageable)
+                .map(fornecedor -> new FornecedorSimpleDTO(
+                        fornecedor.getId(),
+                        fornecedor.getNome(),
+                        fornecedor.getNif(),
+                        fornecedor.getContacto()
+                ));
+    }
+
+    /**
+     * Listar todos os fornecedores (SimpleDTO)
+     */
+    public List<FornecedorSimpleDTO> listarTodosFornecedoresSimples() {
+        return fornecedorRepo.findAll().stream()
+                .map(fornecedor -> new FornecedorSimpleDTO(
+                        fornecedor.getId(),
+                        fornecedor.getNome(),
+                        fornecedor.getNif(),
+                        fornecedor.getContacto()
+                ))
+                .toList();
+    }
+
+    /**
+     * Listar encomendas com filtros (SimpleDTO)
+     */
+    public Page<EncomendaFornecedorSimpleDTO> listarEncomendasComFiltrosSimples(
+            UUID fornecedorId,
+            EstadoEncomendaFornecedor estado,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "data";
+        }
+
+        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+
+        return encomendaFornecedorRepo.findByFiltros(fornecedorId, estado, pageable)
+                .map(encomendaFornecedorMapper::toSimpleDTO);
+    }
+
+    public FornecedorDetailsDTO obterDetalhesFornecedor(UUID fornecedorId) {
+        Fornecedor fornecedor = fornecedorRepo.findById(fornecedorId)
+                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado"));
+
+        List<EncomendaFornecedorSimpleDTO> encomendas = encomendaFornecedorRepo.findByFornecedorId(fornecedorId).stream()
+                .map(encomendaFornecedorMapper::toSimpleDTO)
+                .toList();
+
+        return new FornecedorDetailsDTO(
+                fornecedor.getId(),
+                fornecedor.getNome(),
+                fornecedor.getNif(),
+                fornecedor.getContacto(),
+                fornecedor.getEmail(),
+                encomendas,
+                fornecedor.getCreatedAt(),
+                fornecedor.getUpdatedAt()
+        );
+    }
+
+    public EncomendaFornecedorDetailsDTO obterDetalhesEncomendaFornecedor(UUID encomendaId) {
+        EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
+
+        List<ItemEncomendaFornecedorResponseDTO> itens = itemEncomendaFornecedorRepo.findByEncomendaId(encomendaId).stream()
+                .map(itemEncomendaFornecedorMapper::toResponseDTO)
+                .toList();
+
+        return new EncomendaFornecedorDetailsDTO(
+                encomenda.getId(),
+                encomenda.getFornecedor() != null ? encomenda.getFornecedor().getId() : null,
+                encomenda.getFornecedor() != null ? encomenda.getFornecedor().getNome() : null,
+                encomenda.getData(),
+                encomenda.getEstado(),
+                encomenda.getTotalLiquido(),
+                encomenda.getTotalIva(),
+                encomenda.getTotalFinal(),
+                encomenda.getMoeda() != null ? encomenda.getMoeda().getId() : null,
+                encomenda.getMoeda() != null ? encomenda.getMoeda().getCodigo() : null,
+                itens,
+                encomenda.getCreatedAt(),
+                encomenda.getUpdatedAt()
+        );
     }
 }
