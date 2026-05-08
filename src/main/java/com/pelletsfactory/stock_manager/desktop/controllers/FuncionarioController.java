@@ -285,7 +285,9 @@ public class FuncionarioController {
                         cmbCargoDetalhes.getValue().name(),
                         txtNomeDetalhes.getText().trim(),
                         txtNifDetalhes.getText().trim(),
-                        txtContactoDetalhes.getText().trim()
+                        txtContactoDetalhes.getText().trim(),
+                        null,
+                        null
                 ));
                 carregarFuncionarios();
                 setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
@@ -423,7 +425,9 @@ public class FuncionarioController {
                     cmbCargo.getValue().name(),
                     txtNome.getText().trim(),
                     txtNif.getText().trim(),
-                    txtContacto.getText().trim()
+                    txtContacto.getText().trim(),
+                    null,
+                    null
             ));
             paginaAtual = 0;
             carregarFuncionarios();

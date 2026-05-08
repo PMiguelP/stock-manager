@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaFornecedor;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -15,7 +13,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "encomendas_fornecedor")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class EncomendaFornecedor {
 
     @Id
@@ -32,13 +29,22 @@ public class EncomendaFornecedor {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private EstadoEncomendaFornecedor estado;
+    private EstadoEncomendaFornecedor estado = EstadoEncomendaFornecedor.RASCUNHO;
 
-    @Column(name = "total_encomenda")
-    private Double totalEncomenda;
+    @Column(name = "total_liquido", nullable = false)
+    private Double totalLiquido;
+
+    @Column(name = "total_iva", nullable = false)
+    private Double totalIva;
+
+    @Column(name = "total_final", nullable = false)
+    private Double totalFinal;
+
+    @ManyToOne
+    @JoinColumn(name = "moeda_id", nullable = false)
+    private Moeda moeda;
 
     @OneToMany(mappedBy = "encomenda", cascade = CascadeType.ALL)
-    @JsonManagedReference
     private List<ItemEncomendaFornecedor> itens = new ArrayList<>();
 
     @CreationTimestamp
@@ -46,16 +52,20 @@ public class EncomendaFornecedor {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public EncomendaFornecedor() {
     }
 
-    public EncomendaFornecedor(Fornecedor fornecedor, LocalDate data, Double totalEncomenda, List<ItemEncomendaFornecedor> itens) {
+    public EncomendaFornecedor(Fornecedor fornecedor, LocalDate data, Double totalLiquido, Double totalIva,
+                               Double totalFinal, Moeda moeda, List<ItemEncomendaFornecedor> itens) {
         this.fornecedor = fornecedor;
         this.data = data;
-        this.totalEncomenda = totalEncomenda;
+        this.totalLiquido = totalLiquido;
+        this.totalIva = totalIva;
+        this.totalFinal = totalFinal;
+        this.moeda = moeda;
         this.itens = itens; //TODO: check this
     }
 
@@ -87,12 +97,36 @@ public class EncomendaFornecedor {
         this.estado = estado;
     }
 
-    public Double getTotalEncomenda() {
-        return totalEncomenda;
+    public Double getTotalLiquido() {
+        return totalLiquido;
     }
 
-    public void setTotalEncomenda(Double totalEncomenda) {
-        this.totalEncomenda = totalEncomenda;
+    public void setTotalLiquido(Double totalLiquido) {
+        this.totalLiquido = totalLiquido;
+    }
+
+    public Double getTotalIva() {
+        return totalIva;
+    }
+
+    public void setTotalIva(Double totalIva) {
+        this.totalIva = totalIva;
+    }
+
+    public Double getTotalFinal() {
+        return totalFinal;
+    }
+
+    public void setTotalFinal(Double totalFinal) {
+        this.totalFinal = totalFinal;
+    }
+
+    public Moeda getMoeda() {
+        return moeda;
+    }
+
+    public void setMoeda(Moeda moeda) {
+        this.moeda = moeda;
     }
 
     public List<ItemEncomendaFornecedor> getItens() {

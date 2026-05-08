@@ -1,64 +1,87 @@
 package com.pelletsfactory.stock_manager.common.services;
 
+import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroResponseDTO;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaCliente;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.entities.MovimentoFinanceiro;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
+import com.pelletsfactory.stock_manager.common.mapper.MovimentoFinanceiroMapper;
 import com.pelletsfactory.stock_manager.common.repositories.MovimentoFinanceiroRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 @Service
 public class FinanceiroService {
     private final MovimentoFinanceiroRepository movimentoFinanceiroRepo;
-    private final CompraService compraService;
-    private final VendaService vendaService;
+    private final MovimentoFinanceiroMapper movimentoMapper;
 
-    public FinanceiroService(MovimentoFinanceiroRepository movimentoFinanceiroRepo, CompraService compraService, VendaService vendaService) {
+    public FinanceiroService(MovimentoFinanceiroRepository movimentoFinanceiroRepo,
+                             MovimentoFinanceiroMapper movimentoMapper) {
         this.movimentoFinanceiroRepo = movimentoFinanceiroRepo;
-        this.compraService = compraService;
-        this.vendaService = vendaService;
+        this.movimentoMapper = movimentoMapper;
     }
 
     @Transactional
-    public MovimentoFinanceiro registarEntrada(UUID encomendaClienteId, Double valor) {
-        // TODO: Regista movimento financeiro de entrada (venda) vinculado a EncomendaCliente. Retorna MovimentoFinanceiro criado
-        //TODO: vai ser chamado na funcao marcarEncomendaClienteComoConcluida do VendaService
-        EncomendaCliente encomendaCliente = vendaService.getEncomendaClienteById(encomendaClienteId);
+    public MovimentoFinanceiroResponseDTO registarEntrada(
+            EncomendaCliente encomendaCliente,
+            Double valor) {
+
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.setTipoMovimento(TipoMovimento.ENTRADA);
-        movimento.setValor(valor);
+        movimento.setValorTotal(valor);
+        movimento.setMoeda(encomendaCliente.getMoeda());
         movimento.setEncomendaCliente(encomendaCliente);
-        return movimentoFinanceiroRepo.save(movimento);
+        return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
     }
 
     @Transactional
-    public MovimentoFinanceiro registarSaida(UUID encomendaFornecedorId, Double valor) {
-        // TODO: Regista movimento financeiro de saída (compra) vinculado a EncomendaFornecedor. Retorna MovimentoFinanceiro criado
-        //TODO: vai ser chamado na funcao marcarComoRecebida do CompraService
-        EncomendaFornecedor encomendaFornecedor = compraService.getEncomendaFornecedorById(encomendaFornecedorId);
+    public MovimentoFinanceiroResponseDTO registarSaida(
+            EncomendaFornecedor encomendaFornecedor,
+            Double valor) {
+
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.setTipoMovimento(TipoMovimento.SAIDA);
-        movimento.setValor(valor);
+        movimento.setValorTotal(valor);
+        movimento.setMoeda(encomendaFornecedor.getMoeda());
         movimento.setEncomendaFornecedor(encomendaFornecedor);
-        return movimentoFinanceiroRepo.save(movimento);
+        return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
     }
 
     @Transactional
-    public MovimentoFinanceiro atualizarMovimentoFinanceiro(UUID movimentoId, Double novoValor) {
-        //TODO: recebe um movimento financeiro e permite a um administrador e apenas ele atualizar algo como valor/data
+    public MovimentoFinanceiroResponseDTO atualizarMovimentoFinanceiro(UUID movimentoId, Double novoValor) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
-        return new MovimentoFinanceiro();
+        MovimentoFinanceiro movimento = movimentoFinanceiroRepo.findById(movimentoId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Movimento financeiro não encontrado"));
+        movimento.setValorTotal(novoValor);
+        return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
     }
 
-    public List<MovimentoFinanceiro> listarMovimentosFinanceiros() {
-        //TODO: lista todos os movimentos financeiros como temos a retornar todos os funcionarios no funcService!
-        return new ArrayList<>();
+    public org.springframework.data.domain.Page<MovimentoFinanceiroResponseDTO> listarMovimentosFinanceiros(
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+
+        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.Direction.ASC
+                : org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        return movimentoFinanceiroRepo.findAll(pageable).map(movimentoMapper::toResponseDTO);
+    }
+
+    public java.util.List<MovimentoFinanceiroResponseDTO> listarMovimentosFinanceirosSimples() {
+        return movimentoFinanceiroRepo.findAll().stream()
+                .map(movimentoMapper::toResponseDTO)
+                .toList();
     }
 
 
@@ -67,13 +90,12 @@ public class FinanceiroService {
         List<MovimentoFinanceiro> movimentos = movimentoFinanceiroRepo.findAll();
         double entradas = movimentos.stream()
                 .filter(m -> m.getTipoMovimento() == TipoMovimento.ENTRADA)
-                .mapToDouble(MovimentoFinanceiro::getValor)
+                .mapToDouble(MovimentoFinanceiro::getValorTotal)
                 .sum();
         double saidas = movimentos.stream()
                 .filter(m -> m.getTipoMovimento() == TipoMovimento.SAIDA)
-                .mapToDouble(MovimentoFinanceiro::getValor)
+                .mapToDouble(MovimentoFinanceiro::getValorTotal)
                 .sum();
         return entradas - saidas;
     }
 }
-

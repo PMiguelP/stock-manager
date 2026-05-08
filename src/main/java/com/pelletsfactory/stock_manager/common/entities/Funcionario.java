@@ -37,7 +37,7 @@ public class Funcionario {
     @Column(name = "data_admissao", nullable = false)
     private LocalDate dataAdmissao;
 
-    @Column(name = "hashed_pin", nullable = false)
+    @Column(name = "access_pin", nullable = false)
     private String pinHash;
 
     @CreationTimestamp
@@ -45,7 +45,7 @@ public class Funcionario {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public Funcionario() {}

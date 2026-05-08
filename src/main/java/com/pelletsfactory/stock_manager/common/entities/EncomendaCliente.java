@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaCliente;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -14,7 +12,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "encomendas_cliente")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class EncomendaCliente {
 
     @Id
@@ -31,16 +28,25 @@ public class EncomendaCliente {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private EstadoEncomendaCliente estado;
+    private EstadoEncomendaCliente estado = EstadoEncomendaCliente.PENDENTE;
 
-    @Column(name = "total_venda", nullable = false)
-    private Double totalVenda;
+    @Column(name = "total_net", nullable = false)
+    private Double totalNet;
+
+    @Column(name = "total_iva", nullable = false)
+    private Double totalIva;
+
+    @Column(name = "total_final", nullable = false)
+    private Double totalFinal;
+
+    @ManyToOne
+    @JoinColumn(name = "moeda_id", nullable = false)
+    private Moeda moeda;
 
     @Column(name = "codigo_tracking", length = 50)
     private String codigoTracking;
 
     @OneToMany(mappedBy = "encomenda", cascade = CascadeType.ALL)
-    @JsonManagedReference //permite serializar os itens
     private List<ItemEncomendaCliente> itens;
 
     @CreationTimestamp
@@ -48,18 +54,21 @@ public class EncomendaCliente {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public EncomendaCliente() {
     }
 
-    public EncomendaCliente(Cliente cliente, LocalDate data, EstadoEncomendaCliente estado, Double totalVenda,
-                            List<ItemEncomendaCliente> itens) {
+    public EncomendaCliente(Cliente cliente, LocalDate data, EstadoEncomendaCliente estado, Double totalNet,
+                            Double totalIva, Double totalFinal, Moeda moeda, List<ItemEncomendaCliente> itens) {
         this.cliente = cliente;
         this.data = data;
         this.estado = estado;
-        this.totalVenda = totalVenda;
+        this.totalNet = totalNet;
+        this.totalIva = totalIva;
+        this.totalFinal = totalFinal;
+        this.moeda = moeda;
         this.itens = itens;
     }
 
@@ -92,12 +101,36 @@ public class EncomendaCliente {
         this.estado = estado;
     }
 
-    public Double getTotalVenda() {
-        return totalVenda;
+    public Double getTotalNet() {
+        return totalNet;
     }
 
-    public void setTotalVenda(Double totalVenda) {
-        this.totalVenda = totalVenda;
+    public void setTotalNet(Double totalNet) {
+        this.totalNet = totalNet;
+    }
+
+    public Double getTotalIva() {
+        return totalIva;
+    }
+
+    public void setTotalIva(Double totalIva) {
+        this.totalIva = totalIva;
+    }
+
+    public Double getTotalFinal() {
+        return totalFinal;
+    }
+
+    public void setTotalFinal(Double totalFinal) {
+        this.totalFinal = totalFinal;
+    }
+
+    public Moeda getMoeda() {
+        return moeda;
+    }
+
+    public void setMoeda(Moeda moeda) {
+        this.moeda = moeda;
     }
 
     public String getCodigoTracking() {

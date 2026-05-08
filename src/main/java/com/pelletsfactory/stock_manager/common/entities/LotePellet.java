@@ -1,18 +1,14 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
 @Table(name = "lotes_pellet")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class LotePellet {
 
     @Id
@@ -26,35 +22,39 @@ public class LotePellet {
 
     @ManyToOne
     @JoinColumn(name = "ordem_id", nullable = false)
-    @JsonBackReference
     private OrdemProducao ordem;
+
+    @Column(name = "codigo_lote", nullable = false, unique = true, length = 50)
+    private String codigoLote;
 
     @Column(name = "quantidade_kg", nullable = false)
     private Double quantidadeKg;
 
     @Column(name = "data_producao", nullable = false)
-    private LocalDate dataProducao;
+    private Instant dataProducao;
 
-    @Column(length = 100)
-    private String localizacao;
+    @Column(name = "localizacao_armazem", length = 100)
+    private String localizacaoArmazem;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public LotePellet() {
     }
 
-    public LotePellet(TipoPellet tipoPellet, OrdemProducao ordem, Double quantidadeKg, LocalDate dataProducao, String localizacao) {
+    public LotePellet(TipoPellet tipoPellet, OrdemProducao ordem, String codigoLote, Double quantidadeKg,
+                      Instant dataProducao, String localizacaoArmazem) {
         this.tipoPellet = tipoPellet;
         this.ordem = ordem;
+        this.codigoLote = codigoLote;
         this.quantidadeKg = quantidadeKg;
         this.dataProducao = dataProducao;
-        this.localizacao = localizacao;
+        this.localizacaoArmazem = localizacaoArmazem;
     }
 
     public UUID getId() {
@@ -77,6 +77,14 @@ public class LotePellet {
         this.ordem = ordem;
     }
 
+    public String getCodigoLote() {
+        return codigoLote;
+    }
+
+    public void setCodigoLote(String codigoLote) {
+        this.codigoLote = codigoLote;
+    }
+
     public Double getQuantidadeKg() {
         return quantidadeKg;
     }
@@ -85,20 +93,20 @@ public class LotePellet {
         this.quantidadeKg = quantidadeKg;
     }
 
-    public LocalDate getDataProducao() {
+    public Instant getDataProducao() {
         return dataProducao;
     }
 
-    public void setDataProducao(LocalDate dataProducao) {
+    public void setDataProducao(Instant dataProducao) {
         this.dataProducao = dataProducao;
     }
 
-    public String getLocalizacao() {
-        return localizacao;
+    public String getLocalizacaoArmazem() {
+        return localizacaoArmazem;
     }
 
-    public void setLocalizacao(String localizacao) {
-        this.localizacao = localizacao;
+    public void setLocalizacaoArmazem(String localizacaoArmazem) {
+        this.localizacaoArmazem = localizacaoArmazem;
     }
 
     public Instant getCreatedAt() {

@@ -1,8 +1,8 @@
 package com.pelletsfactory.stock_manager.common.enums;
 
 public enum TipoMovimento {
-    ENTRADA("Entrada"),  // Entrada (Venda)
-    SAIDA("Saída");    // Saída (Compra)
+    ENTRADA("Entrada"),
+    SAIDA("Saída");
 
     private final String displayName;
     TipoMovimento(String displayName) {

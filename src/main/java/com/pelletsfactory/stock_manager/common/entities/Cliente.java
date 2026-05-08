@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,7 +10,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "clientes")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Cliente {
 
     @Id
@@ -26,14 +23,13 @@ public class Cliente {
     @Column(nullable = false, unique = true, length = 9)
     private String nif;
 
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private String contacto;
 
     @Column(length = 100)
     private String email;
 
     @OneToMany(mappedBy = "cliente")
-    @JsonIgnore
     private List<EncomendaCliente> encomendas;
 
     @CreationTimestamp
@@ -41,7 +37,7 @@ public class Cliente {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public Cliente() {

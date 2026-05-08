@@ -8,6 +8,10 @@ import com.pelletsfactory.stock_manager.common.entities.Funcionario;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 @Component
 public class FuncionarioMapper {
 
@@ -22,8 +26,29 @@ public class FuncionarioMapper {
         entity.setNome(dto.nome());
         entity.setNif(dto.nif());
         entity.setContacto(dto.contacto());
+        entity.setNumeroFuncionario(dto.numeroFuncionario());
+        entity.setDataAdmissao(parseLocalDate(dto.dataAdmissao()));
 
         return entity;
+    }
+
+    /**
+     * Parse String para LocalDate (dd-MM-yyyy ou yyyy-MM-dd)
+     */
+    private LocalDate parseLocalDate(String dateStr) {
+        if (dateStr == null) return null;
+        
+        try {
+            // Tenta formato dd-MM-yyyy
+            return LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        } catch (DateTimeParseException e1) {
+            try {
+                // Tenta formato yyyy-MM-dd
+                return LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+            } catch (DateTimeParseException e2) {
+                throw new IllegalArgumentException("Data inválida. Use dd-MM-yyyy ou yyyy-MM-dd");
+            }
+        }
     }
 
     /**
@@ -86,5 +111,11 @@ public class FuncionarioMapper {
         entity.setNome(dto.nome());
         entity.setNif(dto.nif());
         entity.setContacto(dto.contacto());
+        if (dto.numeroFuncionario() != null) {
+            entity.setNumeroFuncionario(dto.numeroFuncionario());
+        }
+        if (dto.dataAdmissao() != null) {
+            entity.setDataAdmissao(parseLocalDate(dto.dataAdmissao()));
+        }
     }
 }

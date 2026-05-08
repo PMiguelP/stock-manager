@@ -1,14 +1,11 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +13,6 @@ import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "ordens_producao")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrdemProducao {
 
     @Id
@@ -36,64 +32,60 @@ public class OrdemProducao {
     @JoinColumn(name = "formula_id", nullable = false)
     private FormulaProducao formula;
 
-    @Column(name = "quantidade_maxima", nullable = false)
-    private Double quantidadeMaxima;
+    @Column(name = "quantidade_planeada", nullable = false)
+    private Double quantidadePlaneada;
 
-    @Column(name = "quantidade_produzida_kg")
-    private Double quantidadeProduzidaKg;
+    @Column(name = "quantidade_produzida_real")
+    private Double quantidadeProduzidaReal = 0.0;
 
     @Column(name = "data_inicio")
-    private LocalDate dataInicio;
+    private Instant dataInicio;
 
     @Column(name = "data_fim")
-    private LocalDate dataFim;
+    private Instant dataFim;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private EstadoOrdemProducao estado;
+    private EstadoOrdemProducao estado = EstadoOrdemProducao.PENDENTE;
 
     @OneToMany(mappedBy = "ordem")
-    @JsonManagedReference
     private List<ConsumoProducao> consumos;
 
     @OneToMany(mappedBy = "ordem")
-    @JsonManagedReference
     private List<LotePellet> lotes;
 
-    @OneToMany(mappedBy = "ordemProducao", fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private List<ItemEncomendaCliente> itensAlocados;
+    @OneToMany(mappedBy = "ordem")
+    private List<AlocacaoOrdemEncomenda> alocacoes;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public OrdemProducao() {
     }
 
-    public OrdemProducao(TipoPellet tipoPellet, Funcionario funcionario, FormulaProducao formula, Double quantidadeMaxima
-            ,
-                         LocalDate dataInicio, EstadoOrdemProducao estado) {
+    public OrdemProducao(TipoPellet tipoPellet, Funcionario funcionario, FormulaProducao formula, Double quantidadePlaneada,
+                         Instant dataInicio, EstadoOrdemProducao estado) {
         this.tipoPellet = tipoPellet;
         this.funcionario = funcionario;
         this.formula = formula;
-        this.quantidadeMaxima = quantidadeMaxima;
+        this.quantidadePlaneada = quantidadePlaneada;
         this.dataInicio = dataInicio;
         this.estado = estado;
     }
 
     @Transient
     public List<EncomendaCliente> getEncomendasAssociadas() {
-        if (itensAlocados == null || itensAlocados.isEmpty()) {
+        if (alocacoes == null || alocacoes.isEmpty()) {
             return List.of();
         }
 
-        return itensAlocados.stream()
-                .map(ItemEncomendaCliente::getEncomenda)
+        return alocacoes.stream()
+                .map(AlocacaoOrdemEncomenda::getEncomendaCliente)
                 .distinct()
                 .collect(Collectors.toList());
     }
@@ -108,36 +100,36 @@ public class OrdemProducao {
 
     @Transient
     public Map<UUID, Double> getQuantidadePorEncomenda() {
-        if (itensAlocados == null || itensAlocados.isEmpty()) {
+        if (alocacoes == null || alocacoes.isEmpty()) {
             return Map.of();
         }
 
-        return itensAlocados.stream()
+        return alocacoes.stream()
                 .collect(Collectors.groupingBy(
-                        item -> item.getEncomenda().getId(),
-                        Collectors.summingDouble(ItemEncomendaCliente::getQuantidadeKg)
+                        alocacao -> alocacao.getEncomendaCliente().getId(),
+                        Collectors.summingDouble(AlocacaoOrdemEncomenda::getQuantidadeReservada)
                 ));
     }
 
     @Transient
     public Double getQuantidadeTotalAlocada() {
-        if (itensAlocados == null || itensAlocados.isEmpty()) {
+        if (alocacoes == null || alocacoes.isEmpty()) {
             return 0.0;
         }
 
-        return itensAlocados.stream()
-                .mapToDouble(ItemEncomendaCliente::getQuantidadeKg)
+        return alocacoes.stream()
+                .mapToDouble(AlocacaoOrdemEncomenda::getQuantidadeReservada)
                 .sum();
     }
 
     @Transient
     public Double getCapacidadeDisponivel() {
-        return quantidadeMaxima - getQuantidadeTotalAlocada();
+        return quantidadePlaneada - getQuantidadeTotalAlocada();
     }
 
     @Transient
     public boolean isProducaoParaStock() {
-        return itensAlocados == null || itensAlocados.isEmpty();
+        return alocacoes == null || alocacoes.isEmpty();
     }
 
     @Transient
@@ -173,35 +165,35 @@ public class OrdemProducao {
         this.formula = formula;
     }
 
-    public Double getQuantidadeMaxima() {
-        return quantidadeMaxima;
+    public Double getQuantidadePlaneada() {
+        return quantidadePlaneada;
     }
 
-    public void setQuantidadeMaxima(Double quantidadeMaxima) {
-        this.quantidadeMaxima = quantidadeMaxima;
+    public void setQuantidadePlaneada(Double quantidadePlaneada) {
+        this.quantidadePlaneada = quantidadePlaneada;
     }
 
-    public Double getQuantidadeProduzidaKg() {
-        return quantidadeProduzidaKg;
+    public Double getQuantidadeProduzidaReal() {
+        return quantidadeProduzidaReal;
     }
 
-    public void setQuantidadeProduzidaKg(Double quantidadeProduzidaKg) {
-        this.quantidadeProduzidaKg = quantidadeProduzidaKg;
+    public void setQuantidadeProduzidaReal(Double quantidadeProduzidaReal) {
+        this.quantidadeProduzidaReal = quantidadeProduzidaReal;
     }
 
-    public LocalDate getDataInicio() {
+    public Instant getDataInicio() {
         return dataInicio;
     }
 
-    public void setDataInicio(LocalDate dataInicio) {
+    public void setDataInicio(Instant dataInicio) {
         this.dataInicio = dataInicio;
     }
 
-    public LocalDate getDataFim() {
+    public Instant getDataFim() {
         return dataFim;
     }
 
-    public void setDataFim(LocalDate dataFim) {
+    public void setDataFim(Instant dataFim) {
         this.dataFim = dataFim;
     }
 
@@ -229,12 +221,12 @@ public class OrdemProducao {
         this.lotes = lotes;
     }
 
-    public List<ItemEncomendaCliente> getItensAlocados() {
-        return itensAlocados;
+    public List<AlocacaoOrdemEncomenda> getAlocacoes() {
+        return alocacoes;
     }
 
-    public void setItensAlocados(List<ItemEncomendaCliente> itensAlocados) {
-        this.itensAlocados = itensAlocados;
+    public void setAlocacoes(List<AlocacaoOrdemEncomenda> alocacoes) {
+        this.alocacoes = alocacoes;
     }
 
     public Instant getCreatedAt() {

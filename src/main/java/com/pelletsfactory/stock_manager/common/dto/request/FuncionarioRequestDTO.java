@@ -4,7 +4,9 @@ public record FuncionarioRequestDTO(
         String cargo,
         String nome,
         String nif,
-        String contacto
+        String contacto,
+        Integer numeroFuncionario,
+        String dataAdmissao
 ) {
     public FuncionarioRequestDTO {
         if (cargo == null || cargo.isBlank()) {
@@ -18,6 +20,12 @@ public record FuncionarioRequestDTO(
         }
         if (contacto == null || contacto.isBlank()) {
             throw new IllegalArgumentException("Contacto é obrigatório");
+        }
+        if (numeroFuncionario != null && numeroFuncionario <= 0) {
+            throw new IllegalArgumentException("Número de funcionário deve ser positivo");
+        }
+        if (dataAdmissao != null && dataAdmissao.isBlank()) {
+            throw new IllegalArgumentException("Data de admissão é obrigatória");
         }
     }
 }

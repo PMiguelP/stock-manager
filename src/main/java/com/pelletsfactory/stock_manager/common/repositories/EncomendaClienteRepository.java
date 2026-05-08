@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface EncomendaClienteRepository extends JpaRepository<EncomendaCliente, UUID> {
+    org.springframework.data.domain.Page<EncomendaCliente> findByClienteId(UUID clienteId,
+            org.springframework.data.domain.Pageable pageable);
 }

@@ -1,6 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -10,15 +9,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tipo_pellet")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@Table(name = "tipos_pellet")
 public class TipoPellet {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String nome;
 
     @Column(name = "diametro_mm")
@@ -36,24 +34,30 @@ public class TipoPellet {
     @Column(name = "custo_atual_por_kg")
     private BigDecimal custoAtualPorKg;
 
+    @ManyToOne
+    @JoinColumn(name = "moeda_id")
+    private Moeda moeda;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public TipoPellet() {
     }
 
-    public TipoPellet(String nome, Double diametroMm, Double poderCalorifico, Double stockAtual, Double stockMinimo, BigDecimal custoAtualPorKg) {
+    public TipoPellet(String nome, Double diametroMm, Double poderCalorifico, Double stockAtual, Double stockMinimo,
+                      BigDecimal custoAtualPorKg, Moeda moeda) {
         this.nome = nome;
         this.diametroMm = diametroMm;
         this.poderCalorifico = poderCalorifico;
         this.stockAtual = stockAtual;
         this.stockMinimo = stockMinimo;
         this.custoAtualPorKg = custoAtualPorKg;
+        this.moeda = moeda;
     }
 
     public UUID getId() {
@@ -106,6 +110,14 @@ public class TipoPellet {
 
     public void setCustoAtualPorKg(BigDecimal custoAtualPorKg) {
         this.custoAtualPorKg = custoAtualPorKg;
+    }
+
+    public Moeda getMoeda() {
+        return moeda;
+    }
+
+    public void setMoeda(Moeda moeda) {
+        this.moeda = moeda;
     }
 
     public Instant getCreatedAt() {

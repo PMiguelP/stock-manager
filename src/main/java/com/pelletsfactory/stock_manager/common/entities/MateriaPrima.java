@@ -1,6 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -10,7 +9,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "materias_primas")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MateriaPrima {
 
     @Id
@@ -25,17 +23,17 @@ public class MateriaPrima {
     private String unidade;  // Ex: "kg", "ton", "m³"
 
     @Column(name = "stock_atual", nullable = false)
-    private Double stockAtual;
+    private Double stockAtual = 0.0;
 
     @Column(name = "stock_minimo", nullable = false)
-    private Double stockMinimo;
+    private Double stockMinimo = 0.0;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public MateriaPrima() {

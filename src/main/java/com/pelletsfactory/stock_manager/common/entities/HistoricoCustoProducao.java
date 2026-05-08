@@ -1,6 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -9,7 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "historico_custo_producao")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class HistoricoCustoProducao {
 
     @Id

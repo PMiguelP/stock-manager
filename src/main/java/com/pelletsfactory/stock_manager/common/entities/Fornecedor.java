@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -13,7 +11,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "fornecedores")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Fornecedor {
 
     @Id
@@ -27,22 +24,21 @@ public class Fornecedor {
     @Column(nullable = false, unique = true, length = 9)
     private String nif;
 
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private String contacto;
 
     @Column(length = 100)
     private String email;
 
     @OneToMany(mappedBy = "fornecedor")
-    @JsonIgnore
-    private List<EncomendaFornecedor> encomendas = new ArrayList<>(); //inicializar vazia para evitar NullPointerException
+    private List<EncomendaFornecedor> encomendas = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public Fornecedor() {

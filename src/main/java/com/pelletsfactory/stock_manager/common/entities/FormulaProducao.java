@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,7 +10,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "formula_producao")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class FormulaProducao {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -30,7 +27,6 @@ public class FormulaProducao {
     private Boolean ativa;
 
     @OneToMany(mappedBy = "formulaProducao", cascade = CascadeType.ALL)
-    @JsonManagedReference
     private List<ComposicaoPellet> composicao;
 
     @CreationTimestamp
@@ -38,7 +34,7 @@ public class FormulaProducao {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public FormulaProducao() {

@@ -7,7 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -30,7 +30,7 @@ public class ProducaoService {
 
     @Transactional
     public OrdemProducao abrirNovaOrdem(UUID funcionarioId, UUID formulaId, UUID tipoPelletId,
-                                        Double quantidadeMaxima) {
+                                        Double quantidadePlaneada) {
         Funcionario func = funcService.buscarPorIdOuFalhar(funcionarioId);
         FormulaProducao formula = buscarFormulaPorId(formulaId);
         TipoPellet tipo = stockService.buscarTipoPelletPorId(tipoPelletId);
@@ -39,9 +39,9 @@ public class ProducaoService {
         ordem.setFuncionario(func);
         ordem.setFormula(formula);
         ordem.setTipoPellet(tipo);
-        ordem.setQuantidadeMaxima(quantidadeMaxima);
+        ordem.setQuantidadePlaneada(quantidadePlaneada);
         ordem.setEstado(EstadoOrdemProducao.EM_PRODUCAO);
-        ordem.setDataInicio(LocalDate.now());
+        ordem.setDataInicio(Instant.now());
 
         return ordemProducaoRepo.save(ordem);
     }
@@ -54,7 +54,7 @@ public class ProducaoService {
         ConsumoProducao consumo = new ConsumoProducao();
         consumo.setOrdem(ordem);
         consumo.setMateriaPrima(stockService.buscarMateriaPrimaPorId(materiaPrimaId));
-        consumo.setQuantidadeConsumida(quantidade);
+        consumo.setQuantidadeConsumidaReal(quantidade);
         consumoProducaoRepo.save(consumo);
 
         stockService.subtrairStockMateriaPrima(materiaPrimaId, quantidade);
@@ -65,16 +65,17 @@ public class ProducaoService {
         OrdemProducao ordem = ordemProducaoRepo.findById(ordemId)
                 .orElseThrow(() -> new EntityNotFoundException("Ordem não encontrada."));
 
-        ordem.setQuantidadeProduzidaKg(qtdRealProduzida);
-        ordem.setDataFim(LocalDate.now());
+        ordem.setQuantidadeProduzidaReal(qtdRealProduzida);
+        ordem.setDataFim(Instant.now());
         ordem.setEstado(EstadoOrdemProducao.CONCLUIDA);
 
         LotePellet lote = new LotePellet();
         lote.setOrdem(ordem);
         lote.setTipoPellet(ordem.getTipoPellet());
+        lote.setCodigoLote(UUID.randomUUID().toString());
         lote.setQuantidadeKg(qtdRealProduzida);
-        lote.setLocalizacao(localizacao);
-        lote.setDataProducao(LocalDate.now());
+        lote.setLocalizacaoArmazem(localizacao);
+        lote.setDataProducao(Instant.now());
         lotePelletRepo.save(lote);
 
         stockService.atualizarStockPellet(ordem.getTipoPellet().getId(), qtdRealProduzida, true);

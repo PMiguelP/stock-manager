@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -11,7 +9,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "itens_encomenda_cliente")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ItemEncomendaCliente {
 
     @Id
@@ -20,13 +17,7 @@ public class ItemEncomendaCliente {
     private UUID id;
 
     @ManyToOne
-    @JoinColumn(name = "ordem_producao_id")
-    @JsonBackReference
-    private OrdemProducao ordemProducao;
-
-    @ManyToOne
     @JoinColumn(name = "encomenda_id", nullable = false)
-    @JsonBackReference //evita loop item -> encomenda -> item
     private EncomendaCliente encomenda;
 
     @ManyToOne
@@ -36,25 +27,34 @@ public class ItemEncomendaCliente {
     @Column(name = "quantidade_kg", nullable = false)
     private Double quantidadeKg;
 
-    @Column(name = "preco_venda_aplicado", nullable = false)
-    private Double precoVendaAplicado;
+    @Column(name = "preco_unit_net", nullable = false)
+    private Double precoUnitarioNet;
+
+    @Column(name = "taxa_iva", nullable = false)
+    private Double taxaIva;
+
+    @Column(name = "valor_iva_calculado", nullable = false)
+    private Double valorIvaCalculado;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public ItemEncomendaCliente() {
     }
 
-    public ItemEncomendaCliente(EncomendaCliente encomenda, TipoPellet tipoPellet, Double quantidadeKg, Double precoVendaAplicado) {
+    public ItemEncomendaCliente(EncomendaCliente encomenda, TipoPellet tipoPellet, Double quantidadeKg,
+                                Double precoUnitarioNet, Double taxaIva, Double valorIvaCalculado) {
         this.encomenda = encomenda;
         this.tipoPellet = tipoPellet;
         this.quantidadeKg = quantidadeKg;
-        this.precoVendaAplicado = precoVendaAplicado;
+        this.precoUnitarioNet = precoUnitarioNet;
+        this.taxaIva = taxaIva;
+        this.valorIvaCalculado = valorIvaCalculado;
     }
 
     public UUID getId() {
@@ -73,14 +73,6 @@ public class ItemEncomendaCliente {
         return tipoPellet;
     }
 
-    public OrdemProducao getOrdemProducao() {
-        return ordemProducao;
-    }
-
-    public void setOrdemProducao(OrdemProducao ordemProducao) {
-        this.ordemProducao = ordemProducao;
-    }
-
     public void setTipoPellet(TipoPellet tipoPellet) {
         this.tipoPellet = tipoPellet;
     }
@@ -93,12 +85,28 @@ public class ItemEncomendaCliente {
         this.quantidadeKg = quantidadeKg;
     }
 
-    public Double getPrecoVendaAplicado() {
-        return precoVendaAplicado;
+    public Double getPrecoUnitarioNet() {
+        return precoUnitarioNet;
     }
 
-    public void setPrecoVendaAplicado(Double precoVendaAplicado) {
-        this.precoVendaAplicado = precoVendaAplicado;
+    public void setPrecoUnitarioNet(Double precoUnitarioNet) {
+        this.precoUnitarioNet = precoUnitarioNet;
+    }
+
+    public Double getTaxaIva() {
+        return taxaIva;
+    }
+
+    public void setTaxaIva(Double taxaIva) {
+        this.taxaIva = taxaIva;
+    }
+
+    public Double getValorIvaCalculado() {
+        return valorIvaCalculado;
+    }
+
+    public void setValorIvaCalculado(Double valorIvaCalculado) {
+        this.valorIvaCalculado = valorIvaCalculado;
     }
 
     public Instant getCreatedAt() {

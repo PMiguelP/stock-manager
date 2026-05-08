@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -11,7 +9,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "itens_encomenda_fornecedor")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ItemEncomendaFornecedor {
 
     @Id
@@ -21,7 +18,6 @@ public class ItemEncomendaFornecedor {
 
     @ManyToOne
     @JoinColumn(name = "encomenda_id", nullable = false)
-    @JsonBackReference
     private EncomendaFornecedor encomenda;
 
     @ManyToOne
@@ -31,25 +27,34 @@ public class ItemEncomendaFornecedor {
     @Column(nullable = false)
     private Double quantidade;
 
-    @Column(name = "preco_unitario", nullable = false)
-    private Double precoUnitario;
+    @Column(name = "preco_unitario_net", nullable = false)
+    private Double precoUnitarioNet;
+
+    @Column(name = "taxa_iva", nullable = false)
+    private Double taxaIva;
+
+    @Column(name = "valor_iva_calculado", nullable = false)
+    private Double valorIvaCalculado;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public ItemEncomendaFornecedor() {
     }
 
-    public ItemEncomendaFornecedor(EncomendaFornecedor encomenda, MateriaPrima materiaPrima, Double quantidade, Double precoUnitario) {
+    public ItemEncomendaFornecedor(EncomendaFornecedor encomenda, MateriaPrima materiaPrima, Double quantidade,
+                                   Double precoUnitarioNet, Double taxaIva, Double valorIvaCalculado) {
         this.encomenda = encomenda;
         this.materiaPrima = materiaPrima;
         this.quantidade = quantidade;
-        this.precoUnitario = precoUnitario;
+        this.precoUnitarioNet = precoUnitarioNet;
+        this.taxaIva = taxaIva;
+        this.valorIvaCalculado = valorIvaCalculado;
     }
 
     public UUID getId() {
@@ -80,12 +85,28 @@ public class ItemEncomendaFornecedor {
         this.quantidade = quantidade;
     }
 
-    public Double getPrecoUnitario() {
-        return precoUnitario;
+    public Double getPrecoUnitarioNet() {
+        return precoUnitarioNet;
     }
 
-    public void setPrecoUnitario(Double precoUnitario) {
-        this.precoUnitario = precoUnitario;
+    public void setPrecoUnitarioNet(Double precoUnitarioNet) {
+        this.precoUnitarioNet = precoUnitarioNet;
+    }
+
+    public Double getTaxaIva() {
+        return taxaIva;
+    }
+
+    public void setTaxaIva(Double taxaIva) {
+        this.taxaIva = taxaIva;
+    }
+
+    public Double getValorIvaCalculado() {
+        return valorIvaCalculado;
+    }
+
+    public void setValorIvaCalculado(Double valorIvaCalculado) {
+        this.valorIvaCalculado = valorIvaCalculado;
     }
 
     public Instant getCreatedAt() {

@@ -1,6 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -9,7 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "movimentos_financeiros")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MovimentoFinanceiro {
 
     @Id
@@ -18,11 +16,15 @@ public class MovimentoFinanceiro {
     private UUID id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_movimento", nullable = false, length = 1)
+    @Column(name = "tipo_movimento", nullable = false, length = 20)
     private TipoMovimento tipoMovimento; // E ou S
 
-    @Column(nullable = false)
-    private Double valor;
+    @Column(name = "valor_total", nullable = false)
+    private Double valorTotal;
+
+    @ManyToOne
+    @JoinColumn(name = "moeda_id", nullable = false)
+    private Moeda moeda;
 
     @ManyToOne
     @JoinColumn(name = "id_encomenda_cliente")
@@ -39,10 +41,12 @@ public class MovimentoFinanceiro {
     public MovimentoFinanceiro() {
     }
 
-    public MovimentoFinanceiro(UUID id, TipoMovimento tipoMovimento, Double valor, EncomendaCliente encomendaCliente, EncomendaFornecedor encomendaFornecedor) {
+    public MovimentoFinanceiro(UUID id, TipoMovimento tipoMovimento, Double valorTotal, Moeda moeda,
+                               EncomendaCliente encomendaCliente, EncomendaFornecedor encomendaFornecedor) {
         this.id = id;
         this.tipoMovimento = tipoMovimento;
-        this.valor = valor;
+        this.valorTotal = valorTotal;
+        this.moeda = moeda;
         this.encomendaCliente = encomendaCliente;
         this.encomendaFornecedor = encomendaFornecedor;
     }
@@ -59,12 +63,20 @@ public class MovimentoFinanceiro {
         this.tipoMovimento = tipoMovimento;
     }
 
-    public Double getValor() {
-        return valor;
+    public Double getValorTotal() {
+        return valorTotal;
     }
 
-    public void setValor(Double valor) {
-        this.valor = valor;
+    public void setValorTotal(Double valorTotal) {
+        this.valorTotal = valorTotal;
+    }
+
+    public Moeda getMoeda() {
+        return moeda;
+    }
+
+    public void setMoeda(Moeda moeda) {
+        this.moeda = moeda;
     }
 
     public EncomendaCliente getEncomendaCliente() {

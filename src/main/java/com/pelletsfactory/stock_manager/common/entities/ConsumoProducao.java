@@ -1,7 +1,5 @@
 package com.pelletsfactory.stock_manager.common.entities;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -11,7 +9,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "consumo_producao")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ConsumoProducao {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -20,30 +17,29 @@ public class ConsumoProducao {
 
     @ManyToOne
     @JoinColumn(name = "ordem_id", nullable = false)
-    @JsonBackReference
     private OrdemProducao ordem;
 
     @ManyToOne
     @JoinColumn(name = "materia_prima_id", nullable = false)
     private MateriaPrima materiaPrima;
 
-    @Column(name = "quantidade_consumida", nullable = false)
-    private Double quantidadeConsumida;
+    @Column(name = "quantidade_consumida_real", nullable = false)
+    private Double quantidadeConsumidaReal;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private Instant updatedAt;
     public ConsumoProducao(){
     }
 
-    public ConsumoProducao(OrdemProducao ordem, MateriaPrima materiaPrima, Double quantidadeConsumida) {
+    public ConsumoProducao(OrdemProducao ordem, MateriaPrima materiaPrima, Double quantidadeConsumidaReal) {
         this.ordem = ordem;
         this.materiaPrima = materiaPrima;
-        this.quantidadeConsumida = quantidadeConsumida;
+        this.quantidadeConsumidaReal = quantidadeConsumidaReal;
     }
 
     public UUID getId() {
@@ -66,12 +62,12 @@ public class ConsumoProducao {
         this.materiaPrima = materiaPrima;
     }
 
-    public Double getQuantidadeConsumida() {
-        return quantidadeConsumida;
+    public Double getQuantidadeConsumidaReal() {
+        return quantidadeConsumidaReal;
     }
 
-    public void setQuantidadeConsumida(Double quantidadeConsumida) {
-        this.quantidadeConsumida = quantidadeConsumida;
+    public void setQuantidadeConsumidaReal(Double quantidadeConsumidaReal) {
+        this.quantidadeConsumidaReal = quantidadeConsumidaReal;
     }
 
     public Instant getCreatedAt() {
