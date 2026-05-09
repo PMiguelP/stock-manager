@@ -17,7 +17,7 @@ public class HistoricoCustoProducao {
 
     @ManyToOne
     @JoinColumn(name = "tipo_pellet_id", nullable = false)
-    private TipoPellet matipoPellet;
+    private TipoPellet tipoPellet;
 
     @Column(name = "custo_base_por_kg", nullable = false)
     private Double custoBasePorKg;
