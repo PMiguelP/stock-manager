@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import jakarta.persistence.EntityNotFoundException;
+
 @Service
 public class FinanceiroService {
     private final MovimentoFinanceiroRepository movimentoFinanceiroRepo;
@@ -59,6 +61,12 @@ public class FinanceiroService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Movimento financeiro não encontrado"));
         movimento.setValorTotal(novoValor);
         return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
+    }
+
+    public MovimentoFinanceiroResponseDTO obterMovimentoFinanceiro(UUID movimentoId) {
+        MovimentoFinanceiro movimento = movimentoFinanceiroRepo.findById(movimentoId)
+                .orElseThrow(() -> new EntityNotFoundException("Movimento financeiro não encontrado"));
+        return movimentoMapper.toResponseDTO(movimento);
     }
 
     public org.springframework.data.domain.Page<MovimentoFinanceiroResponseDTO> listarMovimentosFinanceiros(
