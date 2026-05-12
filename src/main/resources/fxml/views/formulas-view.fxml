@@ -4,34 +4,49 @@
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.FormulasController">
-    <VBox spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+           fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.FormulaController">
+
+    <VBox fx:id="vboxContainer" spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+
+        <!-- Header -->
         <HBox alignment="CENTER_LEFT">
             <VBox>
-                <Label text="Formulas" styleClass="title-2"/>
-                <Label text="Recipe versions and quality performance" styleClass="text-muted"/>
+                <Label text="Production Formulas" styleClass="title-2"/>
+                <Label text="Manage product recipes and compositions" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Refresh" onAction="#handleRefresh" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2r-refresh" iconSize="16"/></graphic>
+            <Button text="Create Formula" onAction="#handleAbrirModal" styleClass="accent">
+                <graphic><FontIcon iconLiteral="mdi2p-plus:16"/></graphic>
             </Button>
         </HBox>
 
+        <!-- Filters -->
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField promptText="Search formula code..." prefWidth="320"/>
+            <TextField fx:id="txtFiltroNome" promptText="Search by formula ID or pellet type..." prefWidth="320"/>
+            <ComboBox fx:id="cmbFiltroStatus" prefWidth="150" promptText="Status"/>
+            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
+                <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
+            </Button>
+            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="button-flat">
+                <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
+            </Button>
             <Region HBox.hgrow="ALWAYS"/>
         </HBox>
 
+        <!-- Table -->
         <TableView fx:id="tblFormulas" VBox.vgrow="ALWAYS" styleClass="striped">
             <columns>
-                <TableColumn fx:id="colCode" text="Code" prefWidth="130"/>
-                <TableColumn fx:id="colPelletType" text="Pellet Type" prefWidth="260"/>
-                <TableColumn fx:id="colVersion" text="Version" prefWidth="150"/>
-                <TableColumn fx:id="colYield" text="Yield" prefWidth="150"/>
-                <TableColumn fx:id="colStatus" text="Status" prefWidth="170"/>
+                <TableColumn fx:id="colCodigo" text="Code" prefWidth="130" minWidth="100"/>
+                <TableColumn fx:id="colNome" text="Name" prefWidth="200"/>
+                <TableColumn fx:id="colTipoPellet" text="Pellet Type" prefWidth="200"/>
+                <TableColumn fx:id="colVersao" text="Version" prefWidth="100" minWidth="80" maxWidth="120"/>
+                <TableColumn fx:id="colAtiva" text="Status" prefWidth="120" minWidth="100" maxWidth="150"/>
+                <TableColumn fx:id="colAcoes" text="Actions" prefWidth="80" minWidth="80" maxWidth="80" resizable="false"/>
             </columns>
-            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
         </TableView>
+
     </VBox>
 </StackPane>
-

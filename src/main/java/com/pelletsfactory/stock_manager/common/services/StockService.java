@@ -1,5 +1,6 @@
 package com.pelletsfactory.stock_manager.common.services;
 
+import com.pelletsfactory.stock_manager.common.dto.request.MateriaPrimaRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletDetailsDTO;
@@ -45,6 +46,21 @@ public class StockService {
     }
 
     @Transactional
+    public MateriaPrimaDetailsDTO criarMateriaPrima(MateriaPrimaRequestDTO dto) {
+        MateriaPrima entity = materiaPrimaMapper.toEntity(dto);
+        MateriaPrima saved = materiaPrimaRepo.save(entity);
+        return new MateriaPrimaDetailsDTO(
+                saved.getId(),
+                saved.getNome(),
+                saved.getUnidade(),
+                saved.getStockAtual(),
+                saved.getStockMinimo(),
+                saved.getCreatedAt(),
+                saved.getUpdatedAt()
+        );
+    }
+
+    @Transactional
     public Fornecedor registarFornecedor(Fornecedor fornecedor) {
         // TODO: Regista novo fornecedor e retorna o Fornecedor criado
         return new Fornecedor();
@@ -64,6 +80,10 @@ public class StockService {
 
     public int verificarAlertasStock() {
         return 0; //TODO vai retornar uma lista com o stock abaixo do minimo
+    }
+
+    public long contarMateriasAbaixoMinimo() {
+        return materiaPrimaRepo.countBelowMinimumStock();
     }
 
 

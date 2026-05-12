@@ -142,7 +142,10 @@ public class FormulaProducaoService {
      * Obter por ID
      */
     public FormulaProducaoResponseDTO buscarPorId(UUID id) {
-        FormulaProducao formula = buscarPorIdOuFalhar(id);
+        FormulaProducao formula = formulaRepo.findByIdWithComposicao(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Fórmula de produção não encontrada com ID: " + id
+                ));
         return mapper.toResponseDTO(formula);
     }
 

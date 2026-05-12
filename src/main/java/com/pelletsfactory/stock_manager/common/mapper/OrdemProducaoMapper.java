@@ -109,6 +109,7 @@ public class OrdemProducaoMapper {
                         .map(l -> new com.pelletsfactory.stock_manager.common.dto.response.LotePelletSimpleDTO(
                             l.getId(),
                             l.getCodigoLote(),
+                            l.getTipoPellet() != null ? l.getTipoPellet().getNome() : null,
                             l.getQuantidadeKg(),
                             l.getDataProducao() != null ? l.getDataProducao().atZone(ZoneId.systemDefault()).toLocalDateTime() : null,
                             l.getLocalizacaoArmazem()

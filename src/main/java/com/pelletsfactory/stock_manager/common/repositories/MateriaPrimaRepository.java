@@ -16,4 +16,7 @@ public interface MateriaPrimaRepository extends JpaRepository<MateriaPrima, UUID
     Page<MateriaPrima> findByFiltros(@Param("nome") String nome,
                                     @Param("unidade") String unidade,
                                     Pageable pageable);
+
+    @Query("SELECT COUNT(m) FROM MateriaPrima m WHERE m.stockAtual < m.stockMinimo")
+    long countBelowMinimumStock();
 }

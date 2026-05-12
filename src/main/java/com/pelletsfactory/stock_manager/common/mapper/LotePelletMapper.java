@@ -6,7 +6,6 @@ import com.pelletsfactory.stock_manager.common.dto.response.LotePelletSimpleDTO;
 import com.pelletsfactory.stock_manager.common.entities.LotePellet;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -64,6 +63,7 @@ public class LotePelletMapper {
         return new LotePelletSimpleDTO(
                 entity.getId(),
                 entity.getCodigoLote(),
+                entity.getTipoPellet() != null ? entity.getTipoPellet().getNome() : null,
                 entity.getQuantidadeKg(),
                 dataProducao,
                 entity.getLocalizacaoArmazem()

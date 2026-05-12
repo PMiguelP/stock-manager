@@ -6,6 +6,7 @@ import java.util.UUID;
 public record LotePelletSimpleDTO(
     UUID id,
     String codigoLote,
+    String tipoPelletNome,
     Double quantidadeKg,
     LocalDateTime dataProducao,
     String localizacaoArmazem
