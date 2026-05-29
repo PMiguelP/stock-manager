@@ -70,10 +70,17 @@ public class FuncionarioController {
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
         configurarTabela();
         configurarComboBoxes();
         configurarDrawerAdicionar(); // Configura o drawer de criação com 550px
         carregarFuncionarios();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -160,6 +167,10 @@ public class FuncionarioController {
         } catch (Exception e) {
             mostrarErro("Erro ao carregar: " + e.getMessage());
         }
+    }
+
+    public void openCreateModal() {
+        handleAbrirModal();
     }
 
     @FXML

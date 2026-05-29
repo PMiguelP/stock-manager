@@ -50,8 +50,15 @@ public class ClientsController {
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
         configurarTabela();
         carregarDados();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -292,4 +299,3 @@ public class ClientsController {
         handleFiltrar();
     }
 }
-

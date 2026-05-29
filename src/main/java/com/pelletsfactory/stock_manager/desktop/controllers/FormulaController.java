@@ -70,10 +70,17 @@ public class FormulaController {
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
         configurarTabela();
         configurarComboBoxes();
         configurarDrawerAdicionar();
         carregarFormulas();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -735,4 +742,3 @@ public class FormulaController {
         public String toString() { return nome; }
     }
 }
-

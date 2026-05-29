@@ -7,6 +7,7 @@ public record OrdemProducaoRequestDTO(
         UUID funcionarioId,
         UUID formulaId,
         Double quantidadePlaneada,
+        Double quantidadeProduzidaReal,
         String dataInicio,
         String estado
 ) {
@@ -23,6 +24,10 @@ public record OrdemProducaoRequestDTO(
 
         if (quantidadePlaneada == null || quantidadePlaneada <= 0) {
             throw new IllegalArgumentException("A quantidade planeada deve ser superior a zero");
+        }
+
+        if (quantidadeProduzidaReal != null && quantidadeProduzidaReal < 0) {
+            throw new IllegalArgumentException("A quantidade produzida real não pode ser negativa");
         }
 
         if (dataInicio == null || dataInicio.isBlank()) {

@@ -1,93 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.geometry.Insets?>
 
 <StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.StockController">
 
-    <VBox fx:id="vboxContainer" spacing="25" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+    <VBox fx:id="vboxContainer" spacing="18" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
 
         <!-- Header -->
-        <VBox spacing="5">
-            <Label text="Stock Management" styleClass="title-2"/>
-            <Label text="Monitor and control inventory levels" styleClass="text-muted"/>
-        </VBox>
-
-        <!-- DASHBOARD CARDS -->
-        <HBox spacing="20">
-            <!-- Current Stock -->
-            <VBox HBox.hgrow="ALWAYS" spacing="10" style="-fx-padding: 20; -fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;">
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <FontIcon iconLiteral="mdi2p-package-variant" iconSize="20" style="-fx-icon-color: -color-accent-fg;"/>
-                    <Label text="Current Stock Level" styleClass="text-muted"/>
-                </HBox>
-                <Label fx:id="lblCurrentStock" text="2,850 tons" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <HBox alignment="CENTER_LEFT" spacing="15">
+            <VBox spacing="4">
+                <Label text="Stock" styleClass="title-2"/>
+                <Label text="Inventário, movimentos e disponibilidade" styleClass="text-muted"/>
             </VBox>
-
-            <!-- Min Threshold -->
-            <VBox HBox.hgrow="ALWAYS" spacing="10" style="-fx-padding: 20; -fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;">
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <FontIcon iconLiteral="mdi2c-chart-bell-curve-cumulative" iconSize="20" style="-fx-icon-color: -color-warning-fg;"/>
-                    <Label text="Minimum Stock Threshold" styleClass="text-muted"/>
-                </HBox>
-                <Label fx:id="lblMinThreshold" text="3,000 tons" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
-            </VBox>
-
-            <!-- Available -->
-            <VBox HBox.hgrow="ALWAYS" spacing="10" style="-fx-padding: 20; -fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;">
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <FontIcon iconLiteral="mdi2t-trending-up" iconSize="20" style="-fx-icon-color: -color-success-fg;"/>
-                    <Label text="Available for Orders" styleClass="text-muted"/>
-                </HBox>
-                <Label fx:id="lblAvailableStock" text="2,350 tons" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
-            </VBox>
-
-            <!-- Reserved -->
-            <VBox HBox.hgrow="ALWAYS" spacing="10" style="-fx-padding: 20; -fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;">
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <FontIcon iconLiteral="mdi2a-alert-circle-outline" iconSize="20" style="-fx-icon-color: -color-danger-fg;"/>
-                    <Label text="Reserved Stock" styleClass="text-muted"/>
-                </HBox>
-                <Label fx:id="lblReservedStock" text="500 tons" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
-            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnAdjustStock" text="Ajustar" onAction="#handleAdjustStock" styleClass="accent" prefHeight="40"/>
+            <Button fx:id="btnStockEntry" text="Entrada" onAction="#handleStockEntry" styleClass="success" prefHeight="40"/>
+            <Button fx:id="btnStockExit" text="Saída" onAction="#handleStockExit" styleClass="danger" prefHeight="40"/>
         </HBox>
 
-        <!-- STOCK ACTIONS -->
-        <VBox spacing="15">
-            <Label text="Stock Actions" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
-            <HBox spacing="15">
-                <Button text="Adjust Stock" onAction="#handleAdjustStock"
-                        style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;"/>
-                <Button text="Register Stock Entry" onAction="#handleStockEntry"
-                        style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;"/>
-                <Button text="Register Stock Exit" onAction="#handleStockExit"
-                        style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;"/>
+        <!-- Summary -->
+        <GridPane hgap="14" vgap="14">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+            </columnConstraints>
+
+            <VBox spacing="12" maxWidth="Infinity" GridPane.columnIndex="0" GridPane.hgrow="ALWAYS"
+                  style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <StackPane fx:id="iconCurrentStock"/>
+                    <Label text="Stock atual" styleClass="text-muted"/>
+                </HBox>
+                <Label fx:id="lblCurrentStock" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+            </VBox>
+
+            <VBox spacing="12" maxWidth="Infinity" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS"
+                  style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <StackPane fx:id="iconMinThreshold"/>
+                    <Label text="Stock mínimo" styleClass="text-muted"/>
+                </HBox>
+                <Label fx:id="lblMinThreshold" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+            </VBox>
+
+            <VBox spacing="12" maxWidth="Infinity" GridPane.columnIndex="2" GridPane.hgrow="ALWAYS"
+                  style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <StackPane fx:id="iconAvailableStock"/>
+                    <Label text="Disponível" styleClass="text-muted"/>
+                </HBox>
+                <Label fx:id="lblAvailableStock" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+            </VBox>
+
+            <VBox spacing="12" maxWidth="Infinity" GridPane.columnIndex="3" GridPane.hgrow="ALWAYS"
+                  style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <StackPane fx:id="iconReservedStock"/>
+                    <Label text="Reservado" styleClass="text-muted"/>
+                </HBox>
+                <Label fx:id="lblReservedStock" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+            </VBox>
+        </GridPane>
+
+        <!-- Filters -->
+        <VBox spacing="12" style="-fx-padding: 16; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Movimentos" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <ComboBox fx:id="cmbFiltroTipo" prefWidth="190" promptText="Tipo"/>
+                <ComboBox fx:id="cmbFiltroMoeda" prefWidth="150" promptText="Unidade"/>
+                <Button fx:id="btnFilter" text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined"/>
+                <Button fx:id="btnClear" text="Limpar" onAction="#handleMostrarTodos" styleClass="flat"/>
             </HBox>
         </VBox>
-
-        <Separator/>
-
-        <!-- FILTERS -->
-        <HBox spacing="10" alignment="CENTER_LEFT">
-            <ComboBox fx:id="cmbFiltroTipo" prefWidth="200" promptText="Filtrar por Tipo"/>
-            <ComboBox fx:id="cmbFiltroMoeda" prefWidth="150" promptText="Filtrar por Moeda"/>
-            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
-            </Button>
-            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="button-flat">
-                <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
-            </Button>
-            <Region HBox.hgrow="ALWAYS"/>
-        </HBox>
 
         <!-- TABLE -->
         <TableView fx:id="tblMovimentos" VBox.vgrow="ALWAYS" styleClass="striped">
             <columns>
                 <TableColumn fx:id="colTipo" text="Tipo" prefWidth="150"/>
-                <TableColumn fx:id="colValor" text="Quantidade/Valor" prefWidth="150"/>
-                <TableColumn fx:id="colMoeda" text="Moeda/Unidade" prefWidth="100"/>
+                <TableColumn fx:id="colValor" text="Quantidade" prefWidth="150"/>
+                <TableColumn fx:id="colMoeda" text="Unidade" prefWidth="100"/>
                 <TableColumn fx:id="colData" text="Data" prefWidth="180"/>
                 <TableColumn fx:id="colAcoes" text="Ações" prefWidth="80" resizable="false"/>
             </columns>

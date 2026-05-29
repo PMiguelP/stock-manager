@@ -11,7 +11,10 @@ public record NotificacaoSimpleDTO(
         TipoEventoNotificacao tipoEvento,
         Cargo cargoAlvo,
         Boolean lida,
+        Boolean requerAcao,
+        Boolean concluida,
+        String concluidaPorNome,
+        Instant concluidaEm,
         Instant createdAt
 ) {
 }
-

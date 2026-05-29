@@ -9,6 +9,7 @@ public record NotificacaoRequestDTO(
         String mensagem,
         TipoEventoNotificacao tipoEvento,
         Cargo cargoAlvo,
+        Boolean requerAcao,
         UUID linkReferencia
 ) {
     public NotificacaoRequestDTO {

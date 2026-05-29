@@ -18,7 +18,7 @@
         <ImageView fx:id="sidebarLogoImage" fitWidth="170" preserveRatio="true" smooth="true" pickOnBounds="true"/>
     </VBox>
 
-    <Label text="MAIN" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
+    <Label fx:id="lblMainSection" text="sidebar.main" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
     <ToggleButton fx:id="btnDashboard" text="Dashboard" onAction="#handleDashboard" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
@@ -56,7 +56,7 @@
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <Label text="PROCUREMENT" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
+    <Label fx:id="lblProcurementSection" text="sidebar.procurement" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
     <ToggleButton fx:id="btnSuppliers" text="Suppliers" onAction="#handleSuppliers" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
@@ -76,7 +76,7 @@
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <Label text="PRODUCT CATALOG" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
+    <Label fx:id="lblCatalogSection" text="sidebar.catalog" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
     <ToggleButton fx:id="btnPelletTypes" text="Pellet Types" onAction="#handlePelletTypes" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
@@ -106,7 +106,7 @@
 
     <Separator style="-fx-padding: 5 0 5 0;"/>
 
-    <Button fx:id="btnSair" text="Sair" onAction="#handleSair" maxWidth="Infinity" focusTraversable="false"
+    <Button fx:id="btnSair" text="Logout" onAction="#handleSair" maxWidth="Infinity" focusTraversable="false"
             alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2l-logout" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>

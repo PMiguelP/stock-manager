@@ -5,33 +5,48 @@
 
 <StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.ProductionController">
-    <VBox spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
-        <HBox alignment="CENTER_LEFT">
-            <VBox>
-                <Label text="Production" styleClass="title-2"/>
-                <Label text="Monitor active production lines and shifts" styleClass="text-muted"/>
+
+    <VBox fx:id="vboxContainer" spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
+
+        <!-- Header -->
+        <HBox alignment="CENTER_LEFT" spacing="15">
+            <VBox spacing="4">
+                <Label text="Ordens de Produção" styleClass="title-2"/>
+                <Label text="Gerir e monitorizar ordens de produção" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Refresh" onAction="#handleRefresh" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2r-refresh" iconSize="16"/></graphic>
+            <Button text="Nova Ordem" onAction="#handleAbrirModal" styleClass="accent">
+                <graphic><FontIcon iconLiteral="mdi2p-plus" iconSize="16"/></graphic>
             </Button>
         </HBox>
 
+        <!-- Filters -->
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField promptText="Search by batch or line..." prefWidth="320"/>
-            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Estado:" style="-fx-text-fill: -color-fg-muted;"/>
+            <ComboBox fx:id="cmbEstadoFiltro" prefWidth="180" onAction="#handleFiltrar"/>
+            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
+                <graphic><FontIcon iconLiteral="mdi2f-filter-outline" iconSize="16"/></graphic>
+            </Button>
+            <Button text="Limpar" onAction="#handleLimpar">
+                <graphic><FontIcon iconLiteral="mdi2c-close" iconSize="16"/></graphic>
+            </Button>
         </HBox>
 
-        <TableView fx:id="tblProduction" VBox.vgrow="ALWAYS" styleClass="striped">
+        <!-- Table -->
+        <TableView fx:id="tblOrdens" VBox.vgrow="ALWAYS" styleClass="striped">
             <columns>
-                <TableColumn fx:id="colBatch" text="Batch" prefWidth="190"/>
-                <TableColumn fx:id="colLine" text="Line" prefWidth="170"/>
-                <TableColumn fx:id="colShift" text="Shift" prefWidth="170"/>
-                <TableColumn fx:id="colStatus" text="Status" prefWidth="180"/>
-                <TableColumn fx:id="colOutput" text="Output" prefWidth="170"/>
+                <TableColumn fx:id="colTipoPellet"  text="Tipo Pellet"       prefWidth="180"/>
+                <TableColumn fx:id="colFuncionario"  text="Operador"          prefWidth="160"/>
+                <TableColumn fx:id="colDataInicio"   text="Data Início"       prefWidth="140"/>
+                <TableColumn fx:id="colQtdPlaneada"  text="Planeado (kg)"     prefWidth="120"/>
+                <TableColumn fx:id="colQtdProduzida" text="Produzido (kg)"    prefWidth="120"/>
+                <TableColumn fx:id="colEstado"       text="Estado"            prefWidth="150"/>
+                <TableColumn fx:id="colAcoes"        text="Ações"             prefWidth="80"/>
             </columns>
-            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
         </TableView>
+
     </VBox>
 </StackPane>
-

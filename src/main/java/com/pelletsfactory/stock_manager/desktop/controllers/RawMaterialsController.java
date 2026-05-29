@@ -4,6 +4,7 @@ import com.pelletsfactory.stock_manager.common.dto.request.MateriaPrimaRequestDT
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import javafx.beans.property.SimpleObjectProperty;
@@ -29,6 +30,7 @@ public class RawMaterialsController {
     private final StockService stockService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private VBox vboxContainer;
     @FXML private HBox alertBox;
@@ -61,18 +63,31 @@ public class RawMaterialsController {
 
     public RawMaterialsController(StockService stockService,
                                   NavigationService navigationService,
-                                  ToastService toastService) {
+                                  ToastService toastService,
+                                  I18nService i18nService) {
         this.stockService = stockService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        cmbFiltroStatus.setItems(FXCollections.observableArrayList("Normal", "Low", "Critical"));
+        resetPaginationControls();
+        cmbFiltroStatus.setItems(FXCollections.observableArrayList(
+                i18nService.translate("Normal"),
+                i18nService.translate("Low"),
+                i18nService.translate("Critical")
+        ));
         configurarTabela();
         configurarDrawerAdicionar();
         carregarMaterias();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -144,7 +159,8 @@ public class RawMaterialsController {
             for (int i = 0; i < page.getContent().size(); i++) {
                 MateriaPrimaSimpleDTO item = page.getContent().get(i);
                 String status = calcularStatus(item.stockAtual(), item.stockMinimo());
-                if (cmbFiltroStatus.getValue() == null || cmbFiltroStatus.getValue().equalsIgnoreCase(status)) {
+                String statusLabel = i18nService.translate(status);
+                if (cmbFiltroStatus.getValue() == null || cmbFiltroStatus.getValue().equalsIgnoreCase(statusLabel)) {
                     rows.add(MateriaPrimaRow.from(item, paginaAtual, itemsPerPage, i, status));
                 }
             }
@@ -165,7 +181,7 @@ public class RawMaterialsController {
         if (count > 0) {
             alertBox.setVisible(true);
             alertBox.setManaged(true);
-            lblAlertCount.setText(count + " raw materials are below minimum stock threshold");
+            lblAlertCount.setText(count + " " + i18nService.translate("raw materials are below minimum stock threshold"));
         } else {
             alertBox.setVisible(false);
             alertBox.setManaged(false);
@@ -201,7 +217,7 @@ public class RawMaterialsController {
         };
         b.setStyle(b.getStyle() + String.format("-fx-background-color: %s20; -fx-border-color: %s;",
                 color.replace("#", ""), color));
-        Label l = new Label(status);
+        Label l = new Label(i18nService.translate(status));
         l.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
         b.getChildren().add(l);
         return b;
@@ -369,11 +385,11 @@ public class RawMaterialsController {
 
     private void handleAdicionar() {
         if (txtNomeAdicionar.getText().isBlank()) {
-            mostrarErro("Nome da matéria-prima é obrigatório");
+            mostrarErro(i18nService.translate("Nome da matéria-prima é obrigatório"));
             return;
         }
         if (cmbUnidadeAdicionar.getValue() == null || cmbUnidadeAdicionar.getValue().isBlank()) {
-            mostrarErro("Unidade da matéria-prima é obrigatória");
+            mostrarErro(i18nService.translate("Unidade da matéria-prima é obrigatória"));
             return;
         }
 
@@ -391,9 +407,9 @@ public class RawMaterialsController {
             paginaAtual = 0;
             carregarMaterias();
             navigationService.hideModal();
-            mostrarSucesso("Matéria-prima criada!");
+            mostrarSucesso(i18nService.translate("Matéria-prima criada!"));
         } catch (Exception e) {
-            mostrarErro("Erro ao criar matéria-prima: " + e.getMessage());
+            mostrarErro(i18nService.translate("Erro ao criar matéria-prima: ") + e.getMessage());
         }
     }
 
@@ -413,7 +429,7 @@ public class RawMaterialsController {
             MateriaPrimaDetailsDTO d = stockService.obterDetalhesMateriaPrima(row.id());
             navigationService.showModal(criarDrawerDetalhes(d));
         } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
+            mostrarErro(i18nService.translate("Erro ao obter detalhes: ") + e.getMessage());
         }
     }
 
@@ -465,11 +481,11 @@ public class RawMaterialsController {
     }
 
     private void mostrarErro(String m) {
-        toastService.showError("Erro", m);
+        toastService.showError(i18nService.translate("Erro"), m);
     }
 
     private void mostrarSucesso(String m) {
-        toastService.showSuccess("Sucesso", m);
+        toastService.showSuccess(i18nService.translate("Sucesso"), m);
     }
 
     private record MateriaPrimaRow(
@@ -498,4 +514,3 @@ public class RawMaterialsController {
         }
     }
 }
-

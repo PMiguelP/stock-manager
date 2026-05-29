@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -172,13 +173,90 @@ public class ThemePreferencesService {
         String baseStyle = (String) root.getProperties().computeIfAbsent(BASE_STYLE_KEY,
                 key -> root.getStyle() == null ? "" : root.getStyle());
 
-        String managedStyle = String.format(
-                "-color-accent: %s; -color-accent-emphasis: %s; -color-accent-fg: white;",
-                accentHex,
-                accentHex
-        );
+        String managedStyle = buildAccentStyle();
 
         root.setStyle(baseStyle + (baseStyle.isBlank() ? "" : ";") + managedStyle);
     }
-}
 
+    private String buildAccentStyle() {
+        int[] rgb = parseHexColor(accentHex);
+
+        String subtle = isDarkThemeEffective()
+                ? rgba(rgb, 0.16)
+                : rgba(rgb, 0.18);
+
+        return String.format(Locale.ROOT,
+                "-color-accent-0: %s;" +
+                        "-color-accent-1: %s;" +
+                        "-color-accent-2: %s;" +
+                        "-color-accent-3: %s;" +
+                        "-color-accent-4: %s;" +
+                        "-color-accent-5: %s;" +
+                        "-color-accent-6: %s;" +
+                        "-color-accent-7: %s;" +
+                        "-color-accent-8: %s;" +
+                        "-color-accent-9: %s;" +
+                        "-color-accent: %s;" +
+                        "-color-accent-fg: %s;" +
+                        "-color-accent-emphasis: %s;" +
+                        "-color-accent-muted: %s;" +
+                        "-color-accent-subtle: %s;",
+                mix(rgb, 255, 255, 255, 0.88),
+                mix(rgb, 255, 255, 255, 0.72),
+                mix(rgb, 255, 255, 255, 0.52),
+                mix(rgb, 255, 255, 255, 0.32),
+                mix(rgb, 255, 255, 255, 0.14),
+                accentHex,
+                mix(rgb, 0, 0, 0, 0.14),
+                mix(rgb, 0, 0, 0, 0.28),
+                mix(rgb, 0, 0, 0, 0.44),
+                mix(rgb, 0, 0, 0, 0.60),
+                accentHex,
+                isDarkThemeEffective() ? mix(rgb, 255, 255, 255, 0.35) : mix(rgb, 0, 0, 0, 0.10),
+                accentHex,
+                rgba(rgb, 0.42),
+                subtle
+        );
+    }
+
+    private int[] parseHexColor(String hex) {
+        String normalized = hex == null ? "" : hex.trim();
+        if (normalized.startsWith("#")) {
+            normalized = normalized.substring(1);
+        }
+
+        if (normalized.length() != 6) {
+            return new int[]{76, 122, 242};
+        }
+
+        try {
+            return new int[]{
+                    Integer.parseInt(normalized.substring(0, 2), 16),
+                    Integer.parseInt(normalized.substring(2, 4), 16),
+                    Integer.parseInt(normalized.substring(4, 6), 16)
+            };
+        } catch (NumberFormatException ignored) {
+            return new int[]{76, 122, 242};
+        }
+    }
+
+    private String mix(int[] rgb, int targetRed, int targetGreen, int targetBlue, double amount) {
+        int red = clamp((int) Math.round(rgb[0] + (targetRed - rgb[0]) * amount));
+        int green = clamp((int) Math.round(rgb[1] + (targetGreen - rgb[1]) * amount));
+        int blue = clamp((int) Math.round(rgb[2] + (targetBlue - rgb[2]) * amount));
+        return String.format(Locale.ROOT, "#%02X%02X%02X", red, green, blue);
+    }
+
+    private String rgba(int[] rgb, double alpha) {
+        return String.format(Locale.ROOT, "rgba(%d, %d, %d, %.2f)",
+                clamp(rgb[0]),
+                clamp(rgb[1]),
+                clamp(rgb[2]),
+                Math.max(0.0, Math.min(1.0, alpha))
+        );
+    }
+
+    private int clamp(int value) {
+        return Math.max(0, Math.min(255, value));
+    }
+}

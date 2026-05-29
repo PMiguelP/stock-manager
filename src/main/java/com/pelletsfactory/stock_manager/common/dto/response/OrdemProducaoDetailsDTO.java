@@ -7,21 +7,22 @@ import java.util.List;
 import java.util.UUID;
 
 public record OrdemProducaoDetailsDTO(
-    UUID id,
-    UUID tipoPelletId,
-    String tipoPelletNome,
-    UUID funcionarioId,
-    String funcionarioNome,
-    UUID formulaId,
-    String formulaNome,
-    Double quantidadePlaneada,
-    Double quantidadeProduzidaReal,
-    Instant dataInicio,
-    Instant dataFim,
-    EstadoOrdemProducao estado,
-    List<ConsumoResponseDTO> consumos,
-    List<LotePelletSimpleDTO> lotes,
-    Instant createdAt,
-    Instant updatedAt
+        UUID id,
+        UUID tipoPelletId,
+        String tipoPelletNome,
+        UUID funcionarioId,
+        String funcionarioNome,
+        UUID formulaId,
+        String formulaNome,
+        Double quantidadePlaneada,
+        Double quantidadeProduzidaReal,
+        Instant dataInicio,
+        Instant dataFim,
+        EstadoOrdemProducao estado,
+        List<ConsumoResponseDTO> consumos,
+        List<LotePelletSimpleDTO> lotes,
+        List<AlocacaoSimpleDTO> encomendas,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

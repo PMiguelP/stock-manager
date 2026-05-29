@@ -95,16 +95,6 @@
                         <Label text="Language" />
                         <ComboBox fx:id="cmbLanguage" maxWidth="Infinity" prefHeight="44" />
                     </VBox>
-
-                    <VBox spacing="8">
-                        <Label text="Timezone" />
-                        <ComboBox fx:id="cmbTimezone" maxWidth="Infinity" prefHeight="44" />
-                    </VBox>
-
-                    <VBox spacing="8">
-                        <Label text="Date Format" />
-                        <ComboBox fx:id="cmbDateFormat" maxWidth="Infinity" prefHeight="44" />
-                    </VBox>
                 </VBox>
 
                 <VBox fx:id="securitySection" spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
@@ -116,7 +106,7 @@
                     <VBox spacing="8">
                         <Label text="Current PIN" />
                         <HBox fx:id="currentPinBox" alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 12 0 12;">
-                            <FontIcon fx:id="currentPinIcon" iconLiteral="mdi2l-lock-outline" iconSize="16" />
+                            <StackPane fx:id="currentPinIcon" />
                             <PasswordField fx:id="txtCurrentPin" maxWidth="Infinity" promptText="Enter current PIN" HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>
@@ -124,7 +114,7 @@
                     <VBox spacing="8">
                         <Label text="New PIN" />
                         <HBox fx:id="newPinBox" alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 12 0 12;">
-                            <FontIcon fx:id="newPinIcon" iconLiteral="mdi2k-key-outline" iconSize="16" />
+                            <StackPane fx:id="newPinIcon" />
                             <PasswordField fx:id="txtNewPin" maxWidth="Infinity" promptText="Enter new PIN" HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>

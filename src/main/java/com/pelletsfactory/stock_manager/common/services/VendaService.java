@@ -80,7 +80,7 @@ public class VendaService {
      */
     @Transactional
     public ClienteResponseDTO registarCliente(String nome, String nif, String contacto, String email) {
-        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
 
         // Validar NIF único
         if (clienteRepo.existsByNif(nif)) {

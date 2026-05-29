@@ -13,8 +13,11 @@ public record NotificacaoResponseDTO(
     TipoEventoNotificacao tipoEvento,
     Cargo cargoAlvo,
     Boolean lida,
+    Boolean requerAcao,
+    Boolean concluida,
+    String concluidaPorNome,
+    Instant concluidaEm,
     UUID linkReferencia,
     Instant createdAt
 ) {
 }
-

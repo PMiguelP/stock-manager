@@ -23,7 +23,7 @@ import java.util.UUID;
 
 @Service
 public class OrdemProducaoService {
-    
+
     private final OrdemProducaoRepository ordemRepo;
     private final FuncionarioRepository funcRepo;
     private final TipoPelletRepository tipoPelletRepo;
@@ -95,6 +95,21 @@ public class OrdemProducaoService {
             throw new IllegalArgumentException("Não é possível atualizar uma ordem concluída");
         }
 
+        Funcionario funcionario = buscarFuncionarioOuFalhar(dto.funcionarioId());
+        TipoPellet tipoPellet = buscarTipoPelletOuFalhar(dto.tipoPelletId());
+        FormulaProducao formula = buscarFormulaOuFalhar(dto.formulaId());
+
+        if (!formula.getTipoPellet().getId().equals(tipoPellet.getId())) {
+            throw new IllegalArgumentException(
+                    "A fórmula selecionada não corresponde ao tipo de pellet"
+            );
+        }
+
+        validarStockMateriasParaProducao(formula, dto.quantidadePlaneada());
+
+        ordem.setTipoPellet(tipoPellet);
+        ordem.setFuncionario(funcionario);
+        ordem.setFormula(formula);
         mapper.updateEntityFromDTO(dto, ordem);
         OrdemProducao updated = ordemRepo.save(ordem);
         return mapper.toResponseDTO(updated);
@@ -198,6 +213,7 @@ public class OrdemProducaoService {
     /**
      * Obter detalhes completos
      */
+    @Transactional
     public OrdemProducaoDetailsDTO obterDetalhes(UUID id) {
         OrdemProducao ordem = ordemRepo.findByIdWithDetalhes(id)
                 .orElse(buscarPorIdOuFalhar(id));

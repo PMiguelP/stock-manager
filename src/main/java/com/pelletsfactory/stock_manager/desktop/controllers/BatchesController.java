@@ -1,15 +1,13 @@
 package com.pelletsfactory.stock_manager.desktop.controllers;
 
 import com.pelletsfactory.stock_manager.common.dto.request.LotePelletRequestDTO;
-import com.pelletsfactory.stock_manager.common.dto.response.LotePelletResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.LotePelletSimpleDTO;
-import com.pelletsfactory.stock_manager.common.dto.response.OrdemProducaoResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.OrdemProducaoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.services.LotePelletService;
 import com.pelletsfactory.stock_manager.common.services.OrdemProducaoService;
-import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -17,35 +15,44 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.StringConverter;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Component
 public class BatchesController {
 
-    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-    private final LotePelletService loteService;
-    private final OrdemProducaoService ordemService;
-    private final StockService stockService;
+    private final LotePelletService lotePelletService;
+    private final OrdemProducaoService ordemProducaoService;
     private final NavigationService navigationService;
+    private final FormValidationService formValidationService;
     private final ToastService toastService;
 
     @FXML private VBox vboxContainer;
     @FXML private TextField txtFiltroCodigo;
-    @FXML private TableView<LoteRow> tblBatches;
-    @FXML private TableColumn<LoteRow, String> colCodigo;
-    @FXML private TableColumn<LoteRow, String> colTipoPellet;
-    @FXML private TableColumn<LoteRow, String> colData;
-    @FXML private TableColumn<LoteRow, String> colQuantidade;
-    @FXML private TableColumn<LoteRow, String> colLocalizacao;
-    @FXML private TableColumn<LoteRow, Void> colAcoes;
+    @FXML private TableView<LotePelletSimpleDTO> tblLotes;
+    @FXML private TableColumn<LotePelletSimpleDTO, String> colCodigo;
+    @FXML private TableColumn<LotePelletSimpleDTO, String> colTipoPellet;
+    @FXML private TableColumn<LotePelletSimpleDTO, Double> colQuantidade;
+    @FXML private TableColumn<LotePelletSimpleDTO, String> colDataProducao;
+    @FXML private TableColumn<LotePelletSimpleDTO, String> colLocalizacao;
+    @FXML private TableColumn<LotePelletSimpleDTO, Void> colAcoes;
+
+    // Drawer fields
+    private VBox drawerRoot;
+    private ComboBox<OrdemProducaoSimpleDTO> cmbOrdem;
+    private Label lblTipoPelletNome;
+    private TextField txtCodigoLote;
+    private TextField txtQuantidadeKg;
+    private TextField txtLocalizacao;
+    private Label lblErroOrdem;
+    private Label lblErroCodigo;
+    private Label lblErroQuantidade;
+    private UUID selectedTipoPelletId;
 
     private Label lblPaginaStatus;
     private ComboBox<Integer> cmbItemsPerPage;
@@ -54,36 +61,334 @@ public class BatchesController {
     private int paginaAtual = 0;
     private int totalPaginas = 0;
 
-    private VBox drawerRoot;
-    private ComboBox<OrdemItem> cmbOrdem;
-    private ComboBox<TipoPelletItem> cmbTipoPellet;
-    private TextField txtCodigo;
-    private TextField txtQuantidade;
-    private TextField txtLocalizacao;
+    private final ObservableList<LotePelletSimpleDTO> lotes = FXCollections.observableArrayList();
+    private static final DateTimeFormatter DT_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private final ObservableList<LoteRow> data = FXCollections.observableArrayList();
-
-    public BatchesController(LotePelletService loteService,
-                             OrdemProducaoService ordemService,
-                             StockService stockService,
+    public BatchesController(LotePelletService lotePelletService,
+                             OrdemProducaoService ordemProducaoService,
                              NavigationService navigationService,
+                             FormValidationService formValidationService,
                              ToastService toastService) {
-        this.loteService = loteService;
-        this.ordemService = ordemService;
-        this.stockService = stockService;
+        this.lotePelletService = lotePelletService;
+        this.ordemProducaoService = ordemProducaoService;
         this.navigationService = navigationService;
+        this.formValidationService = formValidationService;
         this.toastService = toastService;
     }
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
         configurarTabela();
-        configurarDrawerAdicionar();
+        configurarDrawer();
         carregarLotes();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
+    }
+
+    // ── Table ────────────────────────────────────────────────────────────────
+
+    private void configurarTabela() {
+        colCodigo.setCellValueFactory(cd -> new javafx.beans.property.SimpleStringProperty(cd.getValue().codigoLote()));
+        configurarColunaTexto(colCodigo);
+
+        // tipoPellet not in SimpleDTO — leave blank; resolved in drawer
+        colTipoPellet.setCellValueFactory(cd -> new javafx.beans.property.SimpleStringProperty("—"));
+        configurarColunaTexto(colTipoPellet);
+
+        colQuantidade.setCellValueFactory(cd -> new javafx.beans.property.SimpleObjectProperty<>(cd.getValue().quantidadeKg()));
+        colQuantidade.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(Double item, boolean empty) {
+                super.updateItem(item, empty);
+                setText((empty || item == null) ? null : String.format("%.2f", item));
+                setPadding(new Insets(8, 10, 8, 10));
+                setAlignment(Pos.CENTER_LEFT);
+            }
+        });
+
+        colDataProducao.setCellValueFactory(cd -> {
+            var dt = cd.getValue().dataProducao();
+            return new javafx.beans.property.SimpleStringProperty(dt != null ? dt.format(DT_FORMATTER) : "—");
+        });
+        configurarColunaTexto(colDataProducao);
+
+        colLocalizacao.setCellValueFactory(cd -> {
+            String loc = cd.getValue().localizacaoArmazem();
+            return new javafx.beans.property.SimpleStringProperty(loc != null ? loc : "—");
+        });
+        configurarColunaTexto(colLocalizacao);
+
+        colAcoes.setCellFactory(param -> new TableCell<>() {
+            private final Button btnDel = new Button();
+            {
+                btnDel.getStyleClass().addAll("button-icon", "flat");
+                btnDel.setGraphic(new FontIcon("mdi2t-trash-can-outline:18"));
+                btnDel.setTooltip(new Tooltip("Eliminar Lote"));
+                btnDel.setOnAction(ev -> {
+                    LotePelletSimpleDTO lote = getTableView().getItems().get(getIndex());
+                    handleEliminarLote(lote);
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btnDel);
+                setAlignment(Pos.CENTER);
+            }
+        });
+
+        tblLotes.setFixedCellSize(48);
+        tblLotes.setItems(lotes);
+    }
+
+    private <T> void configurarColunaTexto(TableColumn<LotePelletSimpleDTO, T> col) {
+        col.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                setText((empty || item == null) ? null : item.toString());
+                setPadding(new Insets(8, 10, 8, 10));
+                setAlignment(Pos.CENTER_LEFT);
+            }
+        });
+    }
+
+    // ── Data ─────────────────────────────────────────────────────────────────
+
+    private void carregarLotes() {
+        try {
+            String codigo = (txtFiltroCodigo != null && !txtFiltroCodigo.getText().isEmpty())
+                    ? txtFiltroCodigo.getText() : null;
+
+            Page<LotePelletSimpleDTO> page = lotePelletService.listarLotesComFiltros(
+                    paginaAtual + 1, itemsPerPage, codigo, null, null, "data_producao", "DESC"
+            );
+
+            lotes.setAll(page.getContent());
+            totalPaginas = page.getTotalPages();
+            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
+            atualizarLabelStatus(page);
+            atualizarBotoesPaginacao();
+        } catch (Exception e) {
+            mostrarErro("Erro ao carregar lotes: " + e.getMessage());
+        }
+    }
+
+    private void handleEliminarLote(LotePelletSimpleDTO lote) {
+        Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacao.setTitle("Eliminar Lote");
+        confirmacao.setHeaderText("Tem a certeza?");
+        confirmacao.setContentText("Esta ação vai eliminar o lote " + lote.codigoLote() + " e decrementar o stock.");
+
+        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+
+        try {
+            lotePelletService.apagarLote(lote.id());
+            paginaAtual = 0;
+            carregarLotes();
+            mostrarSucesso("Lote eliminado!");
+        } catch (Exception e) {
+            mostrarErro("Erro ao eliminar: " + e.getMessage());
+        }
+    }
+
+    // ── Create drawer ─────────────────────────────────────────────────────────
+
+    private void configurarDrawer() {
+        drawerRoot = new VBox(0);
+        drawerRoot.setMinWidth(550);
+        drawerRoot.setPrefWidth(550);
+        drawerRoot.setMaxWidth(550);
+        drawerRoot.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
+
+        // Header
+        HBox header = new HBox();
+        header.setPadding(new Insets(25));
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setStyle("-fx-background-color: -color-bg-subtle;");
+        Label titulo = new Label("Novo Lote de Pellet");
+        titulo.getStyleClass().add("title-3");
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+        Button btnClose = new Button();
+        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
+        btnClose.getStyleClass().addAll("button-icon", "flat");
+        btnClose.setOnAction(e -> navigationService.hideModal());
+        header.getChildren().addAll(titulo, sp, btnClose);
+
+        // Form
+        VBox form = new VBox(20);
+        form.setPadding(new Insets(30));
+
+        // Ordem de Produção
+        cmbOrdem = new ComboBox<>();
+        cmbOrdem.setMaxWidth(Double.MAX_VALUE);
+        cmbOrdem.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(OrdemProducaoSimpleDTO o) {
+                if (o == null) return "";
+                return o.tipoPelletNome() + " — " + String.format("%.0f kg planeados", o.quantidadePlaneada())
+                        + " [" + o.estado().name() + "]";
+            }
+            @Override public OrdemProducaoSimpleDTO fromString(String s) { return null; }
+        });
+        lblErroOrdem = formValidationService.createErrorLabel();
+        formValidationService.attachComboAutoClear(cmbOrdem, lblErroOrdem);
+
+        // Auto-fill TipoPellet on order selection
+        lblTipoPelletNome = new Label("—");
+        lblTipoPelletNome.setStyle("-fx-font-weight: 500; -fx-text-fill: -color-fg-default;");
+        cmbOrdem.setOnAction(e -> atualizarTipoPellet(cmbOrdem.getValue()));
+
+        VBox campoTipoPellet = new VBox(6);
+        Label lblTipoPelletLabel = new Label("Tipo Pellet (preenchido automaticamente)");
+        lblTipoPelletLabel.getStyleClass().add("text-muted");
+        HBox tipoPelletBox = new HBox(8);
+        tipoPelletBox.setAlignment(Pos.CENTER_LEFT);
+        tipoPelletBox.setPadding(new Insets(10, 12, 10, 12));
+        tipoPelletBox.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 4; -fx-border-color: -color-border-default; -fx-border-radius: 4;");
+        tipoPelletBox.getChildren().add(lblTipoPelletNome);
+        campoTipoPellet.getChildren().addAll(lblTipoPelletLabel, tipoPelletBox);
+
+        // Código do Lote
+        txtCodigoLote = new TextField();
+        txtCodigoLote.setPromptText("Ex: LOT-2026-001");
+        lblErroCodigo = formValidationService.createErrorLabel();
+        formValidationService.attachTextAutoClear(txtCodigoLote, lblErroCodigo);
+
+        // Quantidade
+        txtQuantidadeKg = new TextField();
+        txtQuantidadeKg.setPromptText("Ex: 1500.00");
+        lblErroQuantidade = formValidationService.createErrorLabel();
+        formValidationService.attachTextAutoClear(txtQuantidadeKg, lblErroQuantidade);
+
+        // Localização (optional)
+        txtLocalizacao = new TextField();
+        txtLocalizacao.setPromptText("Ex: Armazém A, Zona 3 (opcional)");
+
+        form.getChildren().addAll(
+                criarCampoFormulario("Ordem de Produção *", cmbOrdem, lblErroOrdem),
+                campoTipoPellet,
+                criarCampoFormulario("Código do Lote *", txtCodigoLote, lblErroCodigo),
+                criarCampoFormulario("Quantidade (kg) *", txtQuantidadeKg, lblErroQuantidade),
+                criarCampoFormulario("Localização no Armazém", txtLocalizacao)
+        );
+
+        ScrollPane scroll = new ScrollPane(form);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        // Footer
+        HBox footer = new HBox();
+        footer.setPadding(new Insets(25));
+        footer.setAlignment(Pos.CENTER_LEFT);
+        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        Button btnSalvar = new Button("Registar Lote");
+        btnSalvar.getStyleClass().add("accent");
+        btnSalvar.setPrefHeight(44);
+        btnSalvar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnSalvar, Priority.ALWAYS);
+        btnSalvar.setOnAction(e -> handleRegistarLote());
+        footer.getChildren().add(btnSalvar);
+
+        drawerRoot.getChildren().addAll(header, scroll, footer);
+    }
+
+    private void atualizarTipoPellet(OrdemProducaoSimpleDTO ordem) {
+        if (ordem == null) {
+            lblTipoPelletNome.setText("—");
+            selectedTipoPelletId = null;
+            return;
+        }
+        try {
+            var detalhes = ordemProducaoService.obterDetalhes(ordem.id());
+            selectedTipoPelletId = detalhes.tipoPelletId();
+            lblTipoPelletNome.setText(detalhes.tipoPelletNome() != null ? detalhes.tipoPelletNome() : "—");
+        } catch (Exception e) {
+            lblTipoPelletNome.setText("Erro ao carregar");
+            selectedTipoPelletId = null;
+        }
+    }
+
+    private void handleRegistarLote() {
+        boolean valido = true;
+        valido = formValidationService.validateRequiredCombo(cmbOrdem, lblErroOrdem, "Ordem de produção é obrigatória") && valido;
+        valido = formValidationService.validateRequiredText(txtCodigoLote, lblErroCodigo, "Código do lote é obrigatório") && valido;
+        valido = formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, "Quantidade é obrigatória") && valido;
+
+        if (!valido) return;
+
+        if (selectedTipoPelletId == null) {
+            mostrarErro("Selecione uma ordem de produção válida para determinar o tipo de pellet.");
+            return;
+        }
+
+        double quantidade;
+        try {
+            quantidade = Double.parseDouble(txtQuantidadeKg.getText().trim().replace(",", "."));
+            if (quantidade <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException ex) {
+            formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, "Quantidade inválida (use número positivo)");
+            return;
+        }
+
+        String localizacao = txtLocalizacao.getText().trim().isEmpty() ? null : txtLocalizacao.getText().trim();
+
+        try {
+            lotePelletService.criarLote(new LotePelletRequestDTO(
+                    cmbOrdem.getValue().id(),
+                    selectedTipoPelletId,
+                    txtCodigoLote.getText().trim(),
+                    quantidade,
+                    localizacao
+            ));
+            paginaAtual = 0;
+            carregarLotes();
+            navigationService.hideModal();
+            mostrarSucesso("Lote registado com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro ao registar lote: " + e.getMessage());
+        }
+    }
+
+    public void openCreateModal() {
+        handleAbrirModal();
+    }
+
+    @FXML
+    private void handleAbrirModal() {
+        // Refresh orders list on each open
+        try {
+            var ordens = ordemProducaoService.listarOrdensComFiltros(1, 200, null, null, null, "dataInicio", "DESC")
+                    .getContent();
+            cmbOrdem.setItems(FXCollections.observableArrayList(ordens));
+        } catch (Exception e) {
+            cmbOrdem.setItems(FXCollections.emptyObservableList());
+        }
+
+        // Reset form
+        cmbOrdem.setValue(null);
+        lblTipoPelletNome.setText("—");
+        selectedTipoPelletId = null;
+        txtCodigoLote.clear();
+        txtQuantidadeKg.clear();
+        txtLocalizacao.clear();
+        formValidationService.clearError(cmbOrdem, lblErroOrdem);
+        formValidationService.clearError(txtCodigoLote, lblErroCodigo);
+        formValidationService.clearError(txtQuantidadeKg, lblErroQuantidade);
+
+        navigationService.showModal(drawerRoot);
     }
 
     @FXML
     private void handleRefresh() {
+        paginaAtual = 0;
         carregarLotes();
     }
 
@@ -99,82 +404,18 @@ public class BatchesController {
         handleFiltrar();
     }
 
-    @FXML
-    private void handleAbrirModal() {
-        limparFormulario();
-        navigationService.showModal(drawerRoot);
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private VBox criarCampoFormulario(String label, Control input) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(8, lbl, input);
     }
 
-    private void configurarTabela() {
-        colCodigo.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().codigo()));
-        configurarColunaTexto(colCodigo);
-
-        colTipoPellet.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().tipoPellet()));
-        configurarColunaTexto(colTipoPellet);
-
-        colData.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().dataProducao()));
-        configurarColunaTexto(colData);
-
-        colQuantidade.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().quantidade()));
-        configurarColunaTexto(colQuantidade);
-
-        colLocalizacao.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().localizacao()));
-        configurarColunaTexto(colLocalizacao);
-
-        colAcoes.setCellFactory(param -> new TableCell<>() {
-            private final Button btnDetails = new Button();
-            {
-                btnDetails.getStyleClass().addAll("button-icon", "flat");
-                btnDetails.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
-                btnDetails.setOnAction(event -> handleAbrirDetalhes(getTableView().getItems().get(getIndex())));
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : btnDetails);
-                setAlignment(Pos.CENTER);
-            }
-        });
-
-        tblBatches.setFixedCellSize(48);
-        tblBatches.setItems(data);
-    }
-
-    private <T> void configurarColunaTexto(TableColumn<LoteRow, T> coluna) {
-        coluna.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(T item, boolean empty) {
-                super.updateItem(item, empty);
-                setText((empty || item == null) ? null : item.toString());
-                setPadding(new Insets(8, 10, 8, 10));
-                setAlignment(Pos.CENTER_LEFT);
-            }
-        });
-    }
-
-    private void carregarLotes() {
-        try {
-            String codigo = (txtFiltroCodigo != null && !txtFiltroCodigo.getText().isBlank())
-                    ? txtFiltroCodigo.getText()
-                    : null;
-
-            Page<LotePelletSimpleDTO> page = loteService.listarLotesComFiltros(
-                    paginaAtual + 1, itemsPerPage, codigo, null, null, "dataProducao", "DESC"
-            );
-
-            List<LoteRow> rows = new ArrayList<>();
-            for (LotePelletSimpleDTO lote : page.getContent()) {
-                rows.add(LoteRow.from(lote));
-            }
-            data.setAll(rows);
-
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
-        } catch (Exception e) {
-            mostrarErro("Erro ao carregar lotes: " + e.getMessage());
-        }
+    private VBox criarCampoFormulario(String label, Control input, Label erroLabel) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(6, lbl, input, erroLabel);
     }
 
     private void configurarPaginacao(VBox container) {
@@ -185,15 +426,21 @@ public class BatchesController {
 
         lblPaginaStatus = new Label();
         lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus); left.setAlignment(Pos.CENTER_LEFT); HBox.setHgrow(left, Priority.ALWAYS);
+        HBox left = new HBox(lblPaginaStatus);
+        left.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(left, Priority.ALWAYS);
 
         cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
         cmbItemsPerPage.setValue(itemsPerPage);
         cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarLotes(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage); center.setAlignment(Pos.CENTER); HBox.setHgrow(center, Priority.ALWAYS);
+        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
+        center.setAlignment(Pos.CENTER);
+        HBox.setHgrow(center, Priority.ALWAYS);
 
         paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons); right.setAlignment(Pos.CENTER_RIGHT); HBox.setHgrow(right, Priority.ALWAYS);
+        HBox right = new HBox(paginationButtons);
+        right.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(right, Priority.ALWAYS);
 
         nav.getChildren().addAll(left, center, right);
         container.getChildren().add(nav);
@@ -201,7 +448,8 @@ public class BatchesController {
 
     private void atualizarBotoesPaginacao() {
         paginationButtons.getChildren().clear();
-        Button prev = new Button(); prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
+        Button prev = new Button();
+        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
         prev.setDisable(paginaAtual == 0);
         prev.setOnAction(e -> { paginaAtual--; carregarLotes(); });
         paginationButtons.getChildren().add(prev);
@@ -210,268 +458,25 @@ public class BatchesController {
             if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
                 Button p = new Button(String.valueOf(i + 1));
                 p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int idx = i; p.setOnAction(e -> { paginaAtual = idx; carregarLotes(); });
+                int fi = i;
+                p.setOnAction(e -> { paginaAtual = fi; carregarLotes(); });
                 paginationButtons.getChildren().add(p);
             }
         }
 
-        Button next = new Button(); next.setGraphic(new FontIcon("mdi2c-chevron-right"));
+        Button next = new Button();
+        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
         next.setDisable(paginaAtual >= totalPaginas - 1);
         next.setOnAction(e -> { paginaAtual++; carregarLotes(); });
         paginationButtons.getChildren().add(next);
     }
 
-    private void atualizarLabelStatus(Page<?> page) {
+    private void atualizarLabelStatus(Page<LotePelletSimpleDTO> page) {
         long start = (long) page.getNumber() * page.getSize() + 1;
         long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
         lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
     }
 
-    private void configurarDrawerAdicionar() {
-        drawerRoot = new VBox(0);
-        drawerRoot.setMinWidth(550);
-        drawerRoot.setPrefWidth(550);
-        drawerRoot.setMaxWidth(550);
-        drawerRoot.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Create Batch");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
-
-        cmbOrdem = new ComboBox<>();
-        cmbOrdem.setMaxWidth(Double.MAX_VALUE);
-        cmbOrdem.setPromptText("Select production order");
-        carregarOrdens();
-
-        cmbTipoPellet = new ComboBox<>();
-        cmbTipoPellet.setMaxWidth(Double.MAX_VALUE);
-        cmbTipoPellet.setPromptText("Select pellet type");
-        carregarTiposPellet();
-
-        cmbOrdem.setOnAction(e -> aplicarTipoPelletDaOrdem());
-
-        txtCodigo = new TextField();
-        txtCodigo.setPromptText("Batch code");
-
-        txtQuantidade = new TextField();
-        txtQuantidade.setPromptText("Quantity (kg)");
-
-        txtLocalizacao = new TextField();
-        txtLocalizacao.setPromptText("Warehouse location (optional)");
-
-        VBox form = new VBox(20,
-                criarCampoFormulario("Production Order", cmbOrdem),
-                criarCampoFormulario("Pellet Type", cmbTipoPellet),
-                criarCampoFormulario("Batch Code", txtCodigo),
-                criarCampoFormulario("Quantity (kg)", txtQuantidade),
-                criarCampoFormulario("Warehouse Location", txtLocalizacao)
-        );
-        form.setPadding(new Insets(30));
-
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        HBox footer = new HBox();
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnSalvar = new Button("Create Batch");
-        btnSalvar.getStyleClass().add("accent");
-        btnSalvar.setPrefHeight(44);
-        btnSalvar.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnSalvar, Priority.ALWAYS);
-        btnSalvar.setOnAction(e -> handleAdicionar());
-        footer.getChildren().add(btnSalvar);
-
-        drawerRoot.getChildren().addAll(header, scrollPane, footer);
-    }
-
-    private void carregarOrdens() {
-        List<OrdemItem> items = ordemService.listarTodosSimples().stream()
-                .map(o -> new OrdemItem(o.id(), o.tipoPelletNome(), o.estado().name()))
-                .toList();
-        cmbOrdem.setItems(FXCollections.observableArrayList(items));
-    }
-
-    private void carregarTiposPellet() {
-        var page = stockService.listarTiposPelletComFiltros(1, 1000, null, null, "nome", "ASC");
-        List<TipoPelletItem> items = page.getContent().stream()
-                .map(tp -> new TipoPelletItem(tp.id(), tp.nome()))
-                .toList();
-        cmbTipoPellet.setItems(FXCollections.observableArrayList(items));
-    }
-
-    private void aplicarTipoPelletDaOrdem() {
-        OrdemItem selected = cmbOrdem.getValue();
-        if (selected == null) {
-            return;
-        }
-
-        try {
-            OrdemProducaoResponseDTO ordem = ordemService.buscarPorId(selected.id());
-            if (ordem.tipoPelletId() != null) {
-                cmbTipoPellet.getItems().stream()
-                        .filter(item -> item.id().equals(ordem.tipoPelletId()))
-                        .findFirst()
-                        .ifPresent(cmbTipoPellet::setValue);
-            }
-        } catch (Exception e) {
-            mostrarErro("Erro ao carregar tipo de pellet da ordem: " + e.getMessage());
-        }
-    }
-
-    private VBox criarCampoFormulario(String label, Control input) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        return new VBox(8, lbl, input);
-    }
-
-    private void limparFormulario() {
-        cmbOrdem.setValue(null);
-        cmbTipoPellet.setValue(null);
-        txtCodigo.clear();
-        txtQuantidade.clear();
-        txtLocalizacao.clear();
-    }
-
-    private void handleAdicionar() {
-        if (cmbOrdem.getValue() == null) {
-            mostrarErro("Selecione uma ordem de produção");
-            return;
-        }
-        if (cmbTipoPellet.getValue() == null) {
-            mostrarErro("Selecione um tipo de pellet");
-            return;
-        }
-        if (txtCodigo.getText().isBlank()) {
-            mostrarErro("Informe o código do lote");
-            return;
-        }
-
-        double quantidade;
-        try {
-            quantidade = Double.parseDouble(txtQuantidade.getText().replace(",", "."));
-        } catch (NumberFormatException e) {
-            mostrarErro("Quantidade inválida");
-            return;
-        }
-
-        try {
-            LotePelletRequestDTO dto = new LotePelletRequestDTO(
-                    cmbOrdem.getValue().id(),
-                    cmbTipoPellet.getValue().id(),
-                    txtCodigo.getText().trim(),
-                    quantidade,
-                    txtLocalizacao.getText().isBlank() ? null : txtLocalizacao.getText().trim()
-            );
-            loteService.criarLote(dto);
-            paginaAtual = 0;
-            carregarLotes();
-            navigationService.hideModal();
-            mostrarSucesso("Lote criado com sucesso!");
-        } catch (Exception e) {
-            mostrarErro("Erro ao criar lote: " + e.getMessage());
-        }
-    }
-
-    private void handleAbrirDetalhes(LoteRow row) {
-        try {
-            LotePelletResponseDTO d = loteService.buscarPorId(row.id());
-            VBox drawer = criarDrawerDetalhes(d);
-            navigationService.showModal(drawer);
-        } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
-        }
-    }
-
-    private VBox criarDrawerDetalhes(LotePelletResponseDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Batch Details");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(20);
-        grid.setVgap(16);
-        addDetalhe(grid, 0, "Batch Code", d.codigoLote());
-        addDetalhe(grid, 1, "Pellet Type", d.tipoPelletNome() != null ? d.tipoPelletNome() : "-");
-        addDetalhe(grid, 2, "Quantity", d.quantidadeKg() != null ? d.quantidadeKg() + " kg" : "-");
-        addDetalhe(grid, 3, "Production Date", d.dataProducao() != null ? d.dataProducao().format(DATETIME_FORMATTER) : "-");
-        addDetalhe(grid, 4, "Warehouse", d.localizacaoArmazem() != null ? d.localizacaoArmazem() : "-");
-
-        VBox body = new VBox(20, grid);
-        body.setPadding(new Insets(25));
-        root.getChildren().addAll(header, body);
-        return root;
-    }
-
-    private void addDetalhe(GridPane grid, int row, String label, String value) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        Label val = new Label(value);
-        val.getStyleClass().add("text-strong");
-        grid.add(lbl, 0, row);
-        grid.add(val, 1, row);
-    }
-
-    private void mostrarErro(String m) {
-        toastService.showError("Erro", m);
-    }
-
-    private void mostrarSucesso(String m) {
-        toastService.showSuccess("Sucesso", m);
-    }
-
-    private record LoteRow(UUID id, String codigo, String tipoPellet, String dataProducao, String quantidade, String localizacao) {
-        static LoteRow from(LotePelletSimpleDTO dto) {
-            String data = dto.dataProducao() != null ? dto.dataProducao().format(DATETIME_FORMATTER) : "-";
-            String qtd = dto.quantidadeKg() != null ? String.format("%.2f kg", dto.quantidadeKg()) : "-";
-            return new LoteRow(
-                    dto.id(),
-                    dto.codigoLote() != null ? dto.codigoLote() : "-",
-                    dto.tipoPelletNome() != null ? dto.tipoPelletNome() : "-",
-                    data,
-                    qtd,
-                    dto.localizacaoArmazem() != null ? dto.localizacaoArmazem() : "-"
-            );
-        }
-    }
-
-    private record OrdemItem(UUID id, String tipoPellet, String estado) {
-        @Override
-        public String toString() { return tipoPellet + " (" + estado + ")"; }
-    }
-
-    private record TipoPelletItem(UUID id, String nome) {
-        @Override
-        public String toString() { return nome; }
-    }
+    private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
+    private void mostrarErro(String m) { toastService.showError("Erro", m); }
 }
-

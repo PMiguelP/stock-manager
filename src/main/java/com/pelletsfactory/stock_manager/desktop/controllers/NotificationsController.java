@@ -1,12 +1,15 @@
 package com.pelletsfactory.stock_manager.desktop.controllers;
 
+import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoSimpleDTO;
+import com.pelletsfactory.stock_manager.common.enums.TipoEventoNotificacao;
+import com.pelletsfactory.stock_manager.common.services.NotificacaoService;
+import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
@@ -18,10 +21,17 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -35,40 +45,93 @@ public class NotificationsController {
     @FXML private VBox notificationsList;
     @FXML private ScrollPane notificationsScroll;
 
+    private final NotificacaoService notificacaoService;
+    private final ToastService toastService;
     private final ObservableList<NotificationItem> allNotifications = FXCollections.observableArrayList();
+
+    public NotificationsController(NotificacaoService notificacaoService, ToastService toastService) {
+        this.notificacaoService = notificacaoService;
+        this.toastService = toastService;
+    }
 
     @FXML
     public void initialize() {
-        cmbType.setItems(FXCollections.observableArrayList("All Types", "order", "stock", "system", "employee"));
-        cmbStatus.setItems(FXCollections.observableArrayList("All Status", "Unread", "Read"));
+        cmbType.setItems(FXCollections.observableArrayList(buildTypeOptions()));
+        cmbStatus.setItems(FXCollections.observableArrayList("All Status", "Unread", "Read", "Pending", "Done"));
         cmbType.setValue("All Types");
         cmbStatus.setValue("All Status");
 
         txtSearch.textProperty().addListener((obs, oldValue, newValue) -> render());
-        cmbType.valueProperty().addListener((obs, oldValue, newValue) -> render());
-        cmbStatus.valueProperty().addListener((obs, oldValue, newValue) -> render());
-        btnMarkAllRead.setOnAction(event -> {
-            allNotifications.forEach(item -> item.unread = false);
-            render();
-        });
+        cmbType.valueProperty().addListener((obs, oldValue, newValue) -> loadNotifications());
+        cmbStatus.valueProperty().addListener((obs, oldValue, newValue) -> loadNotifications());
+        btnMarkAllRead.setOnAction(event -> markVisibleAsRead());
 
-        loadDemoData();
-        render();
+        loadNotifications();
     }
 
-    private void loadDemoData() {
-        allNotifications.setAll(
-                new NotificationItem("New Order Received", "Order #ORD-006 from Global Energy Ltd - 120 tons", "order", "5 min ago", "2026-04-10", "mdi2c-cube-outline", "#3b82f6", true),
-                new NotificationItem("Low Stock Alert", "Current stock level (2,850 tons) is below minimum threshold", "stock", "1 hour ago", "2026-04-10", "mdi2a-alert-outline", "#f97316", true),
-                new NotificationItem("Production Batch Completed", "BATCH-2026-006 completed - 245 tons produced", "system", "2 hours ago", "2026-04-10", "mdi2c-clock-outline", "#94a3b8", false),
-                new NotificationItem("New Employee Added", "Isabel Silva joined as Production Operator", "employee", "3 hours ago", "2026-04-10", "mdi2a-account-plus-outline", "#22c55e", false),
-                new NotificationItem("Purchase Order Approved", "PO-2026-088 was approved by procurement", "order", "6 hours ago", "2026-04-10", "mdi2c-check-circle-outline", "#3b82f6", false),
-                new NotificationItem("Stock Transfer Completed", "Transfer RM-14 to Production Area finished", "stock", "8 hours ago", "2026-04-10", "mdi2t-truck-check-outline", "#f97316", false),
-                new NotificationItem("Batch QC Pending", "BATCH-2026-010 is waiting quality confirmation", "system", "10 hours ago", "2026-04-09", "mdi2f-flask-outline", "#94a3b8", false),
-                new NotificationItem("Client Account Updated", "Global Energy Ltd contact details were updated", "employee", "12 hours ago", "2026-04-09", "mdi2a-account-edit-outline", "#22c55e", false),
-                new NotificationItem("Order Shipment Scheduled", "Order ORD-004 shipping planned for tomorrow", "order", "1 day ago", "2026-04-09", "mdi2s-shipping-pallet", "#3b82f6", false),
-                new NotificationItem("Safety Checklist Completed", "Daily production safety checklist submitted", "system", "1 day ago", "2026-04-09", "mdi2c-clipboard-check-outline", "#94a3b8", false)
-        );
+    private List<String> buildTypeOptions() {
+        List<String> options = Arrays.stream(TipoEventoNotificacao.values())
+                .map(TipoEventoNotificacao::getDisplayName)
+                .collect(Collectors.toList());
+        options.add(0, "All Types");
+        return options;
+    }
+
+    private void loadNotifications() {
+        try {
+            TipoEventoNotificacao tipo = selectedTipoEvento();
+            Boolean lida = selectedReadFilter();
+            Boolean concluida = selectedDoneFilter();
+
+            Page<NotificacaoSimpleDTO> page = notificacaoService.listarParaUtilizadorAtualSimples(
+                    1, 200, tipo, lida, concluida, "createdAt", "DESC"
+            );
+
+            allNotifications.setAll(page.getContent().stream()
+                    .map(NotificationItem::from)
+                    .collect(Collectors.toList()));
+            render();
+        } catch (Exception e) {
+            toastService.showError("Erro", "Erro ao carregar notificações: " + e.getMessage());
+        }
+    }
+
+    private TipoEventoNotificacao selectedTipoEvento() {
+        String selected = cmbType.getValue();
+        if (selected == null || "All Types".equals(selected)) {
+            return null;
+        }
+        return Arrays.stream(TipoEventoNotificacao.values())
+                .filter(tipo -> tipo.getDisplayName().equals(selected))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Boolean selectedReadFilter() {
+        String status = cmbStatus.getValue();
+        if ("Unread".equals(status)) return false;
+        if ("Read".equals(status)) return true;
+        return null;
+    }
+
+    private Boolean selectedDoneFilter() {
+        String status = cmbStatus.getValue();
+        if ("Pending".equals(status)) return false;
+        if ("Done".equals(status)) return true;
+        return null;
+    }
+
+    private void markVisibleAsRead() {
+        try {
+            for (NotificationItem item : filterNotifications()) {
+                if (item.unread) {
+                    notificacaoService.marcarComoLida(item.id);
+                }
+            }
+            loadNotifications();
+        } catch (Exception e) {
+            toastService.showError("Erro", "Erro ao marcar notificações como lidas: " + e.getMessage());
+        }
     }
 
     private void render() {
@@ -80,7 +143,7 @@ public class NotificationsController {
             emptyState.setPadding(new Insets(40));
             emptyState.setAlignment(Pos.CENTER);
             emptyState.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 12; -fx-border-color: -color-border-muted; -fx-border-radius: 12;");
-            Label title = new Label("Sem notificacoes para estes filtros");
+            Label title = new Label("Sem notificações para estes filtros");
             title.setStyle("-fx-font-size: 16px; -fx-font-weight: 600;");
             Label desc = new Label("Tenta ajustar a pesquisa ou os filtros de tipo e estado.");
             desc.getStyleClass().add("text-muted");
@@ -98,19 +161,11 @@ public class NotificationsController {
 
     private List<NotificationItem> filterNotifications() {
         String search = txtSearch.getText() == null ? "" : txtSearch.getText().trim().toLowerCase(Locale.ROOT);
-        String type = cmbType.getValue() == null ? "All Types" : cmbType.getValue();
-        String status = cmbStatus.getValue() == null ? "All Status" : cmbStatus.getValue();
 
         return allNotifications.stream()
                 .filter(item -> search.isEmpty()
                         || item.title.toLowerCase(Locale.ROOT).contains(search)
                         || item.description.toLowerCase(Locale.ROOT).contains(search))
-                .filter(item -> "All Types".equals(type) || item.type.equalsIgnoreCase(type))
-                .filter(item -> {
-                    if ("Unread".equals(status)) return item.unread;
-                    if ("Read".equals(status)) return !item.unread;
-                    return true;
-                })
                 .collect(Collectors.toList());
     }
 
@@ -118,18 +173,16 @@ public class NotificationsController {
         HBox card = new HBox(16);
         card.setPadding(new Insets(20));
         card.setAlignment(Pos.TOP_LEFT);
-        card.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-accent-emphasis; -fx-border-radius: 10;");
-
-        CheckBox checkBox = new CheckBox();
-        checkBox.setFocusTraversable(false);
-        checkBox.setPadding(new Insets(3, 0, 0, 0));
+        card.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;");
 
         StackPane iconWrap = new StackPane();
         iconWrap.setMinSize(48, 48);
         iconWrap.setPrefSize(48, 48);
         iconWrap.setStyle("-fx-background-color: -color-bg-default; -fx-background-radius: 999; -fx-border-color: -color-border-muted; -fx-border-radius: 999;");
 
-        FontIcon icon = new FontIcon(item.iconLiteral + ":22");
+        FontIcon icon = new FontIcon();
+        icon.setIconLiteral(item.iconLiteral);
+        icon.setIconSize(22);
         icon.setIconColor(Color.web(item.iconColor));
         iconWrap.getChildren().add(icon);
 
@@ -152,6 +205,7 @@ public class NotificationsController {
 
         Label desc = new Label(item.description);
         desc.getStyleClass().add("text-muted");
+        desc.setWrapText(true);
         desc.setStyle("-fx-font-size: 15px;");
 
         HBox meta = new HBox(12);
@@ -165,15 +219,51 @@ public class NotificationsController {
         ));
         meta.getChildren().add(typeBadge);
 
+        if (item.requerAcao) {
+            Label doneBadge = new Label(item.done ? "Done" : "Pending");
+            String doneColor = item.done ? "#22c55e" : "#f97316";
+            doneBadge.setStyle(String.format(
+                    "-fx-padding: 4 12 4 12; -fx-background-radius: 999; -fx-border-radius: 999; -fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: %s; -fx-border-color: %s;",
+                    doneColor,
+                    doneColor
+            ));
+            meta.getChildren().add(doneBadge);
+        }
+
+        if (item.done && item.doneBy != null) {
+            Label doneBy = new Label("Feita por " + item.doneBy);
+            doneBy.getStyleClass().add("text-muted");
+            meta.getChildren().add(doneBy);
+        }
+
         if (item.unread) {
-            Hyperlink markRead = new Hyperlink("Mark as read");
+            Hyperlink markRead = new Hyperlink("Marcar como lida");
             markRead.setFocusTraversable(false);
             markRead.setStyle("-fx-text-fill: -color-accent-emphasis;");
             markRead.setOnAction(event -> {
-                item.unread = false;
-                render();
+                try {
+                    notificacaoService.marcarComoLida(item.id);
+                    loadNotifications();
+                } catch (Exception e) {
+                    toastService.showError("Erro", "Erro ao marcar como lida: " + e.getMessage());
+                }
             });
             meta.getChildren().add(markRead);
+        }
+
+        if (item.requerAcao && !item.done) {
+            Hyperlink markDone = new Hyperlink("Marcar como feita");
+            markDone.setFocusTraversable(false);
+            markDone.setStyle("-fx-text-fill: -color-accent-emphasis;");
+            markDone.setOnAction(event -> {
+                try {
+                    notificacaoService.marcarComoConcluida(item.id);
+                    loadNotifications();
+                } catch (Exception e) {
+                    toastService.showError("Erro", "Erro ao marcar como feita: " + e.getMessage());
+                }
+            });
+            meta.getChildren().add(markDone);
         }
 
         content.getChildren().addAll(titleLine, desc, meta);
@@ -186,11 +276,15 @@ public class NotificationsController {
         date.setStyle("-fx-font-size: 13px; -fx-text-fill: -color-fg-muted;");
         right.getChildren().addAll(timeAgo, date);
 
-        card.getChildren().addAll(checkBox, iconWrap, content, right);
+        card.getChildren().addAll(iconWrap, content, right);
         return card;
     }
 
     private static final class NotificationItem {
+        private static final DateTimeFormatter DATE_FORMATTER =
+                DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault());
+
+        private final UUID id;
         private final String title;
         private final String description;
         private final String type;
@@ -198,10 +292,15 @@ public class NotificationsController {
         private final String date;
         private final String iconLiteral;
         private final String iconColor;
-        private boolean unread;
+        private final boolean unread;
+        private final boolean requerAcao;
+        private final boolean done;
+        private final String doneBy;
 
-        private NotificationItem(String title, String description, String type, String timeAgo, String date,
-                                 String iconLiteral, String iconColor, boolean unread) {
+        private NotificationItem(UUID id, String title, String description, String type, String timeAgo, String date,
+                                 String iconLiteral, String iconColor, boolean unread, boolean requerAcao,
+                                 boolean done, String doneBy) {
+            this.id = id;
             this.title = title;
             this.description = description;
             this.type = type;
@@ -210,7 +309,60 @@ public class NotificationsController {
             this.iconLiteral = iconLiteral;
             this.iconColor = iconColor;
             this.unread = unread;
+            this.requerAcao = requerAcao;
+            this.done = done;
+            this.doneBy = doneBy;
+        }
+
+        private static NotificationItem from(NotificacaoSimpleDTO dto) {
+            TipoEventoNotificacao tipo = dto.tipoEvento();
+            return new NotificationItem(
+                    dto.id(),
+                    dto.titulo(),
+                    tipo != null ? tipo.getDisplayName() : "Notificação",
+                    tipo != null ? tipo.getDisplayName() : "Geral",
+                    formatTimeAgo(dto.createdAt()),
+                    dto.createdAt() != null ? DATE_FORMATTER.format(dto.createdAt()) : "",
+                    iconFor(tipo),
+                    colorFor(tipo),
+                    !Boolean.TRUE.equals(dto.lida()),
+                    Boolean.TRUE.equals(dto.requerAcao()),
+                    Boolean.TRUE.equals(dto.concluida()),
+                    dto.concluidaPorNome()
+            );
+        }
+
+        private static String formatTimeAgo(Instant instant) {
+            if (instant == null) {
+                return "";
+            }
+            Duration duration = Duration.between(instant, Instant.now());
+            if (duration.toMinutes() < 1) return "agora";
+            if (duration.toMinutes() < 60) return duration.toMinutes() + " min";
+            if (duration.toHours() < 24) return duration.toHours() + " h";
+            return duration.toDays() + " d";
+        }
+
+        private static String iconFor(TipoEventoNotificacao tipo) {
+            if (tipo == null) return "mdi2b-bell-outline";
+            return switch (tipo) {
+                case STOCK_BAIXO -> "mdi2a-alert-circle-outline";
+                case NOVA_ENCOMENDA -> "mdi2c-cart-outline";
+                case NOVA_ORDEM_PRODUCAO -> "mdi2f-factory";
+                case ORDEM_CONCLUIDA -> "mdi2c-check-circle-outline";
+                case EXPEDICAO_REALIZADA -> "mdi2t-truck-delivery";
+                case ERRO_PRODUCAO -> "mdi2a-alert-circle-outline";
+            };
+        }
+
+        private static String colorFor(TipoEventoNotificacao tipo) {
+            if (tipo == null) return "#64748b";
+            return switch (tipo) {
+                case STOCK_BAIXO, ERRO_PRODUCAO -> "#f97316";
+                case NOVA_ENCOMENDA -> "#3b82f6";
+                case NOVA_ORDEM_PRODUCAO -> "#8b5cf6";
+                case ORDEM_CONCLUIDA, EXPEDICAO_REALIZADA -> "#22c55e";
+            };
         }
     }
 }
-

@@ -14,12 +14,17 @@ public class NotificacaoMapper {
 
         Notificacao entity = new Notificacao(dto.titulo(), dto.mensagem(), dto.tipoEvento());
         entity.setCargoAlvo(dto.cargoAlvo());
+        entity.setRequerAcao(Boolean.TRUE.equals(dto.requerAcao()));
         entity.setLinkReferencia(dto.linkReferencia());
 
         return entity;
     }
 
     public NotificacaoResponseDTO toResponseDTO(Notificacao entity) {
+        return toResponseDTO(entity, entity != null ? entity.getLida() : null);
+    }
+
+    public NotificacaoResponseDTO toResponseDTO(Notificacao entity, Boolean lida) {
         if (entity == null) return null;
 
         return new NotificacaoResponseDTO(
@@ -28,13 +33,21 @@ public class NotificacaoMapper {
                 entity.getMensagem(),
                 entity.getTipoEvento(),
                 entity.getCargoAlvo(),
-                entity.getLida(),
+                Boolean.TRUE.equals(lida),
+                entity.getRequerAcao(),
+                entity.getConcluida(),
+                entity.getConcluidaPor() != null ? entity.getConcluidaPor().getNome() : null,
+                entity.getConcluidaEm(),
                 entity.getLinkReferencia(),
                 entity.getCreatedAt()
         );
     }
 
     public NotificacaoSimpleDTO toSimpleDTO(Notificacao entity) {
+        return toSimpleDTO(entity, entity != null ? entity.getLida() : null);
+    }
+
+    public NotificacaoSimpleDTO toSimpleDTO(Notificacao entity, Boolean lida) {
         if (entity == null) return null;
 
         return new NotificacaoSimpleDTO(
@@ -42,7 +55,11 @@ public class NotificacaoMapper {
                 entity.getTitulo(),
                 entity.getTipoEvento(),
                 entity.getCargoAlvo(),
-                entity.getLida(),
+                Boolean.TRUE.equals(lida),
+                entity.getRequerAcao(),
+                entity.getConcluida(),
+                entity.getConcluidaPor() != null ? entity.getConcluidaPor().getNome() : null,
+                entity.getConcluidaEm(),
                 entity.getCreatedAt()
         );
     }
@@ -61,6 +78,9 @@ public class NotificacaoMapper {
         }
         if (dto.cargoAlvo() != null) {
             entity.setCargoAlvo(dto.cargoAlvo());
+        }
+        if (dto.requerAcao() != null) {
+            entity.setRequerAcao(dto.requerAcao());
         }
         if (dto.linkReferencia() != null) {
             entity.setLinkReferencia(dto.linkReferencia());

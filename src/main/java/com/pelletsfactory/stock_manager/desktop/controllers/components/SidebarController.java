@@ -1,6 +1,8 @@
 package com.pelletsfactory.stock_manager.desktop.controllers.components;
 
 import atlantafx.base.theme.Styles;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
+import com.pelletsfactory.stock_manager.desktop.services.LanguagePreferencesService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationEvent;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
@@ -18,6 +20,7 @@ import javafx.scene.layout.CornerRadii;
 import javafx.scene.paint.Color;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import org.springframework.context.event.EventListener;
@@ -33,12 +36,16 @@ public class SidebarController {
 
     private final NavigationService navigationService;
     private final ThemePreferencesService themePreferencesService;
+    private final I18nService i18nService;
 
     @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction,
             btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
             btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches, btnSettings;
     @FXML private Button btnSair;
     @FXML private ImageView sidebarLogoImage;
+    @FXML private Label lblMainSection;
+    @FXML private Label lblProcurementSection;
+    @FXML private Label lblCatalogSection;
 
     private final ToggleGroup navigationGroup = new ToggleGroup();
     private final Map<ViewId, ToggleButton> navByViewId = new EnumMap<>(ViewId.class);
@@ -51,15 +58,22 @@ public class SidebarController {
     private static final String ACTIVE_STYLE =
             "-fx-background-insets: 0; -fx-border-insets: 0;";
 
-    public SidebarController(NavigationService navigationService, ThemePreferencesService themePreferencesService) {
+    public SidebarController(NavigationService navigationService,
+                             ThemePreferencesService themePreferencesService,
+                             I18nService i18nService,
+                             LanguagePreferencesService languagePreferencesService) {
         this.navigationService = navigationService;
         this.themePreferencesService = themePreferencesService;
+        this.i18nService = i18nService;
+        languagePreferencesService.addLanguageChangeListener(lang ->
+                Platform.runLater(this::applyTranslations));
     }
 
     @FXML
     public void initialize() {
         loadThemeLogo();
         themePreferencesService.addThemeChangeListener(() -> Platform.runLater(this::loadThemeLogo));
+        applyTranslations();
 
         navButtons = List.of(
                 btnDashboard, btnFuncionarios, btnOrders, btnProduction,
@@ -93,6 +107,31 @@ public class SidebarController {
         navByViewId.put(ViewId.SETTINGS, btnSettings);
 
         setActiveView(ViewId.DASHBOARD);
+    }
+
+    private void applyTranslations() {
+        if (btnDashboard == null) {
+            return;
+        }
+
+        lblMainSection.setText(i18nService.translate("sidebar.main"));
+        lblProcurementSection.setText(i18nService.translate("sidebar.procurement"));
+        lblCatalogSection.setText(i18nService.translate("sidebar.catalog"));
+
+        btnDashboard.setText(i18nService.translate("Dashboard"));
+        btnFuncionarios.setText(i18nService.translate("Employees"));
+        btnOrders.setText(i18nService.translate("Orders"));
+        btnProduction.setText(i18nService.translate("Production"));
+        btnStock.setText(i18nService.translate("Stock"));
+        btnClients.setText(i18nService.translate("Clients"));
+        btnSuppliers.setText(i18nService.translate("Suppliers"));
+        btnPurchaseOrders.setText(i18nService.translate("Purchase Orders"));
+        btnRawMaterials.setText(i18nService.translate("Raw Materials"));
+        btnPelletTypes.setText(i18nService.translate("Pellet Types"));
+        btnFormulas.setText(i18nService.translate("Formulas"));
+        btnBatches.setText(i18nService.translate("Batches"));
+        btnSettings.setText(i18nService.translate("Settings"));
+        btnSair.setText(i18nService.translate("Logout"));
     }
 
     private void loadThemeLogo() {
@@ -295,5 +334,4 @@ public class SidebarController {
         }
     }
 }
-
 

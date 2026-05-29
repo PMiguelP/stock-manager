@@ -21,17 +21,26 @@ public class NavigationService {
 
     private final ConfigurableApplicationContext springContext;
     private final ApplicationEventPublisher eventPublisher;
+    private final I18nService i18nService;
     private BorderPane contentArea;
     private ModalPane modalPane;
 
     private final Map<String, Parent> viewCache = new HashMap<>();
     private final Map<String, RouteInfo> routes = new HashMap<>();
+    private final Map<String, Object> controllerByFxmlPath = new HashMap<>();
+    private final Map<String, Object> viewStateByRoute = new HashMap<>();
+    private String currentRoute;
+    private Object currentController;
 
     public NavigationService(ConfigurableApplicationContext springContext,
-                             ApplicationEventPublisher eventPublisher) {
+                             ApplicationEventPublisher eventPublisher,
+                             I18nService i18nService,
+                             LanguagePreferencesService languagePreferencesService) {
         this.springContext = springContext;
         this.eventPublisher = eventPublisher;
+        this.i18nService = i18nService;
         initializeRoutes();
+        languagePreferencesService.addLanguageChangeListener(lang -> reloadCurrentRoute());
     }
 
     private void initializeRoutes() {
@@ -143,13 +152,15 @@ public class NavigationService {
         }
 
         try {
+            currentRoute = route;
             Parent view = loadView(routeInfo.fxmlPath);
+            currentController = controllerByFxmlPath.get(routeInfo.fxmlPath);
             contentArea.setCenter(view);
 
             eventPublisher.publishEvent(new NavigationEvent(
-                    routeInfo.titulo,
-                    routeInfo.subtitulo,
-                    routeInfo.breadcrumbs,
+                    i18nService.translate(routeInfo.titulo),
+                    i18nService.translate(routeInfo.subtitulo),
+                    routeInfo.breadcrumbs.stream().map(i18nService::translate).toList(),
                     routeInfo.viewId
             ));
 
@@ -167,7 +178,9 @@ public class NavigationService {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
         loader.setControllerFactory(springContext::getBean);
         Parent view = loader.load();
+        i18nService.applyTo(view);
 
+        controllerByFxmlPath.put(fxmlPath, loader.getController());
         viewCache.put(fxmlPath, view);
         return view;
     }
@@ -181,10 +194,38 @@ public class NavigationService {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(normalizedPath));
             loader.setControllerFactory(springContext::getBean);
-            return loader.load();
+            Node view = loader.load();
+            i18nService.applyTo(view);
+            return view;
         } catch (IOException e) {
             System.err.println("Erro ao carregar FXML externo: " + normalizedPath);
             return null;
+        }
+    }
+
+    private void reloadCurrentRoute() {
+        if (currentRoute == null || contentArea == null) {
+            return;
+        }
+        captureCurrentViewState();
+        clearCache();
+        navigateTo(currentRoute);
+        restoreCurrentViewState();
+    }
+
+    private void captureCurrentViewState() {
+        if (currentController instanceof ViewStateful<?> stateful) {
+            viewStateByRoute.put(currentRoute, stateful.captureViewState());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreCurrentViewState() {
+        if (currentController instanceof ViewStateful<?> stateful) {
+            Object state = viewStateByRoute.get(currentRoute);
+            if (state != null) {
+                ((ViewStateful<Object>) stateful).restoreViewState(state);
+            }
         }
     }
 

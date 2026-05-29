@@ -65,8 +65,15 @@ public class PelletTypesController {
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
         configurarTabela();
         carregarPelletTypes();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     @FXML
@@ -328,4 +335,3 @@ public class PelletTypesController {
         }
     }
 }
-

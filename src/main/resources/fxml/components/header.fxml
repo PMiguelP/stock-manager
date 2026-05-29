@@ -25,7 +25,7 @@
                     <FontIcon iconLiteral="mdi2b-bell-outline"
                               iconSize="22"
                     />
-                    <Label text="2"
+                    <Label fx:id="lblNotificationCount" text="0"
                            mouseTransparent="true"
                            style="-fx-background-color: -color-danger-emphasis; -fx-text-fill: white; -fx-font-size: 9px; -fx-font-weight: bold; -fx-padding: 1 4; -fx-background-radius: 10;"
                            StackPane.alignment="TOP_RIGHT">
@@ -43,12 +43,12 @@
             <StackPane style="-fx-background-color: -color-accent-emphasis;
                             -fx-min-width: 38; -fx-max-width: 38; -fx-min-height: 38; -fx-max-height: 38;
                             -fx-shape: 'M 100, 100 m -75, 0 a 75,75 0 1,0 150,0 a 75,75 0 1,0 -150,0';">
-                <Label text="AD" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;"/>
+                <Label fx:id="lblUserInitials" text="--" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;"/>
             </StackPane>
 
             <VBox alignment="CENTER_LEFT">
-                <Label text="Admin User" style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
-                <Label text="admin@pellets.com" styleClass="text-muted" style="-fx-font-size: 11px;"/>
+                <Label fx:id="lblUserName" text="Funcionário" style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
+                <Label fx:id="lblUserNumber" text="Nº funcionário" styleClass="text-muted" style="-fx-font-size: 11px;"/>
             </VBox>
         </HBox>
     </HBox>

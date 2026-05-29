@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.mapper;
 
 import com.pelletsfactory.stock_manager.common.dto.request.OrdemProducaoRequestDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.OrdemProducaoDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.OrdemProducaoResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.OrdemProducaoSimpleDTO;
@@ -27,6 +28,9 @@ public class OrdemProducaoMapper {
 
         OrdemProducao entity = new OrdemProducao();
         entity.setQuantidadePlaneada(dto.quantidadePlaneada());
+        if (dto.quantidadeProduzidaReal() != null) {
+            entity.setQuantidadeProduzidaReal(dto.quantidadeProduzidaReal());
+        }
         entity.setDataInicio(parseInstant(dto.dataInicio()));
         entity.setEstado(EstadoOrdemProducao.valueOf(dto.estado()));
         // TipoPellet, Funcionario e FormulaProducao serão setados no serviço
@@ -92,30 +96,41 @@ public class OrdemProducaoMapper {
                 entity.getDataInicio(),
                 entity.getDataFim(),
                 entity.getEstado(),
-                entity.getConsumos() != null ? 
-                    entity.getConsumos().stream()
-                        .map(c -> new com.pelletsfactory.stock_manager.common.dto.response.ConsumoResponseDTO(
-                            c.getId(),
-                            c.getOrdem().getId(),
-                            c.getMateriaPrima().getId(),
-                            c.getMateriaPrima().getNome(),
-                            c.getMateriaPrima().getUnidade(),
-                            c.getQuantidadeConsumidaReal()
-                        ))
-                        .toList() 
-                    : null,
+                entity.getConsumos() != null ?
+                        entity.getConsumos().stream()
+                                .map(c -> new com.pelletsfactory.stock_manager.common.dto.response.ConsumoResponseDTO(
+                                        c.getId(),
+                                        c.getOrdem().getId(),
+                                        c.getMateriaPrima().getId(),
+                                        c.getMateriaPrima().getNome(),
+                                        c.getMateriaPrima().getUnidade(),
+                                        c.getQuantidadeConsumidaReal()
+                                ))
+                                .toList()
+                        : null,
                 entity.getLotes() != null ?
-                    entity.getLotes().stream()
-                        .map(l -> new com.pelletsfactory.stock_manager.common.dto.response.LotePelletSimpleDTO(
-                            l.getId(),
-                            l.getCodigoLote(),
-                            l.getTipoPellet() != null ? l.getTipoPellet().getNome() : null,
-                            l.getQuantidadeKg(),
-                            l.getDataProducao() != null ? l.getDataProducao().atZone(ZoneId.systemDefault()).toLocalDateTime() : null,
-                            l.getLocalizacaoArmazem()
-                        ))
-                        .toList()
-                    : null,
+                        entity.getLotes().stream()
+                                .map(l -> new com.pelletsfactory.stock_manager.common.dto.response.LotePelletSimpleDTO(
+                                        l.getId(),
+                                        l.getCodigoLote(),
+                                        l.getTipoPellet() != null ? l.getTipoPellet().getNome() : null,  // ← Adicione esta linha
+                                        l.getQuantidadeKg(),
+                                        l.getDataProducao() != null ? l.getDataProducao().atZone(ZoneId.systemDefault()).toLocalDateTime() : null,
+                                        l.getLocalizacaoArmazem()
+                                ))
+                                .toList()
+                        : null,
+                entity.getAlocacoes() != null ?
+                        entity.getAlocacoes().stream()
+                                .map(a -> new AlocacaoSimpleDTO(
+                                        a.getEncomendaCliente().getId(),
+                                        a.getEncomendaCliente().getCliente() != null ? a.getEncomendaCliente().getCliente().getNome() : "—",
+                                        a.getEncomendaCliente().getEstado(),
+                                        a.getQuantidadeReservada(),
+                                        a.getEncomendaCliente().getCodigoTracking()
+                                ))
+                                .toList()
+                        : null,
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -129,6 +144,9 @@ public class OrdemProducaoMapper {
 
         if (dto.quantidadePlaneada() != null) {
             entity.setQuantidadePlaneada(dto.quantidadePlaneada());
+        }
+        if (dto.quantidadeProduzidaReal() != null) {
+            entity.setQuantidadeProduzidaReal(dto.quantidadeProduzidaReal());
         }
         if (dto.dataInicio() != null) {
             entity.setDataInicio(parseInstant(dto.dataInicio()));

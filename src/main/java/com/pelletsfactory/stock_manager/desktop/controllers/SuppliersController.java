@@ -54,9 +54,16 @@ public class SuppliersController {
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
         configurarTabela();
         configurarDrawerAdicionar();
         carregarFornecedores();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     private void configurarTabela() {

@@ -34,6 +34,8 @@ public class StockController {
 
     // Elementos de UI dos Cards
     @FXML private Label lblCurrentStock, lblMinThreshold, lblAvailableStock, lblReservedStock;
+    @FXML private StackPane iconCurrentStock, iconMinThreshold, iconAvailableStock, iconReservedStock;
+    @FXML private Button btnAdjustStock, btnStockEntry, btnStockExit, btnFilter, btnClear;
 
     // Tabela e Filtros
     @FXML private ComboBox<TipoMovimento> cmbFiltroTipo;
@@ -68,10 +70,18 @@ public class StockController {
 
     @FXML
     public void initialize() {
+        resetPaginationControls();
+        configurarIcones();
         configurarTabela();
         configurarComboBoxes();
         carregarDadosEstatisticos();
         carregarMovimentos();
+    }
+
+    private void resetPaginationControls() {
+        lblPaginaStatus = null;
+        cmbItemsPerPage = null;
+        paginationButtons = null;
     }
 
     private void carregarDadosEstatisticos() {
@@ -83,6 +93,47 @@ public class StockController {
         lblMinThreshold.setText("3,000 tons");
         lblAvailableStock.setText("2,350 tons");
         lblReservedStock.setText("500 tons");
+    }
+
+    private void configurarIcones() {
+        setCardIcon(iconCurrentStock, "mdi2p-package-variant", "#4C7AF2");
+        setCardIcon(iconMinThreshold, "mdi2a-alert-circle-outline", "#f59e0b");
+        setCardIcon(iconAvailableStock, "mdi2c-check-circle-outline", "#22c55e");
+        setCardIcon(iconReservedStock, "mdi2l-lock-outline", "#ef4444");
+
+        setButtonIcon(btnAdjustStock, "mdi2t-tune-variant");
+        setButtonIcon(btnStockEntry, "mdi2a-arrow-down-circle");
+        setButtonIcon(btnStockExit, "mdi2a-arrow-up-circle");
+        setButtonIcon(btnFilter, "mdi2f-filter-outline");
+        setButtonIcon(btnClear, "mdi2c-close-circle-outline");
+    }
+
+    private void setCardIcon(StackPane container, String literal, String color) {
+        if (container == null) {
+            return;
+        }
+
+        FontIcon icon = new FontIcon();
+        icon.setIconLiteral(literal);
+        icon.setIconSize(20);
+        icon.setIconColor(javafx.scene.paint.Color.web(color));
+
+        container.setMinSize(36, 36);
+        container.setPrefSize(36, 36);
+        container.setMaxSize(36, 36);
+        container.setStyle("-fx-background-color: " + color + "20; -fx-background-radius: 8;");
+        container.getChildren().setAll(icon);
+    }
+
+    private void setButtonIcon(Button button, String literal) {
+        if (button == null) {
+            return;
+        }
+
+        FontIcon icon = new FontIcon();
+        icon.setIconLiteral(literal);
+        icon.setIconSize(16);
+        button.setGraphic(icon);
     }
 
     // --- AÇÕES DOS BOTÕES COLORIDOS (CONFORME PRINTS) ---
@@ -448,4 +499,3 @@ public class StockController {
         handleFiltrar();
     }
 }
-

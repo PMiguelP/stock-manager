@@ -4,6 +4,8 @@ import atlantafx.base.theme.Styles;
 import com.pelletsfactory.stock_manager.common.entities.Funcionario;
 import com.pelletsfactory.stock_manager.common.entities.SessaoFuncionario;
 import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
+import com.pelletsfactory.stock_manager.desktop.services.LanguagePreferencesService;
 import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
 import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService.ThemeMode;
 import javafx.application.Platform;
@@ -20,7 +22,9 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +42,8 @@ public class SettingsController {
 
     private final ThemePreferencesService themePreferencesService;
     private final FuncionarioService funcionarioService;
+    private final LanguagePreferencesService languagePreferencesService;
+    private final I18nService i18nService;
 
     @FXML private ScrollPane settingsScrollPane;
     @FXML private VBox settingsContent;
@@ -62,13 +68,11 @@ public class SettingsController {
     @FXML private Button accentPink;
 
     @FXML private ComboBox<String> cmbLanguage;
-    @FXML private ComboBox<String> cmbTimezone;
-    @FXML private ComboBox<String> cmbDateFormat;
 
     @FXML private HBox currentPinBox;
     @FXML private HBox newPinBox;
-    @FXML private FontIcon currentPinIcon;
-    @FXML private FontIcon newPinIcon;
+    @FXML private StackPane currentPinIcon;
+    @FXML private StackPane newPinIcon;
     @FXML private PasswordField txtCurrentPin;
     @FXML private PasswordField txtNewPin;
     @FXML private Label lblPinFeedback;
@@ -77,9 +81,14 @@ public class SettingsController {
     private final Map<ToggleButton, ThemeMode> themeModeByCard = new LinkedHashMap<>();
     private final Map<Button, String> accentByChip = new LinkedHashMap<>();
 
-    public SettingsController(ThemePreferencesService themePreferencesService, FuncionarioService funcionarioService) {
+    public SettingsController(ThemePreferencesService themePreferencesService,
+                              FuncionarioService funcionarioService,
+                              LanguagePreferencesService languagePreferencesService,
+                              I18nService i18nService) {
         this.themePreferencesService = themePreferencesService;
         this.funcionarioService = funcionarioService;
+        this.languagePreferencesService = languagePreferencesService;
+        this.i18nService = i18nService;
     }
 
     @FXML
@@ -148,13 +157,27 @@ public class SettingsController {
     }
 
     private void setupLanguageRegion() {
-        cmbLanguage.getItems().setAll("Portugues", "English");
-        cmbTimezone.getItems().setAll("Europe/Lisbon (GMT+0)", "UTC", "Europe/Madrid (GMT+1)");
-        cmbDateFormat.getItems().setAll("DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD");
+        refreshLanguageOptions();
 
-        cmbLanguage.getSelectionModel().selectFirst();
-        cmbTimezone.getSelectionModel().selectFirst();
-        cmbDateFormat.getSelectionModel().selectFirst();
+        cmbLanguage.setOnAction(e -> {
+            int index = cmbLanguage.getSelectionModel().getSelectedIndex();
+            if (index == 1) {
+                languagePreferencesService.setLanguage(LanguagePreferencesService.AppLanguage.EN);
+            } else {
+                languagePreferencesService.setLanguage(LanguagePreferencesService.AppLanguage.PT);
+            }
+        });
+    }
+
+    private void refreshLanguageOptions() {
+        String pt = i18nService.translate("Portuguese");
+        String en = i18nService.translate("English");
+        cmbLanguage.getItems().setAll(pt, en);
+        if (languagePreferencesService.getLanguage() == LanguagePreferencesService.AppLanguage.EN) {
+            cmbLanguage.getSelectionModel().select(en);
+        } else {
+            cmbLanguage.getSelectionModel().select(pt);
+        }
     }
 
     private void setupSecurityPinFields() {
@@ -167,8 +190,8 @@ public class SettingsController {
         txtCurrentPin.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 12 0 12 0;");
         txtNewPin.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 12 0 12 0;");
 
-        currentPinIcon.setStyle("-fx-icon-color: #7f8a9b;");
-        newPinIcon.setStyle("-fx-icon-color: #7f8a9b;");
+        setPinIcon(currentPinIcon, "mdi2l-lock-outline", "#7f8a9b");
+        setPinIcon(newPinIcon, "mdi2k-key-outline", "#7f8a9b");
 
         txtCurrentPin.setTextFormatter(new TextFormatter<String>(change ->
                 change.getControlNewText().matches("\\d{0,4}") ? change : null
@@ -183,13 +206,20 @@ public class SettingsController {
         txtNewPin.setOnAction(event -> handleUpdatePin());
     }
 
-    private void installPinFieldTransition(HBox wrapper, FontIcon icon, PasswordField field) {
+    private void installPinFieldTransition(HBox wrapper, StackPane icon, PasswordField field) {
         field.focusedProperty().addListener((obs, oldVal, focused) -> {
             wrapper.setStyle(focused ? PIN_WRAPPER_FOCUS : PIN_WRAPPER_BASE);
-            icon.setStyle(focused
-                    ? "-fx-icon-color: -color-accent-emphasis;"
-                    : "-fx-icon-color: #7f8a9b;");
+            setPinIcon(icon, icon == currentPinIcon ? "mdi2l-lock-outline" : "mdi2k-key-outline",
+                    focused ? themePreferencesService.getAccentHex() : "#7f8a9b");
         });
+    }
+
+    private void setPinIcon(StackPane container, String iconLiteral, String color) {
+        FontIcon icon = new FontIcon();
+        icon.setIconLiteral(iconLiteral);
+        icon.setIconSize(16);
+        icon.setIconColor(Color.web(color));
+        container.getChildren().setAll(icon);
     }
 
     private void loadThemeState() {
