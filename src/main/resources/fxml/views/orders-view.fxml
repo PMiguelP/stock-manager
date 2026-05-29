@@ -22,7 +22,7 @@
             <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
                 <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
             </Button>
-            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="button-flat">
+            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="flat">
                 <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>

@@ -16,4 +16,7 @@ public interface TipoPelletRepository extends JpaRepository<TipoPellet, UUID> {
     Page<TipoPellet> findByFiltros(@Param("nome") String nome,
                                   @Param("diametroMm") Double diametroMm,
                                   Pageable pageable);
+
+    @Query("SELECT COUNT(t) FROM TipoPellet t WHERE t.stockAtual < t.stockMinimo")
+    long countBelowMinimumStock();
 }

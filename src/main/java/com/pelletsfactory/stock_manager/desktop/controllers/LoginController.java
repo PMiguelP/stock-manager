@@ -29,6 +29,8 @@ import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignA;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignL;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
 
@@ -39,6 +41,8 @@ import java.net.URL;
  */
 @Component
 public class LoginController {
+
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
     private static final String WRAPPER_BASE_STYLE = "-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;";
     private static final String WRAPPER_FOCUS_STYLE = "-fx-background-color: -color-bg-subtle; -fx-border-color: -color-accent-emphasis; -fx-border-width: 1.2; -fx-background-radius: 10; -fx-border-radius: 10;";
@@ -302,7 +306,7 @@ public class LoginController {
             Platform.runLater(() -> applyVisibleBounds(stage));
 
         } catch (Exception e) {
-            System.err.println("Erro ao carregar tela principal: " + e.getMessage());
+            log.error("Erro ao carregar tela principal", e);
             showError("Erro ao abrir a tela principal.");
         }
     }

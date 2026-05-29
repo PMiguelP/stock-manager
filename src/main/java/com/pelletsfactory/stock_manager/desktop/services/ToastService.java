@@ -14,11 +14,14 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ToastService {
 
+    private static final Logger log = LoggerFactory.getLogger(ToastService.class);
     private static final Duration FADE_IN_DURATION = Duration.millis(180);
     private static final Duration VISIBLE_DURATION = Duration.seconds(4);
     private static final Duration FADE_OUT_DURATION = Duration.millis(220);
@@ -41,7 +44,7 @@ public class ToastService {
     private void showToast(ToastType type, String title, String message) {
         Platform.runLater(() -> {
             if (toastContainer == null) {
-                System.out.println(type.name() + ": " + title + " - " + message);
+                log.info("{}: {} - {}", type.name(), title, message);
                 return;
             }
 
@@ -116,4 +119,3 @@ public class ToastService {
         }
     }
 }
-

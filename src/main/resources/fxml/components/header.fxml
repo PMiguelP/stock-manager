@@ -38,7 +38,7 @@
         </Button>
 
         <HBox fx:id="profileBox" alignment="CENTER" spacing="12" onMouseClicked="#handleOpenSettings"
-              style="-fx-cursor: hand; -fx-padding: 5 10; -fx-background-radius: 8;" styleClass="button-flat">
+              style="-fx-cursor: hand; -fx-padding: 5 10; -fx-background-radius: 8;" styleClass="flat">
 
             <StackPane style="-fx-background-color: -color-accent-emphasis;
                             -fx-min-width: 38; -fx-max-width: 38; -fx-min-height: 38; -fx-max-height: 38;

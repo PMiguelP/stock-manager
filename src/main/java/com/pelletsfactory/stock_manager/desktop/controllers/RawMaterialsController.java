@@ -7,6 +7,8 @@ import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -52,12 +54,7 @@ public class RawMaterialsController {
     private TextField txtStockAdicionar;
     private TextField txtMinimoAdicionar;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<MateriaPrimaRow> materiais = FXCollections.observableArrayList();
 
@@ -73,7 +70,7 @@ public class RawMaterialsController {
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarMaterias);
         cmbFiltroStatus.setItems(FXCollections.observableArrayList(
                 i18nService.translate("Normal"),
                 i18nService.translate("Low"),
@@ -82,12 +79,6 @@ public class RawMaterialsController {
         configurarTabela();
         configurarDrawerAdicionar();
         carregarMaterias();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -152,7 +143,7 @@ public class RawMaterialsController {
         try {
             String nome = (txtSearch != null && !txtSearch.getText().isBlank()) ? txtSearch.getText() : null;
             Page<MateriaPrimaSimpleDTO> page = stockService.listarMateriasPrimasComFiltros(
-                    paginaAtual + 1, itemsPerPage, nome, null, "nome", "ASC"
+                    pagination.pageNumberForService(), pagination.pageSize(), nome, null, "nome", "ASC"
             );
 
             List<MateriaPrimaRow> rows = new ArrayList<>();
@@ -161,15 +152,13 @@ public class RawMaterialsController {
                 String status = calcularStatus(item.stockAtual(), item.stockMinimo());
                 String statusLabel = i18nService.translate(status);
                 if (cmbFiltroStatus.getValue() == null || cmbFiltroStatus.getValue().equalsIgnoreCase(statusLabel)) {
-                    rows.add(MateriaPrimaRow.from(item, paginaAtual, itemsPerPage, i, status));
+                    rows.add(MateriaPrimaRow.from(item, pagination.currentPage(), pagination.pageSize(), i, status));
                 }
             }
 
             materiais.setAll(rows);
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
             atualizarAlerta();
         } catch (Exception e) {
             mostrarErro("Erro ao carregar materias-primas: " + e.getMessage());
@@ -223,68 +212,9 @@ public class RawMaterialsController {
         return b;
     }
 
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus);
-        left.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarMaterias(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
-        center.setAlignment(Pos.CENTER);
-        HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button();
-        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarMaterias(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int idx = i;
-                p.setOnAction(e -> { paginaAtual = idx; carregarMaterias(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button();
-        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarMaterias(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<?> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
-    }
-
     @FXML
     private void handleFiltrar() {
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarMaterias();
     }
 
@@ -292,7 +222,7 @@ public class RawMaterialsController {
     private void handleLimpar() {
         txtSearch.clear();
         cmbFiltroStatus.setValue(null);
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarMaterias();
     }
 
@@ -308,25 +238,8 @@ public class RawMaterialsController {
     }
 
     private void configurarDrawerAdicionar() {
-        drawerAdicionar = new VBox(0);
-        drawerAdicionar.setMinWidth(550);
-        drawerAdicionar.setPrefWidth(550);
-        drawerAdicionar.setMaxWidth(550);
-        drawerAdicionar.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("New Raw Material");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        drawerAdicionar = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("New Raw Material", navigationService::hideModal);
 
         txtNomeAdicionar = new TextField();
         txtNomeAdicionar.setPromptText("e.g., Wood Chips");
@@ -350,15 +263,8 @@ public class RawMaterialsController {
         );
         form.setPadding(new Insets(30));
 
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        HBox footer = new HBox();
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        ScrollPane scrollPane = UiFactory.transparentScroll(form);
+        HBox footer = UiFactory.drawerFooter();
         Button btnCreate = new Button("Create Material");
         btnCreate.getStyleClass().add("accent");
         btnCreate.setPrefHeight(44);
@@ -404,7 +310,7 @@ public class RawMaterialsController {
                     stockMinimo
             );
             stockService.criarMateriaPrima(dto);
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarMaterias();
             navigationService.hideModal();
             mostrarSucesso(i18nService.translate("Matéria-prima criada!"));
@@ -434,25 +340,8 @@ public class RawMaterialsController {
     }
 
     private VBox criarDrawerDetalhes(MateriaPrimaDetailsDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Raw Material Details");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Raw Material Details", navigationService::hideModal);
 
         TextField txtNome = new TextField(d.nome());
         TextField txtUnidade = new TextField(d.unidade());
@@ -471,10 +360,7 @@ public class RawMaterialsController {
         );
         form.setPadding(new Insets(30));
 
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        ScrollPane scrollPane = UiFactory.transparentScroll(form);
 
         root.getChildren().addAll(header, scrollPane);
         return root;

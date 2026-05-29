@@ -6,8 +6,11 @@ import com.pelletsfactory.stock_manager.common.dto.response.MoedaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import com.pelletsfactory.stock_manager.common.services.FinanceiroService;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
+import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -31,6 +34,7 @@ public class StockController {
     private final NavigationService navigationService;
     private final ToastService toastService;
     private final MoedaService moedaService;
+    private final StockService stockService;
 
     // Elementos de UI dos Cards
     @FXML private Label lblCurrentStock, lblMinThreshold, lblAvailableStock, lblReservedStock;
@@ -48,12 +52,7 @@ public class StockController {
     @FXML private TableColumn<MovimentoFinanceiroSimpleDTO, Instant> colData;
     @FXML private TableColumn<MovimentoFinanceiroSimpleDTO, Void> colAcoes;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<MovimentoFinanceiroSimpleDTO> movimentos = FXCollections.observableArrayList();
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -61,16 +60,18 @@ public class StockController {
     public StockController(FinanceiroService financeiroService,
                            NavigationService navigationService,
                            ToastService toastService,
-                           MoedaService moedaService) {
+                           MoedaService moedaService,
+                           StockService stockService) {
         this.financeiroService = financeiroService;
         this.navigationService = navigationService;
         this.toastService = toastService;
         this.moedaService = moedaService;
+        this.stockService = stockService;
     }
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarMovimentos);
         configurarIcones();
         configurarTabela();
         configurarComboBoxes();
@@ -78,21 +79,16 @@ public class StockController {
         carregarMovimentos();
     }
 
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
-    }
-
     private void carregarDadosEstatisticos() {
-        // Exemplo usando o seu método calcularSaldoAtual() para o card principal
-        Double saldo = financeiroService.calcularSaldoAtual();
-        lblCurrentStock.setText(String.format("%.0f tons", saldo));
+        double stockPellets = stockService.calcularStockPelletsAtual();
+        double stockMinimo = stockService.calcularStockPelletsMinimo();
+        double stockMaterias = stockService.calcularStockMateriasPrimasAtual();
+        int alertas = stockService.verificarAlertasStock();
 
-        // Valores estáticos conforme o seu print (podem ser buscados de outro service de Stock futuramente)
-        lblMinThreshold.setText("3,000 tons");
-        lblAvailableStock.setText("2,350 tons");
-        lblReservedStock.setText("500 tons");
+        lblCurrentStock.setText(String.format("%.0f kg", stockPellets));
+        lblMinThreshold.setText(String.format("%.0f kg", stockMinimo));
+        lblAvailableStock.setText(String.format("%.0f kg", stockMaterias));
+        lblReservedStock.setText(String.valueOf(alertas));
     }
 
     private void configurarIcones() {
@@ -154,25 +150,8 @@ public class StockController {
     }
 
     private void abrirFormularioMovimento(String titulo, String textoBotao, String corBotao, boolean mostrarRelatedOrder) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label lblTitulo = new Label(titulo);
-        lblTitulo.getStyleClass().add("title-3");
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(lblTitulo, spacer, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader(titulo, navigationService::hideModal);
 
         VBox form = new VBox(20);
         form.setPadding(new Insets(30));
@@ -200,15 +179,8 @@ public class StockController {
         txtNotes.setPrefHeight(100);
         form.getChildren().add(new VBox(6, new Label("Notes"), txtNotes));
 
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        HBox footer = new HBox();
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        ScrollPane scrollPane = UiFactory.transparentScroll(form);
+        HBox footer = UiFactory.drawerFooter();
 
         Button btnSubmit = new Button(textoBotao);
         btnSubmit.setPrefHeight(44);
@@ -306,13 +278,11 @@ public class StockController {
             TipoMovimento tipo = cmbFiltroTipo.getValue();
             MoedaSimpleDTO moeda = cmbFiltroMoeda.getValue();
             Page<MovimentoFinanceiroSimpleDTO> page = financeiroService.listarMovimentosFinanceirosSimples(
-                    paginaAtual + 1, itemsPerPage, tipo, moeda != null ? moeda.id() : null, "createdAt", "DESC"
+                    pagination.pageNumberForService(), pagination.pageSize(), tipo, moeda != null ? moeda.id() : null, "createdAt", "DESC"
             );
             movimentos.setAll(page.getContent());
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             mostrarErro("Erro: " + e.getMessage());
         }
@@ -358,56 +328,6 @@ public class StockController {
         });
     }
 
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus); left.setAlignment(Pos.CENTER_LEFT); HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarMovimentos(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage); center.setAlignment(Pos.CENTER); HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons); right.setAlignment(Pos.CENTER_RIGHT); HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button(); prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarMovimentos(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int idx = i; p.setOnAction(e -> { paginaAtual = idx; carregarMovimentos(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button(); next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarMovimentos(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<?> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
-    }
-
     private void handleAbrirDetalhes(MovimentoFinanceiroSimpleDTO mov) {
         try {
             MovimentoFinanceiroResponseDTO detalhes = financeiroService.obterMovimentoFinanceiro(mov.id());
@@ -419,25 +339,8 @@ public class StockController {
     }
 
     private VBox criarDrawerDetalhes(MovimentoFinanceiroResponseDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Detalhes do Movimento");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Detalhes do Movimento", navigationService::hideModal);
 
         VBox content = new VBox(16);
         content.setPadding(new Insets(30));
@@ -464,10 +367,7 @@ public class StockController {
                 criarCampoLeitura("Encomenda Relacionada", encomendaRelacionada)
         );
 
-        ScrollPane scrollPane = new ScrollPane(content);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        ScrollPane scrollPane = UiFactory.transparentScroll(content);
 
         root.getChildren().addAll(header, scrollPane);
         return root;
@@ -492,7 +392,7 @@ public class StockController {
     private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
     private void mostrarErro(String m) { toastService.showError("Erro", m); }
 
-    @FXML private void handleFiltrar() { paginaAtual = 0; carregarMovimentos(); }
+    @FXML private void handleFiltrar() { pagination.resetPage(); carregarMovimentos(); }
     @FXML private void handleMostrarTodos() {
         cmbFiltroTipo.setValue(null);
         cmbFiltroMoeda.setValue(null);

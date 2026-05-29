@@ -28,6 +28,8 @@ import javafx.scene.shape.Circle;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignH;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
@@ -40,6 +42,8 @@ import java.util.UUID;
 
 @Component
 public class HeaderController {
+
+    private static final Logger log = LoggerFactory.getLogger(HeaderController.class);
 
     @FXML private Breadcrumbs<String> breadcrumbs;
     @FXML private Label lblUserInitials;
@@ -229,7 +233,7 @@ public class HeaderController {
             navigationService.showModal(notificationsDrawer);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Erro ao abrir notificações", e);
         }
     }
 

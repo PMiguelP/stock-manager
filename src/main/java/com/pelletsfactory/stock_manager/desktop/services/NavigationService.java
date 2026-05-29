@@ -7,6 +7,8 @@ import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.layout.BorderPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,8 @@ import java.util.Map;
 
 @Service
 public class NavigationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NavigationService.class);
 
     private final ConfigurableApplicationContext springContext;
     private final ApplicationEventPublisher eventPublisher;
@@ -130,7 +134,7 @@ public class NavigationService {
         if (modalPane != null) {
             modalPane.show(content);
         } else {
-            System.err.println("Erro: ModalPane nao foi injetado no NavigationService!");
+            log.warn("ModalPane não foi definido no NavigationService");
         }
     }
 
@@ -147,7 +151,7 @@ public class NavigationService {
 
         RouteInfo routeInfo = routes.get(route);
         if (routeInfo == null) {
-            System.err.println("Rota nao encontrada: " + route);
+            log.warn("Rota não encontrada: {}", route);
             return;
         }
 
@@ -165,8 +169,7 @@ public class NavigationService {
             ));
 
         } catch (IOException e) {
-            System.err.println("Erro ao carregar view: " + routeInfo.fxmlPath);
-            e.printStackTrace();
+            log.error("Erro ao carregar view {}", routeInfo.fxmlPath, e);
         }
     }
 
@@ -198,7 +201,7 @@ public class NavigationService {
             i18nService.applyTo(view);
             return view;
         } catch (IOException e) {
-            System.err.println("Erro ao carregar FXML externo: " + normalizedPath);
+            log.error("Erro ao carregar FXML externo {}", normalizedPath, e);
             return null;
         }
     }

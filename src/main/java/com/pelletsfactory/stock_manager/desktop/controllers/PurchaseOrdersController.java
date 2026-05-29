@@ -3,6 +3,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 import com.pelletsfactory.stock_manager.common.dto.response.*;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.services.CompraService;
+import com.pelletsfactory.stock_manager.common.services.FornecedorService;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class PurchaseOrdersController {
 
     private final CompraService compraService;
+    private final FornecedorService fornecedorService;
     private final StockService stockService;
     private final MoedaService moedaService;
     private final NavigationService navigationService;
@@ -67,11 +69,13 @@ public class PurchaseOrdersController {
     private final ObservableList<EncomendaFornecedorSimpleDTO> encomendas = FXCollections.observableArrayList();
 
     public PurchaseOrdersController(CompraService compraService,
+                                    FornecedorService fornecedorService,
                                     StockService stockService,
                                     MoedaService moedaService,
                                     NavigationService navigationService,
                                     ToastService toastService) {
         this.compraService = compraService;
+        this.fornecedorService = fornecedorService;
         this.stockService = stockService;
         this.moedaService = moedaService;
         this.navigationService = navigationService;
@@ -125,7 +129,7 @@ public class PurchaseOrdersController {
             toastService.showError("Erro", "Não foi possível carregar matérias-primas.");
         }
         try {
-            fornecedores = compraService.listarTodosFornecedoresSimples();
+            fornecedores = fornecedorService.listarTodosFornecedoresSimples();
         } catch (Exception e) {
             toastService.showError("Erro", "Não foi possível carregar fornecedores.");
         }

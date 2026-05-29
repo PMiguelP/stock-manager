@@ -5,12 +5,11 @@ import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaDetailsD
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletSimpleDTO;
-import com.pelletsfactory.stock_manager.common.entities.Fornecedor;
 import com.pelletsfactory.stock_manager.common.entities.MateriaPrima;
 import com.pelletsfactory.stock_manager.common.entities.TipoPellet;
 import com.pelletsfactory.stock_manager.common.mapper.MateriaPrimaMapper;
 import com.pelletsfactory.stock_manager.common.mapper.TipoPelletMapper;
-import com.pelletsfactory.stock_manager.common.repositories.FornecedorRepository;
+import jakarta.persistence.EntityNotFoundException;
 import com.pelletsfactory.stock_manager.common.repositories.MateriaPrimaRepository;
 import com.pelletsfactory.stock_manager.common.repositories.TipoPelletRepository;
 import jakarta.transaction.Transactional;
@@ -26,23 +25,24 @@ import java.util.UUID;
 public class StockService {
     private final MateriaPrimaRepository materiaPrimaRepo;
     private final TipoPelletRepository tipoPelletRepo;
-    private final FornecedorRepository forncedorRepo;
     private final MateriaPrimaMapper materiaPrimaMapper;
     private final TipoPelletMapper tipoPelletMapper;
 
-    public StockService(MateriaPrimaRepository materiaPrimaRepo, TipoPelletRepository tipoPelletRepo, FornecedorRepository forncedorRepo,
+    public StockService(MateriaPrimaRepository materiaPrimaRepo, TipoPelletRepository tipoPelletRepo,
                         MateriaPrimaMapper materiaPrimaMapper, TipoPelletMapper tipoPelletMapper) {
         this.materiaPrimaRepo = materiaPrimaRepo;
         this.tipoPelletRepo = tipoPelletRepo;
-        this.forncedorRepo = forncedorRepo;
         this.materiaPrimaMapper = materiaPrimaMapper;
         this.tipoPelletMapper = tipoPelletMapper;
     }
 
     @Transactional
     public MateriaPrima registarMateriaPrima(MateriaPrima materiaPrima) {
-        // TODO: Regista nova matéria-prima no sistema e retorna a MateriaPrima criada
-        return new MateriaPrima();
+        if (materiaPrima == null) {
+            throw new IllegalArgumentException("Matéria-prima é obrigatória");
+        }
+        normalizarStockMateriaPrima(materiaPrima);
+        return materiaPrimaRepo.save(materiaPrima);
     }
 
     @Transactional
@@ -61,58 +61,87 @@ public class StockService {
     }
 
     @Transactional
-    public Fornecedor registarFornecedor(Fornecedor fornecedor) {
-        // TODO: Regista novo fornecedor e retorna o Fornecedor criado
-        return new Fornecedor();
-    }
-
-
-    @Transactional
     public TipoPellet configurarTipoPellet(TipoPellet tipoPellet) {
-        // TODO: Define novo tipo de pellet (produto final) e retorna o TipoPellet criado
-        return new TipoPellet();
+        if (tipoPellet == null) {
+            throw new IllegalArgumentException("Tipo de pellet é obrigatório");
+        }
+        normalizarStockTipoPellet(tipoPellet);
+        return tipoPelletRepo.save(tipoPellet);
     }
 
     @Transactional
     public int ajustarStock() {
-        return 0;
+        throw new UnsupportedOperationException("Use adicionar/subtrair stock indicando o item e a quantidade");
     }
 
     public int verificarAlertasStock() {
-        return 0; //TODO vai retornar uma lista com o stock abaixo do minimo
+        return Math.toIntExact(contarMateriasAbaixoMinimo() + tipoPelletRepo.countBelowMinimumStock());
     }
 
     public long contarMateriasAbaixoMinimo() {
         return materiaPrimaRepo.countBelowMinimumStock();
     }
 
+    public double calcularStockPelletsAtual() {
+        return tipoPelletRepo.findAll().stream()
+                .mapToDouble(tipo -> valorStock(tipo.getStockAtual()))
+                .sum();
+    }
+
+    public double calcularStockPelletsMinimo() {
+        return tipoPelletRepo.findAll().stream()
+                .mapToDouble(tipo -> valorStock(tipo.getStockMinimo()))
+                .sum();
+    }
+
+    public double calcularStockMateriasPrimasAtual() {
+        return materiaPrimaRepo.findAll().stream()
+                .mapToDouble(materia -> valorStock(materia.getStockAtual()))
+                .sum();
+    }
+
 
     public MateriaPrima buscarMateriaPrimaPorId(UUID id) {
-        // TODO: Busca matéria-prima por ID. Usado pelo ProducaoService e CompraService. Retorna MateriaPrima ou lança exceção
-        return new MateriaPrima();
+        return materiaPrimaRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Matéria-prima não encontrada"));
     }
 
     public TipoPellet buscarTipoPelletPorId(UUID id) {
-        // TODO: Busca tipo de pellet por ID. Usado pelo VendaService e ProducaoService. Retorna TipoPellet ou lança exceção
-        return new TipoPellet();
+        return tipoPelletRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Tipo de pellet não encontrado"));
     }
 
     @Transactional
     public MateriaPrima subtrairStockMateriaPrima(UUID materiaPrimaId, Double quantidade) {
-        // TODO: @Transactional - Reduz stock de matéria-prima e verifica se ficou abaixo do mínimo. Retorna MateriaPrima atualizada
-        return new MateriaPrima();
+        validarQuantidadePositiva(quantidade);
+        MateriaPrima materiaPrima = buscarMateriaPrimaPorId(materiaPrimaId);
+        double novoStock = valorStock(materiaPrima.getStockAtual()) - quantidade;
+        if (novoStock < 0) {
+            throw new IllegalArgumentException("Stock insuficiente para a matéria-prima");
+        }
+        materiaPrima.setStockAtual(novoStock);
+        return materiaPrimaRepo.save(materiaPrima);
     }
 
     @Transactional
     public MateriaPrima adicionarStockMateriaPrima(UUID materiaPrimaId, Double quantidade) {
-        // TODO: Adiciona stock quando encomenda de fornecedor é recebida. Retorna MateriaPrima atualizada
-        return new MateriaPrima();
+        validarQuantidadePositiva(quantidade);
+        MateriaPrima materiaPrima = buscarMateriaPrimaPorId(materiaPrimaId);
+        materiaPrima.setStockAtual(valorStock(materiaPrima.getStockAtual()) + quantidade);
+        return materiaPrimaRepo.save(materiaPrima);
     }
 
     @Transactional
     public TipoPellet atualizarStockPellet(UUID tipoPelletId, Double quantidade, boolean isAdicao) {
-        // TODO: @Transactional - Gere entrada (produção) ou saída (venda) de pellets. Se isAdicao=true adiciona, senão subtrai. Retorna TipoPellet atualizado
-        return new TipoPellet();
+        validarQuantidadePositiva(quantidade);
+        TipoPellet tipoPellet = buscarTipoPelletPorId(tipoPelletId);
+        double stockAtual = valorStock(tipoPellet.getStockAtual());
+        double novoStock = isAdicao ? stockAtual + quantidade : stockAtual - quantidade;
+        if (novoStock < 0) {
+            throw new IllegalArgumentException("Stock insuficiente para o tipo de pellet");
+        }
+        tipoPellet.setStockAtual(novoStock);
+        return tipoPelletRepo.save(tipoPellet);
     }
 
     /**
@@ -191,5 +220,33 @@ public class StockService {
                 tipoPellet.getCreatedAt(),
                 tipoPellet.getUpdatedAt()
         );
+    }
+
+    private void normalizarStockMateriaPrima(MateriaPrima materiaPrima) {
+        if (materiaPrima.getStockAtual() == null) {
+            materiaPrima.setStockAtual(0.0);
+        }
+        if (materiaPrima.getStockMinimo() == null) {
+            materiaPrima.setStockMinimo(0.0);
+        }
+    }
+
+    private void normalizarStockTipoPellet(TipoPellet tipoPellet) {
+        if (tipoPellet.getStockAtual() == null) {
+            tipoPellet.setStockAtual(0.0);
+        }
+        if (tipoPellet.getStockMinimo() == null) {
+            tipoPellet.setStockMinimo(0.0);
+        }
+    }
+
+    private void validarQuantidadePositiva(Double quantidade) {
+        if (quantidade == null || quantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade deve ser maior que zero");
+        }
+    }
+
+    private double valorStock(Double valor) {
+        return valor != null ? valor : 0.0;
     }
 }

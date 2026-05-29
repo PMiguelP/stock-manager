@@ -24,6 +24,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import org.springframework.context.event.EventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
@@ -33,6 +35,8 @@ import java.util.Map;
 
 @Component
 public class SidebarController {
+
+    private static final Logger log = LoggerFactory.getLogger(SidebarController.class);
 
     private final NavigationService navigationService;
     private final ThemePreferencesService themePreferencesService;
@@ -329,9 +333,7 @@ public class SidebarController {
             stage.centerOnScreen();
 
         } catch (Exception e) {
-            System.err.println("Erro ao fazer logout: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Erro ao fazer logout", e);
         }
     }
 }
-

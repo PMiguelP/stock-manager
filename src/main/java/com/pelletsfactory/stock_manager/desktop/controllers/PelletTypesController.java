@@ -6,6 +6,8 @@ import com.pelletsfactory.stock_manager.common.services.FormulaProducaoService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -44,12 +46,7 @@ public class PelletTypesController {
     @FXML private TableColumn<TipoPelletRow, Boolean> colFormula;
     @FXML private TableColumn<TipoPelletRow, Void> colAcoes;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<TipoPelletRow> data = FXCollections.observableArrayList();
 
@@ -65,15 +62,9 @@ public class PelletTypesController {
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarPelletTypes);
         configurarTabela();
         carregarPelletTypes();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     @FXML
@@ -83,7 +74,7 @@ public class PelletTypesController {
 
     @FXML
     private void handleFiltrar() {
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarPelletTypes();
     }
 
@@ -161,7 +152,7 @@ public class PelletTypesController {
         try {
             String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isBlank()) ? txtFiltroNome.getText() : null;
             Page<TipoPelletSimpleDTO> page = stockService.listarTiposPelletComFiltros(
-                    paginaAtual + 1, itemsPerPage, nome, null, "nome", "ASC"
+                    pagination.pageNumberForService(), pagination.pageSize(), nome, null, "nome", "ASC"
             );
 
             List<TipoPelletRow> rows = new ArrayList<>();
@@ -172,63 +163,11 @@ public class PelletTypesController {
             }
 
             data.setAll(rows);
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             mostrarErro("Erro ao carregar tipos de pellet: " + e.getMessage());
         }
-    }
-
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus); left.setAlignment(Pos.CENTER_LEFT); HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarPelletTypes(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage); center.setAlignment(Pos.CENTER); HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons); right.setAlignment(Pos.CENTER_RIGHT); HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button(); prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarPelletTypes(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int idx = i; p.setOnAction(e -> { paginaAtual = idx; carregarPelletTypes(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button(); next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarPelletTypes(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<?> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
     }
 
     private HBox criarBadgeFormula(Boolean definida) {
@@ -258,25 +197,8 @@ public class PelletTypesController {
     }
 
     private VBox criarDrawerDetalhes(TipoPelletDetailsDTO d, boolean formulaDefinida) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Pellet Type Details");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Pellet Type Details", navigationService::hideModal);
 
         GridPane grid = new GridPane();
         grid.setHgap(20);

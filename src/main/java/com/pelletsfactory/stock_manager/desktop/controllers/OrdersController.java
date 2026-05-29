@@ -7,6 +7,7 @@ import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaCliente
 import com.pelletsfactory.stock_manager.common.dto.response.MoedaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaCliente;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
+import com.pelletsfactory.stock_manager.common.services.ClienteService;
 import com.pelletsfactory.stock_manager.common.services.VendaService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
@@ -28,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 @Component
 public class OrdersController {
     private final VendaService vendaService;
+    private final ClienteService clienteService;
     private final MoedaService moedaService;
     private final NavigationService navigationService;
     private final ToastService toastService;
@@ -63,10 +65,12 @@ public class OrdersController {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public OrdersController(VendaService vendaService,
+                            ClienteService clienteService,
                             MoedaService moedaService,
                             NavigationService navigationService,
                             ToastService toastService) {
         this.vendaService = vendaService;
+        this.clienteService = clienteService;
         this.moedaService = moedaService;
         this.navigationService = navigationService;
         this.toastService = toastService;
@@ -291,7 +295,7 @@ public class OrdersController {
     private void handleAbrirModal() {
         // Reload dropdowns fresh on each open
         try {
-            cmbCliente.setItems(FXCollections.observableArrayList(vendaService.listarTodosClientesSimples()));
+            cmbCliente.setItems(FXCollections.observableArrayList(clienteService.listarTodosClientesSimples()));
         } catch (Exception e) { cmbCliente.setItems(FXCollections.emptyObservableList()); }
         try {
             cmbMoeda.setItems(FXCollections.observableArrayList(moedaService.listarTodosSimplesDTO()));

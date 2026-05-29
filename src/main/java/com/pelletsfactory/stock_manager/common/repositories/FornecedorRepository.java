@@ -16,4 +16,6 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, UUID> {
     Page<Fornecedor> findByFiltros(@Param("nome") String nome,
                                   @Param("nif") String nif,
                                   Pageable pageable);
+
+    boolean existsByNif(String nif);
 }

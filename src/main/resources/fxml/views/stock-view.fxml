@@ -33,7 +33,7 @@
                   style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <StackPane fx:id="iconCurrentStock"/>
-                    <Label text="Stock atual" styleClass="text-muted"/>
+                    <Label text="Pellets em stock" styleClass="text-muted"/>
                 </HBox>
                 <Label fx:id="lblCurrentStock" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
             </VBox>
@@ -42,7 +42,7 @@
                   style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <StackPane fx:id="iconMinThreshold"/>
-                    <Label text="Stock mínimo" styleClass="text-muted"/>
+                    <Label text="Mínimo definido" styleClass="text-muted"/>
                 </HBox>
                 <Label fx:id="lblMinThreshold" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
             </VBox>
@@ -51,7 +51,7 @@
                   style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <StackPane fx:id="iconAvailableStock"/>
-                    <Label text="Disponível" styleClass="text-muted"/>
+                    <Label text="Matérias-primas" styleClass="text-muted"/>
                 </HBox>
                 <Label fx:id="lblAvailableStock" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
             </VBox>
@@ -60,7 +60,7 @@
                   style="-fx-padding: 18; -fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <StackPane fx:id="iconReservedStock"/>
-                    <Label text="Reservado" styleClass="text-muted"/>
+                    <Label text="Alertas de stock" styleClass="text-muted"/>
                 </HBox>
                 <Label fx:id="lblReservedStock" text="-" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
             </VBox>

@@ -3,8 +3,6 @@ package com.pelletsfactory.stock_manager.common.services;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorSimpleDTO;
-import com.pelletsfactory.stock_manager.common.dto.response.FornecedorDetailsDTO;
-import com.pelletsfactory.stock_manager.common.dto.response.FornecedorSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaFornecedorResponseDTO;
 import com.pelletsfactory.stock_manager.common.entities.*;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
@@ -29,7 +27,7 @@ import java.util.UUID;
 public class CompraService {
     private final EncomendaFornecedorRepository encomendaFornecedorRepo;
     private final ItemEncomendaFornecedorRepository itemEncomendaFornecedorRepo;
-    private final FornecedorRepository fornecedorRepo;
+    private final FornecedorService fornecedorService;
     private final MateriaPrimaRepository matPrimaRepo;
     private final StockService stockService;
     private final FinanceiroService financeiroService;
@@ -41,7 +39,7 @@ public class CompraService {
     public CompraService(
             EncomendaFornecedorRepository encomendaFornecedorRepo,
             ItemEncomendaFornecedorRepository itemEncomendaFornecedorRepo,
-            FornecedorRepository fornecedorRepo,
+            FornecedorService fornecedorService,
             MateriaPrimaRepository matPrimaRepo,
             StockService stockService,
             FinanceiroService financeiroService,
@@ -51,7 +49,7 @@ public class CompraService {
             ItemEncomendaFornecedorMapper itemEncomendaFornecedorMapper) {
         this.encomendaFornecedorRepo = encomendaFornecedorRepo;
         this.itemEncomendaFornecedorRepo = itemEncomendaFornecedorRepo;
-        this.fornecedorRepo = fornecedorRepo;
+        this.fornecedorService = fornecedorService;
         this.matPrimaRepo = matPrimaRepo;
         this.stockService = stockService;
         this.financeiroService = financeiroService;
@@ -69,8 +67,7 @@ public class CompraService {
     public EncomendaFornecedorResponseDTO gerarEncomendaRascunho(UUID fornecedorId, UUID moedaId) {
         SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
 
-        Fornecedor fornecedor = fornecedorRepo.findById(fornecedorId)
-                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado"));
+        Fornecedor fornecedor = fornecedorService.buscarFornecedorPorId(fornecedorId);
 
         Moeda moeda = moedaRepo.findById(moedaId)
                 .orElseThrow(() -> new EntityNotFoundException("Moeda não encontrada"));
@@ -193,8 +190,7 @@ public class CompraService {
             throw new RuntimeException("Apenas encomendas em rascunho podem ser atualizadas");
         }
 
-        Fornecedor fornecedor = fornecedorRepo.findById(fornecedorId)
-                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado"));
+        Fornecedor fornecedor = fornecedorService.buscarFornecedorPorId(fornecedorId);
 
         encomenda.setFornecedor(fornecedor);
         return encomendaFornecedorMapper.toResponseDTO(encomendaFornecedorRepo.save(encomenda));
@@ -285,47 +281,6 @@ public class CompraService {
     }
 
     /**
-     * Listar fornecedores com paginação e filtros (SimpleDTO)
-     */
-    public Page<FornecedorSimpleDTO> listarFornecedoresComFiltros(
-            int page,
-            int pageSize,
-            String nome,
-            String nif,
-            String sortBy,
-            String direction) {
-
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "nome";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
-
-        return fornecedorRepo.findByFiltros(nome, nif, pageable)
-                .map(fornecedor -> new FornecedorSimpleDTO(
-                        fornecedor.getId(),
-                        fornecedor.getNome(),
-                        fornecedor.getNif(),
-                        fornecedor.getContacto()
-                ));
-    }
-
-    /**
-     * Listar todos os fornecedores (SimpleDTO)
-     */
-    public List<FornecedorSimpleDTO> listarTodosFornecedoresSimples() {
-        return fornecedorRepo.findAll().stream()
-                .map(fornecedor -> new FornecedorSimpleDTO(
-                        fornecedor.getId(),
-                        fornecedor.getNome(),
-                        fornecedor.getNif(),
-                        fornecedor.getContacto()
-                ))
-                .toList();
-    }
-
-    /**
      * Listar encomendas com filtros (SimpleDTO)
      */
     public Page<EncomendaFornecedorSimpleDTO> listarEncomendasComFiltrosSimples(
@@ -345,26 +300,6 @@ public class CompraService {
 
         return encomendaFornecedorRepo.findByFiltros(fornecedorId, estado, pageable)
                 .map(encomendaFornecedorMapper::toSimpleDTO);
-    }
-
-    public FornecedorDetailsDTO obterDetalhesFornecedor(UUID fornecedorId) {
-        Fornecedor fornecedor = fornecedorRepo.findById(fornecedorId)
-                .orElseThrow(() -> new EntityNotFoundException("Fornecedor não encontrado"));
-
-        List<EncomendaFornecedorSimpleDTO> encomendas = encomendaFornecedorRepo.findByFornecedorId(fornecedorId).stream()
-                .map(encomendaFornecedorMapper::toSimpleDTO)
-                .toList();
-
-        return new FornecedorDetailsDTO(
-                fornecedor.getId(),
-                fornecedor.getNome(),
-                fornecedor.getNif(),
-                fornecedor.getContacto(),
-                fornecedor.getEmail(),
-                encomendas,
-                fornecedor.getCreatedAt(),
-                fornecedor.getUpdatedAt()
-        );
     }
 
     public EncomendaFornecedorDetailsDTO obterDetalhesEncomendaFornecedor(UUID encomendaId) {

@@ -2,9 +2,11 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorSimpleDTO;
-import com.pelletsfactory.stock_manager.common.services.CompraService;
+import com.pelletsfactory.stock_manager.common.services.FornecedorService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class SuppliersController {
 
-    private final CompraService compraService;
+    private final FornecedorService fornecedorService;
     private final NavigationService navigationService;
     private final ToastService toastService;
 
@@ -36,34 +38,23 @@ public class SuppliersController {
     private VBox drawerAdicionar;
     private TextField txtNomeAdicionar, txtNifAdicionar, txtContactoAdicionar, txtEmailAdicionar;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<FornecedorSimpleDTO> fornecedores = FXCollections.observableArrayList();
 
-    public SuppliersController(CompraService compraService, NavigationService navigationService,
+    public SuppliersController(FornecedorService fornecedorService, NavigationService navigationService,
                                ToastService toastService) {
-        this.compraService = compraService;
+        this.fornecedorService = fornecedorService;
         this.navigationService = navigationService;
         this.toastService = toastService;
     }
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarFornecedores);
         configurarTabela();
         configurarDrawerAdicionar();
         carregarFornecedores();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -74,7 +65,7 @@ public class SuppliersController {
                 if (empty || getIndex() < 0) {
                     setText(null);
                 } else {
-                    int seq = paginaAtual * itemsPerPage + getIndex() + 1;
+                    int seq = pagination.currentPage() * pagination.pageSize() + getIndex() + 1;
                     setText(String.format("SUP-%03d", seq));
                 }
                 setPadding(new Insets(8, 10, 8, 10));
@@ -132,13 +123,11 @@ public class SuppliersController {
     private void carregarFornecedores() {
         try {
             String nome = (txtSearch != null && !txtSearch.getText().isEmpty()) ? txtSearch.getText() : null;
-            Page<FornecedorSimpleDTO> page = compraService.listarFornecedoresComFiltros(
-                    paginaAtual + 1, itemsPerPage, nome, null, "nome", "ASC");
+            Page<FornecedorSimpleDTO> page = fornecedorService.listarFornecedoresComFiltros(
+                    pagination.pageNumberForService(), pagination.pageSize(), nome, null, "nome", "ASC");
             fornecedores.setAll(page.getContent());
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             toastService.showError("Erro", "Erro ao carregar fornecedores: " + e.getMessage());
         }
@@ -152,20 +141,20 @@ public class SuppliersController {
 
     @FXML
     private void handleFiltrar() {
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarFornecedores();
     }
 
     @FXML
     private void handleLimpar() {
         txtSearch.clear();
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarFornecedores();
     }
 
     private void handleAbrirDetalhes(FornecedorSimpleDTO dto) {
         try {
-            FornecedorDetailsDTO details = compraService.obterDetalhesFornecedor(dto.id());
+            FornecedorDetailsDTO details = fornecedorService.obterDetalhesFornecedor(dto.id());
             navigationService.showModal(criarDrawerDetalhes(details));
         } catch (Exception e) {
             toastService.showError("Erro", "Erro ao obter detalhes: " + e.getMessage());
@@ -173,23 +162,8 @@ public class SuppliersController {
     }
 
     private VBox criarDrawerDetalhes(FornecedorDetailsDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Supplier Details");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button(); btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Supplier Details", navigationService::hideModal);
 
         TextField txtNome = new TextField(valorOuVazio(d.nome()));
         TextField txtNif = new TextField(d.nif() != null ? "PT" + d.nif() : "");
@@ -209,15 +183,9 @@ public class SuppliersController {
         );
         form.setPadding(new Insets(30));
 
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        HBox footer = new HBox(12);
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        ScrollPane scrollPane = UiFactory.transparentScroll(form);
+        HBox footer = UiFactory.drawerFooter();
+        footer.setSpacing(12);
 
         Button btnUpdate = new Button("Update Supplier");
         btnUpdate.getStyleClass().add("accent");
@@ -239,23 +207,8 @@ public class SuppliersController {
     }
 
     private void configurarDrawerAdicionar() {
-        drawerAdicionar = new VBox(0);
-        drawerAdicionar.setMinWidth(550);
-        drawerAdicionar.setPrefWidth(550);
-        drawerAdicionar.setMaxWidth(550);
-        drawerAdicionar.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("New Supplier");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button(); btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        drawerAdicionar = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("New Supplier", navigationService::hideModal);
 
         txtNomeAdicionar = new TextField(); txtNomeAdicionar.setPromptText("Enter supplier name");
         txtNifAdicionar = new TextField(); txtNifAdicionar.setPromptText("PT123456789");
@@ -270,21 +223,14 @@ public class SuppliersController {
         );
         form.setPadding(new Insets(30));
 
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        HBox footer = new HBox();
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        ScrollPane scrollPane = UiFactory.transparentScroll(form);
+        HBox footer = UiFactory.drawerFooter();
         Button btnCreate = new Button("Create Supplier");
         btnCreate.getStyleClass().add("accent");
         btnCreate.setPrefHeight(44);
         btnCreate.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(btnCreate, Priority.ALWAYS);
-        btnCreate.setOnAction(e -> toastService.showSuccess("Em breve", "Funcionalidade disponível em breve"));
+        btnCreate.setOnAction(e -> handleCriarFornecedor());
         footer.getChildren().add(btnCreate);
 
         drawerAdicionar.getChildren().addAll(header, scrollPane, footer);
@@ -303,64 +249,22 @@ public class SuppliersController {
         txtEmailAdicionar.clear();
     }
 
+    private void handleCriarFornecedor() {
+        try {
+            fornecedorService.registarFornecedor(
+                    txtNomeAdicionar.getText(),
+                    txtNifAdicionar.getText(),
+                    txtContactoAdicionar.getText(),
+                    txtEmailAdicionar.getText()
+            );
+            toastService.showSuccess("Sucesso", "Fornecedor registado!");
+            navigationService.hideModal();
+            carregarFornecedores();
+        } catch (Exception e) {
+            toastService.showError("Erro", e.getMessage());
+        }
+    }
+
     private String valorOuVazio(String s) { return s != null ? s : ""; }
 
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus);
-        left.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarFornecedores(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
-        center.setAlignment(Pos.CENTER);
-        HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button();
-        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarFornecedores(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int finalI = i;
-                p.setOnAction(e -> { paginaAtual = finalI; carregarFornecedores(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button();
-        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarFornecedores(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<FornecedorSimpleDTO> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
-    }
 }
