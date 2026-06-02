@@ -4,15 +4,16 @@ import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteDeta
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ItemEncomendaClienteResponseDTO;
-import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoOrdemEncomendaResponseDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.AlocacaoLoteEncomendaResponseDTO;
 import com.pelletsfactory.stock_manager.common.entities.*;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.EstadoEncomendaCliente;
-import com.pelletsfactory.stock_manager.common.mapper.AlocacaoOrdemEncomendaMapper;
 import com.pelletsfactory.stock_manager.common.mapper.EncomendaClienteMapper;
 import com.pelletsfactory.stock_manager.common.mapper.ItemEncomendaClienteMapper;
 import com.pelletsfactory.stock_manager.common.repositories.*;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.CalculationUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -23,7 +24,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class VendaService {
@@ -33,12 +36,11 @@ public class VendaService {
     private final TipoPelletRepository tipoPelletRepo;
     private final StockService stockService;
     private final FinanceiroService financeiroService;
-    private final NotificacaoService notificacaoService;
     private final MoedaRepository moedaRepo;
-    private final AlocacaoOrdemEncomendaRepository alocacaoRepo;
+    private final AlocacaoLoteEncomendaRepository alocacaoLoteRepo;
     private final EncomendaClienteMapper encomendaClienteMapper;
     private final ItemEncomendaClienteMapper itemEncomendaClienteMapper;
-    private final AlocacaoOrdemEncomendaMapper alocacaoOrdemEncomendaMapper;
+    private final AlocacaoLoteEncomendaService alocacaoLoteService;
 
     public VendaService(
             ClienteService clienteService,
@@ -47,29 +49,26 @@ public class VendaService {
             TipoPelletRepository tipoPelletRepo,
             StockService stockService,
             FinanceiroService financeiroService,
-            NotificacaoService notificacaoService,
             MoedaRepository moedaRepo,
-            AlocacaoOrdemEncomendaRepository alocacaoRepo,
+            AlocacaoLoteEncomendaRepository alocacaoLoteRepo,
             EncomendaClienteMapper encomendaClienteMapper,
             ItemEncomendaClienteMapper itemEncomendaClienteMapper,
-            AlocacaoOrdemEncomendaMapper alocacaoOrdemEncomendaMapper) {
+            AlocacaoLoteEncomendaService alocacaoLoteService) {
         this.clienteService = clienteService;
         this.encomendaClienteRepo = encomendaClienteRepo;
         this.itemEncomendaClienteRepo = itemEncomendaClienteRepo;
         this.tipoPelletRepo = tipoPelletRepo;
         this.stockService = stockService;
         this.financeiroService = financeiroService;
-        this.notificacaoService = notificacaoService;
         this.moedaRepo = moedaRepo;
-        this.alocacaoRepo = alocacaoRepo;
+        this.alocacaoLoteRepo = alocacaoLoteRepo;
         this.encomendaClienteMapper = encomendaClienteMapper;
         this.itemEncomendaClienteMapper = itemEncomendaClienteMapper;
-        this.alocacaoOrdemEncomendaMapper = alocacaoOrdemEncomendaMapper;
+        this.alocacaoLoteService = alocacaoLoteService;
     }
 
     /**
-     * CreateSalesOrder: Criar encomenda de cliente
-     * Apenas ASSISTENTE_COMERCIAL
+     * Cria uma encomenda de cliente pendente.
      */
     @Transactional
     public EncomendaClienteResponseDTO criarPedidoVenda(UUID clienteId, UUID moedaId) {
@@ -93,14 +92,13 @@ public class VendaService {
     }
 
     /**
-     * Adicionar item à encomenda
-     * Com cálculo automático de IVA
+     * Adiciona um item pendente e recalcula os totais com arredondamento monetário.
      */
     @Transactional
     public void adicionarItemEncomenda(UUID encomendaId, UUID tipoPelletId, Double quantidadeKg, Double precoUnitarioNet, Double taxaIva) {
         SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
 
-        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
         // Validar que está em PENDENTE
         if (!EstadoEncomendaCliente.PENDENTE.equals(encomenda.getEstado())) {
@@ -110,9 +108,11 @@ public class VendaService {
         TipoPellet tipoPellet = tipoPelletRepo.findById(tipoPelletId)
                 .orElseThrow(() -> new EntityNotFoundException("Tipo de pellet não encontrado"));
 
-        // Calcular IVA automaticamente
-        Double valorSubtotal = precoUnitarioNet * quantidadeKg;
-        Double valorIvaCalculado = valorSubtotal * (taxaIva / 100.0);
+        CalculationUtils.requirePositive(quantidadeKg, "Quantidade");
+        CalculationUtils.requirePositive(precoUnitarioNet, "Preço unitário");
+        CalculationUtils.requirePercentage(taxaIva, "Taxa de IVA");
+        Double valorSubtotal = CalculationUtils.subtotal(quantidadeKg, precoUnitarioNet);
+        Double valorIvaCalculado = CalculationUtils.vat(valorSubtotal, taxaIva);
 
         ItemEncomendaCliente item = new ItemEncomendaCliente();
         item.setEncomenda(encomenda);
@@ -136,13 +136,13 @@ public class VendaService {
     public EncomendaClienteResponseDTO confirmarEncomenda(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
 
-        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
         if (!EstadoEncomendaCliente.PENDENTE.equals(encomenda.getEstado())) {
             throw new RuntimeException("Apenas encomendas pendentes podem ser confirmadas");
         }
 
-        if (encomenda.getItens() == null || encomenda.getItens().isEmpty()) {
+        if (itemEncomendaClienteRepo.findByEncomendaId(encomendaId).isEmpty()) {
             throw new RuntimeException("Encomenda deve ter pelo menos um item");
         }
 
@@ -151,55 +151,54 @@ public class VendaService {
     }
 
     /**
-     * ReleaseStock: Cancelar encomenda e liberar stock reservado
-     * Remove todas as alocações e marca como CANCELADA
+     * Cancela a encomenda e liberta as alocações associadas.
      */
     @Transactional
     public EncomendaClienteResponseDTO cancelarEncomenda(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
 
-        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
-        if (EstadoEncomendaCliente.EXPEDIDA.equals(encomenda.getEstado())) {
-            throw new RuntimeException("Não é possível cancelar encomenda já expedida");
+        if (EstadoEncomendaCliente.EXPEDIDA.equals(encomenda.getEstado())
+                || EstadoEncomendaCliente.CANCELADA.equals(encomenda.getEstado())) {
+            throw new RuntimeException("Não é possível cancelar uma encomenda finalizada");
         }
 
-        // Liberar todas as alocações (ReleaseStock)
-        List<AlocacaoOrdemEncomenda> alocacoes = alocacaoRepo.findByEncomendaClienteId(encomendaId);
-        for (AlocacaoOrdemEncomenda alocacao : alocacoes) {
-            alocacaoRepo.delete(alocacao);
-        }
+        alocacaoLoteRepo.deleteAll(alocacaoLoteRepo.findByItemEncomendaEncomendaId(encomendaId));
 
         encomenda.setEstado(EstadoEncomendaCliente.CANCELADA);
         return encomendaClienteMapper.toResponseDTO(encomendaClienteRepo.save(encomenda));
     }
 
     /**
-     * ShipmentManifest: Expedir encomenda
-     * 1. Validar que tem codigo_tracking
-     * 2. Validar que todo o stock está alocado
-     * 3. Mover para EXPEDIDA
-     * 4. Criar MovimentoFinanceiro de ENTRADA
+     * Expede uma encomenda pronta: valida tracking, alocação e stock, desconta pellets
+     * e regista a receita uma única vez.
      */
     @Transactional
     public EncomendaClienteResponseDTO expedir(UUID encomendaId, String codigoTracking) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_LOGISTICA);
 
-        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
-        // Validar estado (deve estar CONFIRMADA ou EM_PRODUCAO)
-        if (!EstadoEncomendaCliente.CONFIRMADA.equals(encomenda.getEstado()) &&
-            !EstadoEncomendaCliente.EM_PRODUCAO.equals(encomenda.getEstado()) &&
-            !EstadoEncomendaCliente.PRONTA.equals(encomenda.getEstado())) {
-            throw new RuntimeException("Encomenda deve estar confirmada ou pronta para ser expedida");
+        if (!EstadoEncomendaCliente.PRONTA.equals(encomenda.getEstado())) {
+            throw new RuntimeException("Apenas encomendas prontas podem ser expedidas");
         }
 
-        // Validar codigo_tracking
-        if (codigoTracking == null || codigoTracking.isEmpty()) {
+        if (codigoTracking == null || codigoTracking.isBlank()) {
             throw new RuntimeException("Código de tracking é obrigatório");
         }
+        String trackingNormalizado = codigoTracking.trim();
+        if (encomendaClienteRepo.existsByCodigoTrackingIgnoreCase(trackingNormalizado)) {
+            throw new RuntimeException("Código de tracking já está associado a outra encomenda");
+        }
 
-        encomenda.setCodigoTracking(codigoTracking);
+        List<ItemEncomendaCliente> itens = itemEncomendaClienteRepo.findByEncomendaId(encomendaId);
+        validarAlocacaoCompleta(encomendaId, itens);
+        for (ItemEncomendaCliente item : itens) {
+            stockService.subtrairStockPellet(item.getTipoPellet().getId(), item.getQuantidadeKg());
+        }
+
+        encomenda.setCodigoTracking(trackingNormalizado);
         encomenda.setEstado(EstadoEncomendaCliente.EXPEDIDA);
 
         EncomendaCliente updated = encomendaClienteRepo.save(encomenda);
@@ -215,7 +214,7 @@ public class VendaService {
     public EncomendaClienteResponseDTO mudarParaEmProducao(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
-        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
         if (!EstadoEncomendaCliente.CONFIRMADA.equals(encomenda.getEstado())) {
             throw new RuntimeException("Encomenda deve estar confirmada");
@@ -232,7 +231,7 @@ public class VendaService {
     public EncomendaClienteResponseDTO marcarComoPronta(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_LOGISTICA);
 
-        EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
         if (!EstadoEncomendaCliente.EM_PRODUCAO.equals(encomenda.getEstado())) {
             throw new RuntimeException("Encomenda deve estar em produção");
@@ -252,12 +251,7 @@ public class VendaService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "data";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "data");
 
         Page<EncomendaCliente> pageResult = encomendaClienteRepo.findByClienteId(clienteId, pageable);
         return pageResult.map(encomendaClienteMapper::toResponseDTO);
@@ -285,28 +279,57 @@ public class VendaService {
                 .orElseThrow(() -> new EntityNotFoundException("Encomenda não encontrada com o ID: " + id));
     }
 
+    private EncomendaCliente buscarEncomendaParaAtualizarOuFalhar(UUID id) {
+        return encomendaClienteRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("Encomenda não encontrada com o ID: " + id));
+    }
+
     /**
      * Recalcular totais da encomenda
      */
     private void recalcularTotaisEncomenda(UUID encomendaId) {
         EncomendaCliente encomenda = buscarEncomendaOuFalhar(encomendaId);
-        List<ItemEncomendaCliente> itens = encomenda.getItens();
+        List<ItemEncomendaCliente> itens = itemEncomendaClienteRepo.findByEncomendaId(encomendaId);
 
-        Double totalNet = itens.stream()
-                .mapToDouble(item -> item.getPrecoUnitarioNet() * item.getQuantidadeKg())
-                .sum();
+        Double totalNet = CalculationUtils.money(itens.stream()
+                .mapToDouble(item -> CalculationUtils.subtotal(item.getQuantidadeKg(), item.getPrecoUnitarioNet()))
+                .sum());
 
-        Double totalIva = itens.stream()
+        Double totalIva = CalculationUtils.money(itens.stream()
                 .mapToDouble(ItemEncomendaCliente::getValorIvaCalculado)
-                .sum();
+                .sum());
 
-        Double totalFinal = totalNet + totalIva;
+        Double totalFinal = CalculationUtils.total(totalNet, totalIva);
 
         encomenda.setTotalNet(totalNet);
         encomenda.setTotalIva(totalIva);
         encomenda.setTotalFinal(totalFinal);
 
         encomendaClienteRepo.save(encomenda);
+    }
+
+    private void validarAlocacaoCompleta(UUID encomendaId, List<ItemEncomendaCliente> itens) {
+        if (itens.isEmpty()) {
+            throw new IllegalStateException("Encomenda sem itens não pode ser expedida");
+        }
+
+        Map<UUID, Double> necessarioPorPellet = itens.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getTipoPellet().getId(),
+                        Collectors.summingDouble(ItemEncomendaCliente::getQuantidadeKg)
+                ));
+        Map<UUID, Double> reservadoPorPellet = alocacaoLoteRepo.findByItemEncomendaEncomendaId(encomendaId).stream()
+                .collect(Collectors.groupingBy(
+                        alocacao -> alocacao.getItemEncomenda().getTipoPellet().getId(),
+                        Collectors.summingDouble(AlocacaoLoteEncomenda::getQuantidadeReservada)
+                ));
+
+        necessarioPorPellet.forEach((tipoPelletId, quantidadeNecessaria) -> {
+            double quantidadeReservada = reservadoPorPellet.getOrDefault(tipoPelletId, 0.0);
+            if (quantidadeReservada < quantidadeNecessaria) {
+                throw new IllegalStateException("A encomenda ainda não tem produção totalmente alocada");
+            }
+        });
     }
 
     /**
@@ -320,12 +343,7 @@ public class VendaService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "data";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "data");
 
         return encomendaClienteRepo.findByFiltros(clienteId, estado, pageable)
                 .map(encomendaClienteMapper::toSimpleDTO);
@@ -338,9 +356,7 @@ public class VendaService {
                 .map(itemEncomendaClienteMapper::toResponseDTO)
                 .toList();
 
-        List<AlocacaoOrdemEncomendaResponseDTO> alocacoes = alocacaoRepo.findByEncomendaClienteId(encomendaId).stream()
-                .map(alocacaoOrdemEncomendaMapper::toResponseDTO)
-                .toList();
+        List<AlocacaoLoteEncomendaResponseDTO> alocacoes = alocacaoLoteService.listarPorEncomenda(encomendaId);
 
         return new EncomendaClienteDetailsDTO(
                 encomenda.getId(),

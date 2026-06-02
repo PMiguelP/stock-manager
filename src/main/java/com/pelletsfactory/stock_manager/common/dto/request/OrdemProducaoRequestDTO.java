@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record OrdemProducaoRequestDTO(
         UUID tipoPelletId,
@@ -22,12 +23,10 @@ public record OrdemProducaoRequestDTO(
             throw new IllegalArgumentException("O ID da fórmula é obrigatório");
         }
 
-        if (quantidadePlaneada == null || quantidadePlaneada <= 0) {
-            throw new IllegalArgumentException("A quantidade planeada deve ser superior a zero");
-        }
+        ValidationUtils.requirePositive(quantidadePlaneada, "A quantidade planeada");
 
-        if (quantidadeProduzidaReal != null && quantidadeProduzidaReal < 0) {
-            throw new IllegalArgumentException("A quantidade produzida real não pode ser negativa");
+        if (quantidadeProduzidaReal != null) {
+            ValidationUtils.requireNonNegative(quantidadeProduzidaReal, "A quantidade produzida real");
         }
 
         if (dataInicio == null || dataInicio.isBlank()) {

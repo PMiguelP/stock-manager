@@ -7,6 +7,7 @@ import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import com.pelletsfactory.stock_manager.common.services.FinanceiroService;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
@@ -35,11 +36,12 @@ public class StockController {
     private final ToastService toastService;
     private final MoedaService moedaService;
     private final StockService stockService;
+    private final I18nService i18nService;
 
     // Elementos de UI dos Cards
     @FXML private Label lblCurrentStock, lblMinThreshold, lblAvailableStock, lblReservedStock;
     @FXML private StackPane iconCurrentStock, iconMinThreshold, iconAvailableStock, iconReservedStock;
-    @FXML private Button btnAdjustStock, btnStockEntry, btnStockExit, btnFilter, btnClear;
+    @FXML private Button btnFilter, btnClear;
 
     // Tabela e Filtros
     @FXML private ComboBox<TipoMovimento> cmbFiltroTipo;
@@ -61,17 +63,19 @@ public class StockController {
                            NavigationService navigationService,
                            ToastService toastService,
                            MoedaService moedaService,
-                           StockService stockService) {
+                           StockService stockService,
+                           I18nService i18nService) {
         this.financeiroService = financeiroService;
         this.navigationService = navigationService;
         this.toastService = toastService;
         this.moedaService = moedaService;
         this.stockService = stockService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        pagination = new PaginationControls(10, this::carregarMovimentos);
+        pagination = new PaginationControls(10, this::carregarMovimentos, i18nService);
         configurarIcones();
         configurarTabela();
         configurarComboBoxes();
@@ -82,7 +86,7 @@ public class StockController {
     private void carregarDadosEstatisticos() {
         double stockPellets = stockService.calcularStockPelletsAtual();
         double stockMinimo = stockService.calcularStockPelletsMinimo();
-        double stockMaterias = stockService.calcularStockMateriasPrimasAtual();
+        double stockMaterias = stockService.calcularStockMateriasPrimasKg();
         int alertas = stockService.verificarAlertasStock();
 
         lblCurrentStock.setText(String.format("%.0f kg", stockPellets));
@@ -97,9 +101,6 @@ public class StockController {
         setCardIcon(iconAvailableStock, "mdi2c-check-circle-outline", "#22c55e");
         setCardIcon(iconReservedStock, "mdi2l-lock-outline", "#ef4444");
 
-        setButtonIcon(btnAdjustStock, "mdi2t-tune-variant");
-        setButtonIcon(btnStockEntry, "mdi2a-arrow-down-circle");
-        setButtonIcon(btnStockExit, "mdi2a-arrow-up-circle");
         setButtonIcon(btnFilter, "mdi2f-filter-outline");
         setButtonIcon(btnClear, "mdi2c-close-circle-outline");
     }
@@ -130,80 +131,6 @@ public class StockController {
         icon.setIconLiteral(literal);
         icon.setIconSize(16);
         button.setGraphic(icon);
-    }
-
-    // --- AÇÕES DOS BOTÕES COLORIDOS (CONFORME PRINTS) ---
-
-    @FXML
-    private void handleAdjustStock() {
-        abrirFormularioMovimento("Adjust Stock", "Save Adjustment", "#3b82f6", false);
-    }
-
-    @FXML
-    private void handleStockEntry() {
-        abrirFormularioMovimento("Register Stock Entry", "Register Entry", "#10b981", false);
-    }
-
-    @FXML
-    private void handleStockExit() {
-        abrirFormularioMovimento("Register Stock Exit", "Register Exit", "#ef4444", true);
-    }
-
-    private void abrirFormularioMovimento(String titulo, String textoBotao, String corBotao, boolean mostrarRelatedOrder) {
-        VBox root = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader(titulo, navigationService::hideModal);
-
-        VBox form = new VBox(20);
-        form.setPadding(new Insets(30));
-        form.getChildren().add(criarCampoInput("Movement ID (auto-generated)", "MOV-" + (movimentos.size() + 1), true));
-
-        TextField txtQuantidade = new TextField("0");
-        form.getChildren().add(new VBox(6, new Label("Quantity (tons)"), txtQuantidade));
-
-        if (mostrarRelatedOrder) {
-            ComboBox<String> cmbOrder = new ComboBox<>(FXCollections.observableArrayList("Select order..."));
-            cmbOrder.setMaxWidth(Double.MAX_VALUE);
-            form.getChildren().add(new VBox(6, new Label("Related Order"), cmbOrder));
-        }
-
-        DatePicker datePicker = new DatePicker(java.time.LocalDate.now());
-        datePicker.setMaxWidth(Double.MAX_VALUE);
-        form.getChildren().add(new VBox(6, new Label("Date"), datePicker));
-
-        ComboBox<String> cmbUser = new ComboBox<>(FXCollections.observableArrayList("Select user..."));
-        cmbUser.setMaxWidth(Double.MAX_VALUE);
-        form.getChildren().add(new VBox(6, new Label("Responsible User"), cmbUser));
-
-        TextArea txtNotes = new TextArea();
-        txtNotes.setPromptText("Additional notes...");
-        txtNotes.setPrefHeight(100);
-        form.getChildren().add(new VBox(6, new Label("Notes"), txtNotes));
-
-        ScrollPane scrollPane = UiFactory.transparentScroll(form);
-        HBox footer = UiFactory.drawerFooter();
-
-        Button btnSubmit = new Button(textoBotao);
-        btnSubmit.setPrefHeight(44);
-        btnSubmit.setMaxWidth(Double.MAX_VALUE);
-        btnSubmit.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold;", corBotao));
-        HBox.setHgrow(btnSubmit, Priority.ALWAYS);
-        btnSubmit.setOnAction(e -> {
-            // Aqui chamaria o financeiroService.registarEntrada ou Saida
-            mostrarSucesso("Movimento registado com sucesso!");
-            navigationService.hideModal();
-            carregarMovimentos();
-            carregarDadosEstatisticos();
-        });
-        footer.getChildren().add(btnSubmit);
-
-        root.getChildren().addAll(header, scrollPane, footer);
-        navigationService.showModal(root);
-    }
-
-    private VBox criarCampoInput(String label, String valor, boolean disabled) {
-        TextField tf = new TextField(valor);
-        tf.setDisable(disabled);
-        return new VBox(5, new Label(label), tf);
     }
 
     // --- LÓGICA DA TABELA (EXISTENTE) ---
@@ -361,8 +288,8 @@ public class StockController {
 
         content.getChildren().addAll(
                 tipoBox,
-                criarCampoLeitura("Quantidade/Valor", d.valorTotal() != null ? String.format("%.2f", d.valorTotal()) : "-"),
-                criarCampoLeitura("Moeda/Unidade", valorOuVazio(d.moedaCodigo())),
+                criarCampoLeitura("Valor", d.valorTotal() != null ? String.format("%.2f", d.valorTotal()) : "-"),
+                criarCampoLeitura("Moeda", valorOuVazio(d.moedaCodigo())),
                 criarCampoLeitura("Data", dataFormatada),
                 criarCampoLeitura("Encomenda Relacionada", encomendaRelacionada)
         );
@@ -389,7 +316,6 @@ public class StockController {
         return value != null && !value.isBlank() ? value : "-";
     }
 
-    private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
     private void mostrarErro(String m) { toastService.showError("Erro", m); }
 
     @FXML private void handleFiltrar() { pagination.resetPage(); carregarMovimentos(); }

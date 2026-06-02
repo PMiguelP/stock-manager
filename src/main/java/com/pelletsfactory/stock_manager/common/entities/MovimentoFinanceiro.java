@@ -5,9 +5,14 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
+import java.math.BigDecimal;
+import com.pelletsfactory.stock_manager.common.utils.DecimalUtils;
 
 @Entity
-@Table(name = "movimentos_financeiros")
+@Table(name = "movimentos_financeiros", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_movimento_encomenda_cliente", columnNames = "id_encomenda_cliente"),
+        @UniqueConstraint(name = "uk_movimento_encomenda_fornecedor", columnNames = "id_encomenda_fornecedor")
+})
 public class MovimentoFinanceiro {
 
     @Id
@@ -19,8 +24,8 @@ public class MovimentoFinanceiro {
     @Column(name = "tipo_movimento", nullable = false, length = 20)
     private TipoMovimento tipoMovimento; // E ou S
 
-    @Column(name = "valor_total", nullable = false)
-    private Double valorTotal;
+    @Column(name = "valor_total", nullable = false, precision = 19, scale = 2)
+    private BigDecimal valorTotal;
 
     @ManyToOne
     @JoinColumn(name = "moeda_id", nullable = false)
@@ -45,7 +50,7 @@ public class MovimentoFinanceiro {
                                EncomendaCliente encomendaCliente, EncomendaFornecedor encomendaFornecedor) {
         this.id = id;
         this.tipoMovimento = tipoMovimento;
-        this.valorTotal = valorTotal;
+        setValorTotal(valorTotal);
         this.moeda = moeda;
         this.encomendaCliente = encomendaCliente;
         this.encomendaFornecedor = encomendaFornecedor;
@@ -64,11 +69,11 @@ public class MovimentoFinanceiro {
     }
 
     public Double getValorTotal() {
-        return valorTotal;
+        return DecimalUtils.toDouble(valorTotal);
     }
 
     public void setValorTotal(Double valorTotal) {
-        this.valorTotal = valorTotal;
+        this.valorTotal = DecimalUtils.fromDouble(valorTotal, 2);
     }
 
     public Moeda getMoeda() {

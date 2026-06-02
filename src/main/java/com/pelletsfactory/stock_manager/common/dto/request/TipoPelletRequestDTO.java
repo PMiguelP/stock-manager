@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record TipoPelletRequestDTO(
         String nome,
@@ -20,12 +21,17 @@ public record TipoPelletRequestDTO(
             throw new IllegalArgumentException("Nome não pode exceder 100 caracteres");
         }
 
-        if (stockAtual != null && stockAtual < 0) {
-            throw new IllegalArgumentException("Stock atual não pode ser negativo");
+        if (diametroMm != null) {
+            ValidationUtils.requirePositive(diametroMm, "Diâmetro");
         }
-        if (stockMinimo != null && stockMinimo < 0) {
-            throw new IllegalArgumentException("Stock mínimo não pode ser negativo");
+        if (poderCalorifico != null) {
+            ValidationUtils.requirePositive(poderCalorifico, "Poder calorífico");
+        }
+        if (stockAtual != null) {
+            ValidationUtils.requireNonNegative(stockAtual, "Stock atual");
+        }
+        if (stockMinimo != null) {
+            ValidationUtils.requireNonNegative(stockMinimo, "Stock mínimo");
         }
     }
 }
-

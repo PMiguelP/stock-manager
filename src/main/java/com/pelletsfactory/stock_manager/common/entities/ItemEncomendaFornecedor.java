@@ -6,6 +6,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.math.BigDecimal;
+import com.pelletsfactory.stock_manager.common.utils.DecimalUtils;
 
 @Entity
 @Table(name = "itens_encomenda_fornecedor")
@@ -27,14 +29,14 @@ public class ItemEncomendaFornecedor {
     @Column(nullable = false)
     private Double quantidade;
 
-    @Column(name = "preco_unitario_net", nullable = false)
-    private Double precoUnitarioNet;
+    @Column(name = "preco_unitario_net", nullable = false, precision = 19, scale = 4)
+    private BigDecimal precoUnitarioNet;
 
     @Column(name = "taxa_iva", nullable = false)
     private Double taxaIva;
 
-    @Column(name = "valor_iva_calculado", nullable = false)
-    private Double valorIvaCalculado;
+    @Column(name = "valor_iva_calculado", nullable = false, precision = 19, scale = 2)
+    private BigDecimal valorIvaCalculado;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -52,9 +54,9 @@ public class ItemEncomendaFornecedor {
         this.encomenda = encomenda;
         this.materiaPrima = materiaPrima;
         this.quantidade = quantidade;
-        this.precoUnitarioNet = precoUnitarioNet;
+        setPrecoUnitarioNet(precoUnitarioNet);
         this.taxaIva = taxaIva;
-        this.valorIvaCalculado = valorIvaCalculado;
+        setValorIvaCalculado(valorIvaCalculado);
     }
 
     public UUID getId() {
@@ -86,11 +88,11 @@ public class ItemEncomendaFornecedor {
     }
 
     public Double getPrecoUnitarioNet() {
-        return precoUnitarioNet;
+        return DecimalUtils.toDouble(precoUnitarioNet);
     }
 
     public void setPrecoUnitarioNet(Double precoUnitarioNet) {
-        this.precoUnitarioNet = precoUnitarioNet;
+        this.precoUnitarioNet = DecimalUtils.fromDouble(precoUnitarioNet, 4);
     }
 
     public Double getTaxaIva() {
@@ -102,11 +104,11 @@ public class ItemEncomendaFornecedor {
     }
 
     public Double getValorIvaCalculado() {
-        return valorIvaCalculado;
+        return DecimalUtils.toDouble(valorIvaCalculado);
     }
 
     public void setValorIvaCalculado(Double valorIvaCalculado) {
-        this.valorIvaCalculado = valorIvaCalculado;
+        this.valorIvaCalculado = DecimalUtils.fromDouble(valorIvaCalculado, 2);
     }
 
     public Instant getCreatedAt() {

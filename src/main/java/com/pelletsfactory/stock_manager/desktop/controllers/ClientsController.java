@@ -3,6 +3,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteSimpleDTO;
 import com.pelletsfactory.stock_manager.common.services.ClienteService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
@@ -26,6 +27,7 @@ public class ClientsController {
     private final ClienteService clienteService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private TableView<ClienteSimpleDTO> tblClients;
     @FXML private TableColumn<ClienteSimpleDTO, String> colId, colNome, colNif, colContacto;
@@ -39,15 +41,17 @@ public class ClientsController {
 
     private final ObservableList<ClienteSimpleDTO> clientes = FXCollections.observableArrayList();
 
-    public ClientsController(ClienteService clienteService, NavigationService navigationService, ToastService toastService) {
+    public ClientsController(ClienteService clienteService, NavigationService navigationService,
+                             ToastService toastService, I18nService i18nService) {
         this.clienteService = clienteService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        pagination = new PaginationControls(10, this::carregarDados);
+        pagination = new PaginationControls(10, this::carregarDados, i18nService);
         configurarTabela();
         carregarDados();
     }

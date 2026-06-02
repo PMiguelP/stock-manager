@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ComposicaoPelletRepository extends JpaRepository<ComposicaoPellet, UUID> {
+    boolean existsByFormulaProducaoIdAndMateriaPrimaId(UUID formulaId, UUID materiaPrimaId);
     
     @Query("SELECT c FROM ComposicaoPellet c WHERE c.formulaProducao.id = :formulaId")
     List<ComposicaoPellet> findByFormulaId(@Param("formulaId") UUID formulaId);

@@ -38,7 +38,7 @@ public class Notificacao {
     private Boolean lida = false;
 
     @Column(name = "requer_acao")
-    private Boolean requerAcao = false;
+    private Boolean requerAcao;
 
     @Column
     private Boolean concluida = false;

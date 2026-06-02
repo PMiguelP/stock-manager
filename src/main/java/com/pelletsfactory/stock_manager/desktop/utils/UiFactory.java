@@ -9,6 +9,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 public final class UiFactory {
@@ -70,5 +71,24 @@ public final class UiFactory {
         icon.setIconSize(iconSize);
         button.setGraphic(icon);
         return button;
+    }
+
+    public static HBox statusBadge(String label, String iconLiteral, String color) {
+        HBox badge = new HBox(6);
+        badge.setAlignment(Pos.CENTER_LEFT);
+        badge.setPadding(new Insets(4, 10, 4, 10));
+        badge.setStyle(String.format(
+                "-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;" +
+                        "-fx-background-color: %s20; -fx-border-color: %s;",
+                color.replace("#", ""), color));
+
+        FontIcon icon = new FontIcon(iconLiteral);
+        icon.setIconColor(Color.web(color));
+
+        Label text = new Label(label);
+        text.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
+
+        badge.getChildren().addAll(icon, text);
+        return badge;
     }
 }

@@ -14,12 +14,13 @@ import com.pelletsfactory.stock_manager.common.repositories.MateriaPrimaReposito
 import com.pelletsfactory.stock_manager.common.repositories.TipoPelletRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ProductionUnitUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 @Service
 public class StockService {
@@ -48,6 +49,7 @@ public class StockService {
     @Transactional
     public MateriaPrimaDetailsDTO criarMateriaPrima(MateriaPrimaRequestDTO dto) {
         MateriaPrima entity = materiaPrimaMapper.toEntity(dto);
+        normalizarStockMateriaPrima(entity);
         MateriaPrima saved = materiaPrimaRepo.save(entity);
         return new MateriaPrimaDetailsDTO(
                 saved.getId(),
@@ -69,13 +71,12 @@ public class StockService {
         return tipoPelletRepo.save(tipoPellet);
     }
 
-    @Transactional
-    public int ajustarStock() {
-        throw new UnsupportedOperationException("Use adicionar/subtrair stock indicando o item e a quantidade");
-    }
-
     public int verificarAlertasStock() {
         return Math.toIntExact(contarMateriasAbaixoMinimo() + tipoPelletRepo.countBelowMinimumStock());
+    }
+
+    public boolean existemPelletsAbaixoMinimo() {
+        return tipoPelletRepo.countBelowMinimumStock() > 0;
     }
 
     public long contarMateriasAbaixoMinimo() {
@@ -83,21 +84,20 @@ public class StockService {
     }
 
     public double calcularStockPelletsAtual() {
-        return tipoPelletRepo.findAll().stream()
-                .mapToDouble(tipo -> valorStock(tipo.getStockAtual()))
-                .sum();
+        return valorStock(tipoPelletRepo.sumCurrentStock());
     }
 
     public double calcularStockPelletsMinimo() {
-        return tipoPelletRepo.findAll().stream()
-                .mapToDouble(tipo -> valorStock(tipo.getStockMinimo()))
-                .sum();
+        return valorStock(tipoPelletRepo.sumMinimumStock());
     }
 
+    @Deprecated
     public double calcularStockMateriasPrimasAtual() {
-        return materiaPrimaRepo.findAll().stream()
-                .mapToDouble(materia -> valorStock(materia.getStockAtual()))
-                .sum();
+        return calcularStockMateriasPrimasKg();
+    }
+
+    public double calcularStockMateriasPrimasKg() {
+        return valorStock(materiaPrimaRepo.sumCurrentStockByUnit(ProductionUnitUtils.KILOGRAM));
     }
 
 
@@ -114,7 +114,7 @@ public class StockService {
     @Transactional
     public MateriaPrima subtrairStockMateriaPrima(UUID materiaPrimaId, Double quantidade) {
         validarQuantidadePositiva(quantidade);
-        MateriaPrima materiaPrima = buscarMateriaPrimaPorId(materiaPrimaId);
+        MateriaPrima materiaPrima = buscarMateriaPrimaParaAtualizar(materiaPrimaId);
         double novoStock = valorStock(materiaPrima.getStockAtual()) - quantidade;
         if (novoStock < 0) {
             throw new IllegalArgumentException("Stock insuficiente para a matéria-prima");
@@ -126,15 +126,15 @@ public class StockService {
     @Transactional
     public MateriaPrima adicionarStockMateriaPrima(UUID materiaPrimaId, Double quantidade) {
         validarQuantidadePositiva(quantidade);
-        MateriaPrima materiaPrima = buscarMateriaPrimaPorId(materiaPrimaId);
+        MateriaPrima materiaPrima = buscarMateriaPrimaParaAtualizar(materiaPrimaId);
         materiaPrima.setStockAtual(valorStock(materiaPrima.getStockAtual()) + quantidade);
         return materiaPrimaRepo.save(materiaPrima);
     }
 
     @Transactional
-    public TipoPellet atualizarStockPellet(UUID tipoPelletId, Double quantidade, boolean isAdicao) {
+    private TipoPellet atualizarStockPellet(UUID tipoPelletId, Double quantidade, boolean isAdicao) {
         validarQuantidadePositiva(quantidade);
-        TipoPellet tipoPellet = buscarTipoPelletPorId(tipoPelletId);
+        TipoPellet tipoPellet = buscarTipoPelletParaAtualizar(tipoPelletId);
         double stockAtual = valorStock(tipoPellet.getStockAtual());
         double novoStock = isAdicao ? stockAtual + quantidade : stockAtual - quantidade;
         if (novoStock < 0) {
@@ -142,6 +142,19 @@ public class StockService {
         }
         tipoPellet.setStockAtual(novoStock);
         return tipoPelletRepo.save(tipoPellet);
+    }
+
+    /**
+     * Ajusta stock de pellets sem permitir valores negativos.
+     */
+    @Transactional
+    public TipoPellet adicionarStockPellet(UUID tipoPelletId, Double quantidade) {
+        return atualizarStockPellet(tipoPelletId, quantidade, true);
+    }
+
+    @Transactional
+    public TipoPellet subtrairStockPellet(UUID tipoPelletId, Double quantidade) {
+        return atualizarStockPellet(tipoPelletId, quantidade, false);
     }
 
     /**
@@ -155,12 +168,7 @@ public class StockService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "nome";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "nome");
 
         return materiaPrimaRepo.findByFiltros(nome, unidade, pageable)
                 .map(materiaPrimaMapper::toSimpleDTO);
@@ -177,12 +185,7 @@ public class StockService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "nome";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "nome");
 
         return tipoPelletRepo.findByFiltros(nome, diametroMm, pageable)
                 .map(tipoPelletMapper::toSimpleDTO);
@@ -229,6 +232,8 @@ public class StockService {
         if (materiaPrima.getStockMinimo() == null) {
             materiaPrima.setStockMinimo(0.0);
         }
+        validarQuantidadeNaoNegativa(materiaPrima.getStockAtual(), "Stock atual");
+        validarQuantidadeNaoNegativa(materiaPrima.getStockMinimo(), "Stock mínimo");
     }
 
     private void normalizarStockTipoPellet(TipoPellet tipoPellet) {
@@ -238,12 +243,30 @@ public class StockService {
         if (tipoPellet.getStockMinimo() == null) {
             tipoPellet.setStockMinimo(0.0);
         }
+        validarQuantidadeNaoNegativa(tipoPellet.getStockAtual(), "Stock atual");
+        validarQuantidadeNaoNegativa(tipoPellet.getStockMinimo(), "Stock mínimo");
     }
 
     private void validarQuantidadePositiva(Double quantidade) {
-        if (quantidade == null || quantidade <= 0) {
-            throw new IllegalArgumentException("Quantidade deve ser maior que zero");
-        }
+        ValidationUtils.requirePositive(quantidade, "Quantidade");
+    }
+
+    private void validarQuantidadeNaoNegativa(Double quantidade, String campo) {
+        ValidationUtils.requireNonNegative(quantidade, campo);
+    }
+
+    /**
+     * Bloqueia o registo enquanto altera o stock para evitar que duas operações
+     * concorrentes se sobreponham e percam quantidades.
+     */
+    private MateriaPrima buscarMateriaPrimaParaAtualizar(UUID id) {
+        return materiaPrimaRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("Matéria-prima não encontrada"));
+    }
+
+    private TipoPellet buscarTipoPelletParaAtualizar(UUID id) {
+        return tipoPelletRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("Tipo de pellet não encontrado"));
     }
 
     private double valorStock(Double valor) {

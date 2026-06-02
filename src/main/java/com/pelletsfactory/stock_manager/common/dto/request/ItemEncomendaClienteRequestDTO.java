@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record ItemEncomendaClienteRequestDTO(
         UUID encomendaId,
@@ -16,15 +17,11 @@ public record ItemEncomendaClienteRequestDTO(
         if (tipoPelletId == null) {
             throw new IllegalArgumentException("ID do tipo de pellet é obrigatório");
         }
-        if (quantidadeKg == null || quantidadeKg <= 0) {
-            throw new IllegalArgumentException("Quantidade em kg deve ser superior a zero");
-        }
-        if (precoUnitarioNet == null || precoUnitarioNet < 0) {
-            throw new IllegalArgumentException("Preço unitário não pode ser negativo");
-        }
-        if (taxaIva == null || taxaIva < 0) {
-            throw new IllegalArgumentException("Taxa IVA não pode ser negativa");
+        ValidationUtils.requirePositive(quantidadeKg, "Quantidade em kg");
+        ValidationUtils.requirePositive(precoUnitarioNet, "Preço unitário");
+        ValidationUtils.requireNonNegative(taxaIva, "Taxa IVA");
+        if (taxaIva > 100) {
+            throw new IllegalArgumentException("Taxa IVA não pode ser superior a 100%");
         }
     }
 }
-

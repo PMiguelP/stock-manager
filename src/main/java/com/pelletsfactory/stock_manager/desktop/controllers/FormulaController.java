@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 
 import com.pelletsfactory.stock_manager.common.dto.response.FormulaProducaoResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FormulaSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.request.FormulaProducaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.services.FormulaProducaoService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -36,7 +39,6 @@ public class FormulaController {
     @FXML private TableColumn<FormulaSimpleDTO, String> colCodigo;
     @FXML private TableColumn<FormulaSimpleDTO, String> colNome;
     @FXML private TableColumn<FormulaSimpleDTO, String> colTipoPellet;
-    @FXML private TableColumn<FormulaSimpleDTO, String> colVersao;
     @FXML private TableColumn<FormulaSimpleDTO, Boolean> colAtiva;
     @FXML private TableColumn<FormulaSimpleDTO, Void> colAcoes;
 
@@ -96,9 +98,6 @@ public class FormulaController {
                 cd.getValue().tipoPelletNome() != null ? cd.getValue().tipoPelletNome() : "N/A"
         ));
         configurarColunaTexto(colTipoPellet);
-
-        colVersao.setCellValueFactory(cd -> new javafx.beans.property.SimpleStringProperty("v1.0"));
-        configurarColunaTexto(colVersao);
 
         colAtiva.setCellValueFactory(cd -> new javafx.beans.property.SimpleBooleanProperty(
                 cd.getValue().ativa() != null ? cd.getValue().ativa() : false
@@ -223,7 +222,7 @@ public class FormulaController {
                     .ifPresent(cmbTipoPelletEdit::setValue);
         }
 
-        TextField txtVersaoEdit = new TextField("v1.0");
+        TextField txtVersaoEdit = new TextField(d.nome());
 
         Label lblTotalKgEdit = new Label("0.00 kg");
         lblTotalKgEdit.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
@@ -270,7 +269,7 @@ public class FormulaController {
 
         VBox form = new VBox(20,
                 criarCampoFormulario("Pellet Type", cmbTipoPelletEdit),
-                criarCampoFormulario("Formula Version", txtVersaoEdit),
+                criarCampoFormulario("Formula Name", txtVersaoEdit),
                 criarSecaoIngredientes(ingredientesContainerEdit, btnAddIngredient),
                 criarCampoTotal(lblTotalKgEdit, lblWarningEdit),
                 criarCampoStatus(chkAtivaEdit)
@@ -298,10 +297,8 @@ public class FormulaController {
         HBox.setHgrow(btnEliminar, Priority.ALWAYS);
         footer.getChildren().addAll(btnGuardar, btnEliminar);
 
-        btnGuardar.setOnAction(e -> {
-            // TODO: Implement validation and update
-            handleAtualizarFormula(d.id(), cmbTipoPelletEdit, txtVersaoEdit, ingredienteRowsEdit, chkAtivaEdit);
-        });
+        btnGuardar.setOnAction(e -> handleAtualizarFormula(
+                d.id(), cmbTipoPelletEdit, txtVersaoEdit, ingredienteRowsEdit, chkAtivaEdit));
 
         btnEliminar.setOnAction(e -> {
             Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
@@ -355,7 +352,7 @@ public class FormulaController {
         cmbTipoPellet.setPromptText("Select pellet type");
         carregarTiposPellet(cmbTipoPellet);
 
-        txtVersao = new TextField("v1.0");
+        txtVersao = new TextField();
 
         lblTotalKg = new Label("0.00 kg");
         lblTotalKg.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
@@ -391,7 +388,7 @@ public class FormulaController {
 
         VBox form = new VBox(20,
                 criarCampoFormulario("Pellet Type", cmbTipoPellet),
-                criarCampoFormulario("Formula Version", txtVersao),
+                criarCampoFormulario("Formula Name", txtVersao),
                 criarSecaoIngredientes(ingredientesContainer, btnAddIngredient),
                 criarCampoTotal(lblTotalKg, lblWarning),
                 criarCampoStatus(chkAtiva)
@@ -522,7 +519,10 @@ public class FormulaController {
         for (IngredienteRow row : rows) {
             try {
                 String text = row.txtQuantidade().getText().replace(",", ".");
-                total += Double.parseDouble(text);
+                double quantidade = Double.parseDouble(text);
+                if (Double.isFinite(quantidade)) {
+                    total += quantidade;
+                }
             } catch (NumberFormatException e) {
                 // Ignore invalid numbers
             }
@@ -541,7 +541,7 @@ public class FormulaController {
 
     private void carregarTiposPellet(ComboBox<TipoPelletItem> combo) {
         try {
-            var page = stockService.listarTiposPelletComFiltros(1, 1000, null, null, "nome", "ASC");
+            var page = stockService.listarTiposPelletComFiltros(1, 100, null, null, "nome", "ASC");
             List<TipoPelletItem> items = page.getContent().stream()
                     .map(dto -> new TipoPelletItem(dto.id(), dto.nome()))
                     .toList();
@@ -553,7 +553,7 @@ public class FormulaController {
 
     private void carregarMateriasPrimas(ComboBox<MateriaPrimaItem> combo) {
         try {
-            var page = stockService.listarMateriasPrimasComFiltros(1, 1000, null, null, "nome", "ASC");
+            var page = stockService.listarMateriasPrimasComFiltros(1, 100, null, "kg", "nome", "ASC");
             List<MateriaPrimaItem> items = page.getContent().stream()
                     .map(dto -> new MateriaPrimaItem(dto.id(), dto.nome()))
                     .toList();
@@ -580,10 +580,9 @@ public class FormulaController {
             return;
         }
 
-        // TODO: Build DTO and call service
         try {
-            // FormulaProducaoRequestDTO dto = ...
-            // formulaService.criarFormula(dto);
+            FormulaProducaoRequestDTO dto = criarFormulaDTO(cmbTipoPellet, txtVersao, chkAtiva);
+            formulaService.criarFormula(dto, lerIngredientes(ingredienteRows));
             paginaAtual = 0;
             carregarFormulas();
             navigationService.hideModal();
@@ -595,16 +594,58 @@ public class FormulaController {
 
     private void handleAtualizarFormula(UUID id, ComboBox<TipoPelletItem> cmbTipo, TextField txtVer,
                                         List<IngredienteRow> rows, CheckBox chkAtv) {
-        // TODO: Implement validation and update
         try {
-            // FormulaProducaoRequestDTO dto = ...
-            // formulaService.atualizarFormula(id, dto);
+            FormulaProducaoRequestDTO dto = criarFormulaDTO(cmbTipo, txtVer, chkAtv);
+            formulaService.atualizarFormula(id, dto, lerIngredientes(rows));
             carregarFormulas();
             navigationService.hideModal();
             mostrarSucesso("Fórmula atualizada!");
         } catch (Exception ex) {
             mostrarErro("Erro ao atualizar: " + ex.getMessage());
         }
+    }
+
+    private FormulaProducaoRequestDTO criarFormulaDTO(
+            ComboBox<TipoPelletItem> cmbTipo,
+            TextField txtNome,
+            CheckBox chkAtiva) {
+        if (cmbTipo.getValue() == null) {
+            throw new IllegalArgumentException("Selecione um tipo de pellet");
+        }
+        return new FormulaProducaoRequestDTO(
+                cmbTipo.getValue().id(),
+                txtNome.getText(),
+                chkAtiva.isSelected()
+        );
+    }
+
+    private Map<UUID, Double> lerIngredientes(List<IngredienteRow> rows) {
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("Adicione pelo menos um ingrediente");
+        }
+        Map<UUID, Double> ingredientes = new LinkedHashMap<>();
+        for (IngredienteRow row : rows) {
+            if (row.cmbMaterial().getValue() == null) {
+                throw new IllegalArgumentException("Selecione a matéria-prima de todos os ingredientes");
+            }
+            double quantidade;
+            try {
+                quantidade = Double.parseDouble(row.txtQuantidade().getText().replace(",", "."));
+            } catch (NumberFormatException exception) {
+                throw new IllegalArgumentException("Indique uma quantidade válida para todos os ingredientes");
+            }
+            if (!Double.isFinite(quantidade) || quantidade <= 0) {
+                throw new IllegalArgumentException("As quantidades dos ingredientes devem ser maiores que zero");
+            }
+            if (ingredientes.putIfAbsent(row.cmbMaterial().getValue().id(), quantidade) != null) {
+                throw new IllegalArgumentException("A mesma matéria-prima não pode ser repetida na fórmula");
+            }
+        }
+        double total = ingredientes.values().stream().mapToDouble(Double::doubleValue).sum();
+        if (!Double.isFinite(total) || Math.abs(total - 1.0) > 0.000001) {
+            throw new IllegalArgumentException("A composição total da fórmula deve ser exatamente 1 kg");
+        }
+        return ingredientes;
     }
 
     private void configurarPaginacao(VBox container) {
@@ -702,7 +743,7 @@ public class FormulaController {
 
     private void limparFormulario() {
         cmbTipoPellet.setValue(null);
-        txtVersao.setText("v1.0");
+        txtVersao.clear();
         ingredientesContainer.getChildren().clear();
         ingredienteRows.clear();
         adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning);

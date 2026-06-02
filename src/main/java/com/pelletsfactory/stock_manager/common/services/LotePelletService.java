@@ -7,11 +7,14 @@ import com.pelletsfactory.stock_manager.common.entities.LotePellet;
 import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
 import com.pelletsfactory.stock_manager.common.entities.TipoPellet;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
+import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import com.pelletsfactory.stock_manager.common.mapper.LotePelletMapper;
 import com.pelletsfactory.stock_manager.common.repositories.LotePelletRepository;
+import com.pelletsfactory.stock_manager.common.repositories.AlocacaoLoteEncomendaRepository;
 import com.pelletsfactory.stock_manager.common.repositories.OrdemProducaoRepository;
 import com.pelletsfactory.stock_manager.common.repositories.TipoPelletRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -29,16 +32,22 @@ public class LotePelletService {
     private final LotePelletRepository loteRepo;
     private final OrdemProducaoRepository ordemRepo;
     private final TipoPelletRepository tipoPelletRepo;
+    private final StockService stockService;
+    private final AlocacaoLoteEncomendaRepository alocacaoRepo;
     private final LotePelletMapper mapper;
 
     public LotePelletService(
             LotePelletRepository loteRepo,
             OrdemProducaoRepository ordemRepo,
             TipoPelletRepository tipoPelletRepo,
+            StockService stockService,
+            AlocacaoLoteEncomendaRepository alocacaoRepo,
             LotePelletMapper mapper) {
         this.loteRepo = loteRepo;
         this.ordemRepo = ordemRepo;
         this.tipoPelletRepo = tipoPelletRepo;
+        this.stockService = stockService;
+        this.alocacaoRepo = alocacaoRepo;
         this.mapper = mapper;
     }
 
@@ -57,7 +66,7 @@ public class LotePelletService {
         }
 
         // Buscar ordem e tipo de pellet
-        OrdemProducao ordem = ordemRepo.findById(dto.ordemProducaoId())
+        OrdemProducao ordem = ordemRepo.findByIdForUpdate(dto.ordemProducaoId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Ordem de produção não encontrada"
                 ));
@@ -73,6 +82,8 @@ public class LotePelletService {
                     "Tipo de pellet não corresponde à ordem de produção"
             );
         }
+        validarOrdemPermiteLotes(ordem);
+        validarQuantidadeProduzidaDisponivel(ordem, dto.quantidadeKg(), null);
 
         // Criar lote
         LotePellet lote = mapper.toEntity(dto);
@@ -81,10 +92,8 @@ public class LotePelletService {
         lote.setDataProducao(Instant.now());
 
         // Incrementar stock do tipo de pellet
-        tipoPellet.setStockAtual(tipoPellet.getStockAtual() + dto.quantidadeKg());
-
         LotePellet saved = loteRepo.save(lote);
-        tipoPelletRepo.save(tipoPellet);
+        stockService.adicionarStockPellet(tipoPellet.getId(), dto.quantidadeKg());
 
         return mapper.toResponseDTO(saved);
     }
@@ -96,7 +105,14 @@ public class LotePelletService {
     public LotePelletResponseDTO atualizarLote(UUID id, LotePelletRequestDTO dto) {
         SecurityUtils.checkPermission(Cargo.OPERADOR_PRODUCAO);
 
-        LotePellet lote = buscarPorIdOuFalhar(id);
+        LotePellet lote = loteRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("Lote de pellet não encontrado"));
+        OrdemProducao ordem = ordemRepo.findByIdForUpdate(lote.getOrdem().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Ordem de produção não encontrada"));
+        if (!lote.getOrdem().getId().equals(dto.ordemProducaoId())
+                || !lote.getTipoPellet().getId().equals(dto.tipoPelletId())) {
+            throw new IllegalArgumentException("Não é possível trocar a ordem ou o tipo de pellet de um lote existente");
+        }
 
         // Validar código único (se mudou)
         if (!lote.getCodigoLote().equals(dto.codigoLote()) && 
@@ -106,8 +122,17 @@ public class LotePelletService {
             );
         }
 
-        mapper.updateEntityFromDTO(dto, lote);
+        validarOrdemPermiteLotes(ordem);
+        validarQuantidadeProduzidaDisponivel(ordem, dto.quantidadeKg(), id);
+        double diferenca = dto.quantidadeKg() - lote.getQuantidadeKg();
+        validarQuantidadeNaoFicaAbaixoDasReservas(lote.getId(), dto.quantidadeKg());
+        if (diferenca > 0) {
+            stockService.adicionarStockPellet(lote.getTipoPellet().getId(), diferenca);
+        } else if (diferenca < 0) {
+            stockService.subtrairStockPellet(lote.getTipoPellet().getId(), -diferenca);
+        }
 
+        mapper.updateEntityFromDTO(dto, lote);
         LotePellet updated = loteRepo.save(lote);
         return mapper.toResponseDTO(updated);
     }
@@ -119,14 +144,14 @@ public class LotePelletService {
     public void apagarLote(UUID id) {
         SecurityUtils.checkPermission(Cargo.OPERADOR_PRODUCAO);
 
-        LotePellet lote = buscarPorIdOuFalhar(id);
+        LotePellet lote = loteRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("Lote de pellet não encontrado"));
+        ordemRepo.findByIdForUpdate(lote.getOrdem().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Ordem de produção não encontrada"));
+        validarQuantidadeNaoFicaAbaixoDasReservas(lote.getId(), 0.0);
 
-        // Descrementar stock
-        TipoPellet tipoPellet = lote.getTipoPellet();
-        tipoPellet.setStockAtual(tipoPellet.getStockAtual() - lote.getQuantidadeKg());
-
+        stockService.subtrairStockPellet(lote.getTipoPellet().getId(), lote.getQuantidadeKg());
         loteRepo.delete(lote);
-        tipoPelletRepo.save(tipoPellet);
     }
 
     /**
@@ -141,15 +166,7 @@ public class LotePelletService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "dataProducao";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "dataProducao");
 
         Page<LotePellet> lotesPage = loteRepo.findByFiltros(codigoLote, tipoPelletId, ordemId, pageable);
 
@@ -160,7 +177,7 @@ public class LotePelletService {
      * Listar lotes de uma ordem
      */
     public Page<LotePelletSimpleDTO> listarLotesDaOrdem(UUID ordemId, int page, int pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("dataProducao").descending());
+        Pageable pageable = PageableUtils.create(page, pageSize, "dataProducao", "DESC", "dataProducao");
         Page<LotePellet> lotesPage = loteRepo.findByOrdemId(ordemId, pageable);
         return lotesPage.map(mapper::toSimpleDTO);
     }
@@ -198,5 +215,36 @@ public class LotePelletService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Lote de pellet não encontrado com ID: " + id
                 ));
+    }
+
+    /**
+     * Lotes representam produto acabado real e apenas podem nascer após o início da produção.
+     */
+    private void validarOrdemPermiteLotes(OrdemProducao ordem) {
+        if (ordem.getEstado() != EstadoOrdemProducao.EM_PRODUCAO
+                && ordem.getEstado() != EstadoOrdemProducao.CONCLUIDA) {
+            throw new IllegalStateException("A ordem deve estar em produção ou concluída para registar lotes");
+        }
+    }
+
+    private void validarQuantidadeProduzidaDisponivel(OrdemProducao ordem, Double novaQuantidade, UUID loteIgnoradoId) {
+        if (novaQuantidade == null || !Double.isFinite(novaQuantidade) || novaQuantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade do lote deve ser maior que zero");
+        }
+        double jaRegistado = loteRepo.findByOrdemId(ordem.getId()).stream()
+                .filter(lote -> !lote.getId().equals(loteIgnoradoId))
+                .mapToDouble(LotePellet::getQuantidadeKg)
+                .sum();
+        double produzido = ordem.getQuantidadeProduzidaReal() != null ? ordem.getQuantidadeProduzidaReal() : 0.0;
+        if (jaRegistado + novaQuantidade > produzido) {
+            throw new IllegalArgumentException("A quantidade dos lotes não pode exceder a produção real registada");
+        }
+    }
+
+    private void validarQuantidadeNaoFicaAbaixoDasReservas(UUID loteId, Double novaQuantidade) {
+        Double reservado = alocacaoRepo.sumQuantidadeReservadaByLoteId(loteId);
+        if (reservado != null && reservado > novaQuantidade + 0.000001) {
+            throw new IllegalStateException("O lote não pode ficar abaixo da quantidade reservada para encomendas");
+        }
     }
 }

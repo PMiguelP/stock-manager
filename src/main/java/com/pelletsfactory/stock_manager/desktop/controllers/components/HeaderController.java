@@ -8,6 +8,7 @@ import com.pelletsfactory.stock_manager.common.entities.SessaoFuncionario;
 import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoResponseDTO;
 import com.pelletsfactory.stock_manager.common.enums.TipoEventoNotificacao;
 import com.pelletsfactory.stock_manager.common.services.NotificacaoService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationEvent;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import javafx.application.Platform;
@@ -56,6 +57,9 @@ public class HeaderController {
 
     @Autowired
     private NotificacaoService notificacaoService;
+
+    @Autowired
+    private I18nService i18nService;
 
     @FXML
     public void initialize() {
@@ -274,9 +278,9 @@ public class HeaderController {
     private void carregarFuncionarioLogado() {
         Funcionario funcionario = SessaoFuncionario.getFuncionarioLogado();
         if (funcionario == null) {
-            lblUserInitials.setText("--");
-            lblUserName.setText("Funcionário");
-            lblUserNumber.setText("Nº funcionário");
+            lblUserInitials.setText(i18nService.translate("common.initialsPlaceholder"));
+            lblUserName.setText(i18nService.translate("header.employee"));
+            lblUserNumber.setText(i18nService.translate("header.employeeNumber"));
             return;
         }
 
@@ -288,7 +292,7 @@ public class HeaderController {
         lblUserName.setText(nome);
         lblUserNumber.setText(funcionario.getNumeroFuncionario() != null
                 ? "Nº " + funcionario.getNumeroFuncionario()
-                : "Nº funcionário");
+                : i18nService.translate("header.employeeNumber"));
     }
 
     private String criarIniciais(String nome) {

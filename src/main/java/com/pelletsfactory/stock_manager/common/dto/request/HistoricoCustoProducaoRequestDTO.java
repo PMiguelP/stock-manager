@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record HistoricoCustoProducaoRequestDTO(
         UUID tipoPelletId,
@@ -10,9 +11,6 @@ public record HistoricoCustoProducaoRequestDTO(
         if (tipoPelletId == null) {
             throw new IllegalArgumentException("ID do tipo de pellet é obrigatório");
         }
-        if (custoBasePorKg == null || custoBasePorKg <= 0) {
-            throw new IllegalArgumentException("Custo base por kg deve ser superior a zero");
-        }
+        ValidationUtils.requirePositive(custoBasePorKg, "Custo base por kg");
     }
 }
-

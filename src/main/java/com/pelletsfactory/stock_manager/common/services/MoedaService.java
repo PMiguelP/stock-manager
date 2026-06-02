@@ -8,12 +8,14 @@ import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.mapper.MoedaMapper;
 import com.pelletsfactory.stock_manager.common.repositories.MoedaRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -67,7 +69,12 @@ public class MoedaService {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
 
         Moeda moeda = buscarPorIdOuFalhar(id);
-        moedaRepo.delete(moeda);
+        try {
+            moedaRepo.delete(moeda);
+            moedaRepo.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new IllegalStateException("Não é possível eliminar uma moeda que está em utilização", exception);
+        }
     }
 
     public Page<MoedaResponseDTO> listarMoedasComFiltros(
@@ -78,15 +85,7 @@ public class MoedaService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "codigo";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "codigo");
 
         Page<Moeda> moedasPage = moedaRepo.findByFiltros(codigo, simbolo, pageable);
 
@@ -104,15 +103,7 @@ public class MoedaService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "codigo";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "codigo");
 
         Page<Moeda> moedasPage = moedaRepo.findByFiltros(codigo, simbolo, pageable);
 

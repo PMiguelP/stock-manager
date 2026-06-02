@@ -16,8 +16,8 @@
             <!-- Header -->
             <HBox alignment="CENTER_LEFT" spacing="15">
                 <VBox spacing="4">
-                    <Label text="Dashboard" styleClass="title-2"/>
-                    <Label text="Visão geral do sistema" styleClass="text-muted"/>
+                    <Label text="dashboard.title" styleClass="title-2"/>
+                    <Label text="dashboard.subtitle" styleClass="text-muted"/>
                 </VBox>
                 <Region HBox.hgrow="ALWAYS"/>
             </HBox>
@@ -36,7 +36,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="12">
                         <StackPane fx:id="iconTotalFuncionarios"/>
                         <VBox spacing="2" HBox.hgrow="ALWAYS">
-                            <Label text="Total Employees" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
+                            <Label text="dashboard.totalEmployees" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
                             <Label fx:id="lblTotalFuncionarios" text="—" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
                         </VBox>
                     </HBox>
@@ -48,7 +48,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="12">
                         <StackPane fx:id="iconEncomendasPendentes"/>
                         <VBox spacing="2" HBox.hgrow="ALWAYS">
-                            <Label text="Pending Orders" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
+                            <Label text="dashboard.pendingOrders" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
                             <Label fx:id="lblFuncionariosAtivos" text="—" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
                         </VBox>
                     </HBox>
@@ -60,7 +60,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="12">
                         <StackPane fx:id="iconProducaoMensal"/>
                         <VBox spacing="2" HBox.hgrow="ALWAYS">
-                            <Label text="Monthly Production" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
+                            <Label text="dashboard.monthlyProduction" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
                             <Label fx:id="lblProducaoMes" text="—" style="-fx-font-size: 22px; -fx-font-weight: bold;"/>
                         </VBox>
                     </HBox>
@@ -72,7 +72,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="12">
                         <StackPane fx:id="iconStockAtual"/>
                         <VBox spacing="2" HBox.hgrow="ALWAYS">
-                            <Label text="Current Stock" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
+                            <Label text="stock.current" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
                             <Label fx:id="lblStockAtual" text="—" style="-fx-font-size: 22px; -fx-font-weight: bold;"/>
                         </VBox>
                     </HBox>
@@ -83,126 +83,84 @@
             <!-- Quick Actions -->
             <VBox spacing="14"
                   style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                <Label text="Quick Actions" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <Label text="dashboard.quickActions" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                 <HBox spacing="12">
-                    <Button text="Create New Order" onAction="#handleCriarEncomenda" styleClass="accent" prefHeight="40"/>
-                    <Button text="Add Employee" onAction="#handleAdicionarFuncionario" prefHeight="40"/>
-                    <Button text="Register Production Batch" onAction="#handleRegistarLote" prefHeight="40"/>
+                    <Button text="dashboard.createOrder" onAction="#handleCriarEncomenda" styleClass="accent" prefHeight="40"/>
+                    <Button text="dashboard.addEmployee" onAction="#handleAdicionarFuncionario" prefHeight="40"/>
+                    <Button text="dashboard.registerBatch" onAction="#handleRegistarLote" prefHeight="40"/>
                 </HBox>
             </VBox>
 
-            <!-- Charts Row 1 -->
             <GridPane hgap="16">
                 <columnConstraints>
                     <ColumnConstraints percentWidth="50"/>
                     <ColumnConstraints percentWidth="50"/>
                 </columnConstraints>
 
-                <!-- Daily Production — AreaChart with NumberAxis -->
                 <VBox spacing="10" GridPane.columnIndex="0"
                       style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                    <Label text="Daily Production" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                    <AreaChart fx:id="chartDailyProduction" prefHeight="250"
-                               legendVisible="false" animated="false"
-                               style="-fx-background-color: transparent;">
-                        <xAxis>
-                            <NumberAxis lowerBound="1" upperBound="7" tickUnit="1" label="Day"/>
-                        </xAxis>
-                        <yAxis>
-                            <NumberAxis label="Production (kg)"/>
-                        </yAxis>
+                    <Label text="dashboard.dailyProduction" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <AreaChart fx:id="chartDailyProduction" prefHeight="250" legendVisible="false" animated="false">
+                        <xAxis><CategoryAxis label="dashboard.day"/></xAxis>
+                        <yAxis><NumberAxis label="dashboard.productionKg"/></yAxis>
                     </AreaChart>
                 </VBox>
 
-                <!-- Monthly Production — AreaChart with CategoryAxis, 2 series -->
                 <VBox spacing="10" GridPane.columnIndex="1"
                       style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                    <Label text="Monthly Production" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                    <AreaChart fx:id="chartMonthlyProduction" prefHeight="250"
-                               legendVisible="true" animated="false"
-                               style="-fx-background-color: transparent;">
-                        <xAxis>
-                            <CategoryAxis label="Month"/>
-                        </xAxis>
-                        <yAxis>
-                            <NumberAxis label="Production (kg)"/>
-                        </yAxis>
+                    <Label text="dashboard.monthlyProduction" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <AreaChart fx:id="chartMonthlyProduction" prefHeight="250" legendVisible="true" animated="false">
+                        <xAxis><CategoryAxis label="dashboard.month"/></xAxis>
+                        <yAxis><NumberAxis label="dashboard.productionKg"/></yAxis>
                     </AreaChart>
                 </VBox>
             </GridPane>
 
-            <!-- Charts Row 2 -->
             <GridPane hgap="16">
                 <columnConstraints>
                     <ColumnConstraints percentWidth="50"/>
                     <ColumnConstraints percentWidth="50"/>
                 </columnConstraints>
 
-                <!-- Orders per Month — BarChart -->
                 <VBox spacing="10" GridPane.columnIndex="0"
                       style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                    <Label text="Orders per Month" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                    <BarChart fx:id="chartOrdersPerMonth" prefHeight="250"
-                              legendVisible="false" animated="false"
-                              style="-fx-background-color: transparent;">
-                        <xAxis>
-                            <CategoryAxis label="Month"/>
-                        </xAxis>
-                        <yAxis>
-                            <NumberAxis label="Orders"/>
-                        </yAxis>
+                    <Label text="dashboard.ordersPerMonth" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <BarChart fx:id="chartOrdersPerMonth" prefHeight="250" legendVisible="false" animated="false">
+                        <xAxis><CategoryAxis label="dashboard.month"/></xAxis>
+                        <yAxis><NumberAxis label="dashboard.orders"/></yAxis>
                     </BarChart>
                 </VBox>
 
-                <!-- Matérias Primas — PieChart -->
                 <VBox spacing="10" GridPane.columnIndex="1"
                       style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                    <Label text="Matérias Primas (Stock)" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                    <PieChart fx:id="chartMateriasPrimas" prefHeight="250"
-                              animated="false" legendVisible="true" legendSide="BOTTOM"
-                              style="-fx-background-color: transparent;"/>
+                    <Label text="dashboard.rawMaterialsStockKg" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <PieChart fx:id="chartMateriasPrimas" prefHeight="250" animated="false" legendVisible="true" legendSide="BOTTOM"/>
                 </VBox>
             </GridPane>
 
-            <!-- Charts Row 3 -->
             <GridPane hgap="16">
                 <columnConstraints>
                     <ColumnConstraints percentWidth="50"/>
                     <ColumnConstraints percentWidth="50"/>
                 </columnConstraints>
 
-                <!-- Stock de Pellets — LineChart -->
                 <VBox spacing="10" GridPane.columnIndex="0"
                       style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                    <Label text="Stock de Pellets" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                    <LineChart fx:id="chartStockPellets" prefHeight="250"
-                               legendVisible="true" animated="false"
-                               style="-fx-background-color: transparent;">
-                        <xAxis>
-                            <CategoryAxis label="Month"/>
-                        </xAxis>
-                        <yAxis>
-                            <NumberAxis label="Stock (ton)"/>
-                        </yAxis>
+                    <Label text="dashboard.pelletProduction" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <LineChart fx:id="chartPelletProduction" prefHeight="250" legendVisible="true" animated="false">
+                        <xAxis><CategoryAxis label="dashboard.month"/></xAxis>
+                        <yAxis><NumberAxis label="dashboard.productionKg"/></yAxis>
                     </LineChart>
                 </VBox>
 
-                <!-- Budget Monitoring — BubbleChart -->
                 <VBox spacing="10" GridPane.columnIndex="1"
                       style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-border-width: 1;">
-                    <Label text="Budget Monitoring" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                    <BubbleChart fx:id="chartBudget" prefHeight="250"
-                                 legendVisible="true" animated="false"
-                                 style="-fx-background-color: transparent;">
-                        <xAxis>
-                            <NumberAxis lowerBound="1" upperBound="53" tickUnit="4" label="Week"/>
-                        </xAxis>
-                        <yAxis>
-                            <NumberAxis lowerBound="0" upperBound="100" tickUnit="10" label="Budget (k€)"/>
-                        </yAxis>
+                    <Label text="dashboard.financialMovements" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <BubbleChart fx:id="chartFinancialMovements" prefHeight="250" legendVisible="true" animated="false">
+                        <xAxis><NumberAxis lowerBound="1" upperBound="12" tickUnit="1" label="dashboard.week"/></xAxis>
+                        <yAxis><NumberAxis label="dashboard.movements"/></yAxis>
                     </BubbleChart>
                 </VBox>
-
             </GridPane>
 
         </VBox>

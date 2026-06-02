@@ -12,6 +12,7 @@ import com.pelletsfactory.stock_manager.common.mapper.FuncionarioMapper;
 import com.pelletsfactory.stock_manager.common.repositories.FuncionarioRepository;
 import com.pelletsfactory.stock_manager.common.repositories.OrdemProducaoRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -58,6 +59,9 @@ public class FuncionarioService {
         // Gerar número de funcionário automaticamente
         Integer ultimoNumero = funcRepo.findMaxNumeroFuncionario();
         Integer proximoNumero = (ultimoNumero == null) ? 1000 : ultimoNumero + 1;
+        if (proximoNumero > 9999) {
+            throw new IllegalStateException("Não é possível gerar automaticamente um PIN inicial de 4 dígitos");
+        }
         funcionario.setNumeroFuncionario(proximoNumero);
 
         // Gerar PIN inicial (mesmo número do funcionário)
@@ -131,16 +135,7 @@ public class FuncionarioService {
             String sortBy,
             String direction) {
 
-        // Default sort
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "dataAdmissao";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "dataAdmissao");
 
         Page<Funcionario> funcionariosPage = funcRepo.findByFiltros(
                 nome, nif, cargo, numeroFuncionario, pageable

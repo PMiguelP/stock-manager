@@ -27,7 +27,7 @@ public class LanguagePreferencesService {
         }
 
         public Locale toLocale() {
-            return new Locale(code);
+            return Locale.forLanguageTag(code);
         }
 
         public static AppLanguage fromCode(String code) {
@@ -69,4 +69,3 @@ public class LanguagePreferencesService {
         }
     }
 }
-

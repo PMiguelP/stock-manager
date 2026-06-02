@@ -8,7 +8,10 @@ import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
 import com.pelletsfactory.stock_manager.common.services.OrdemProducaoService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -16,7 +19,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 import javafx.util.StringConverter;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
@@ -37,6 +39,7 @@ public class ProductionController {
     private final StockService stockService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private VBox vboxContainer;
     @FXML private ComboBox<EstadoOrdemProducao> cmbEstadoFiltro;
@@ -63,13 +66,7 @@ public class ProductionController {
     private Label lblErroQuantidade;
     private Label lblErroData;
 
-    // Pagination (dynamic)
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int paginaAtual = 0;
-    private int itemsPerPage = 10;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<OrdemProducaoSimpleDTO> ordens = FXCollections.observableArrayList();
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -79,28 +76,24 @@ public class ProductionController {
                                 FuncionarioService funcionarioService,
                                 StockService stockService,
                                 NavigationService navigationService,
-                                ToastService toastService) {
+                                ToastService toastService,
+                                I18nService i18nService) {
         this.ordemService = ordemService;
         this.formulaService = formulaService;
         this.funcionarioService = funcionarioService;
         this.stockService = stockService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarOrdens, i18nService);
         configurarFiltroEstado();
         configurarTabela();
         configurarDrawerCriarOrdem();
         carregarOrdens();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     // ── Filters ───────────────────────────────────────────────────────────────
@@ -213,13 +206,11 @@ public class ProductionController {
         try {
             EstadoOrdemProducao estado = cmbEstadoFiltro.getValue();
             Page<OrdemProducaoSimpleDTO> page = ordemService.listarOrdensComFiltros(
-                    paginaAtual + 1, itemsPerPage, estado, null, null, "dataInicio", "DESC");
+                    pagination.pageNumberForService(), pagination.pageSize(), estado, null, null, "dataInicio", "DESC");
 
             ordens.setAll(page.getContent());
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             toastService.showError("Erro", "Erro ao carregar ordens: " + e.getMessage());
         }
@@ -237,30 +228,8 @@ public class ProductionController {
     }
 
     private VBox criarDrawerDetalhes(OrdemProducaoDetailsDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(580);
-        root.setPrefWidth(580);
-        root.setMaxWidth(580);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        // Header
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        VBox headerText = new VBox(4);
-        Label titulo = new Label("Detalhes da Ordem");
-        titulo.getStyleClass().add("title-3");
-        Label subtitulo = new Label(d.tipoPelletNome());
-        subtitulo.getStyleClass().add("text-muted");
-        headerText.getChildren().addAll(titulo, subtitulo);
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(headerText, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(580);
+        HBox header = UiFactory.drawerHeader("Detalhes da Ordem", navigationService::hideModal);
 
         // ── Section: Informação Geral ─────────────────────────────────────────
         VBox secaoGeral = criarSecao("Informação Geral");
@@ -638,7 +607,7 @@ public class ProductionController {
             Double qtdPlaneada;
             try {
                 qtdPlaneada = Double.parseDouble(txtQtdPlaneada.getText().replace(",", ".").trim());
-                if (qtdPlaneada <= 0) throw new NumberFormatException();
+                if (!Double.isFinite(qtdPlaneada) || qtdPlaneada <= 0) throw new NumberFormatException();
             } catch (Exception ex) {
                 mostrarErroLabel(lblErroQtdPlaneada, txtQtdPlaneada, "Quantidade inválida (> 0)");
                 valido = false;
@@ -650,7 +619,7 @@ public class ProductionController {
             if (!qtdProduzidaRaw.isEmpty()) {
                 try {
                     qtdProduzida = Double.parseDouble(qtdProduzidaRaw.replace(",", "."));
-                    if (qtdProduzida < 0) throw new NumberFormatException();
+                    if (!Double.isFinite(qtdProduzida) || qtdProduzida < 0) throw new NumberFormatException();
                 } catch (Exception ex) {
                     mostrarErroLabel(lblErroQtdProduzida, txtQtdProduzida, "Quantidade produzida inválida");
                     valido = false;
@@ -831,7 +800,7 @@ public class ProductionController {
         Double quantidade = null;
         try {
             quantidade = Double.parseDouble(txtQuantidade.getText().replace(",", ".").trim());
-            if (quantidade <= 0) throw new NumberFormatException();
+            if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
             mostrarErroLabel(lblErroQuantidade, txtQuantidade, "Insira uma quantidade válida (> 0)");
             valido = false;
@@ -855,7 +824,7 @@ public class ProductionController {
                     "PENDENTE"
             );
             ordemService.criarOrdem(dto);
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarOrdens();
             navigationService.hideModal();
             toastService.showSuccess("Sucesso", "Ordem de produção criada com sucesso!");
@@ -866,9 +835,8 @@ public class ProductionController {
 
     // ── FXML handlers ─────────────────────────────────────────────────────────
 
-    @FXML private void handleRefresh() { carregarOrdens(); }
-    @FXML private void handleFiltrar() { paginaAtual = 0; carregarOrdens(); }
-    @FXML private void handleLimpar() { cmbEstadoFiltro.setValue(null); paginaAtual = 0; carregarOrdens(); }
+    @FXML private void handleFiltrar() { pagination.resetPage(); carregarOrdens(); }
+    @FXML private void handleLimpar() { cmbEstadoFiltro.setValue(null); pagination.resetPage(); carregarOrdens(); }
 
     @FXML
     private void handleAbrirModal() {
@@ -897,67 +865,6 @@ public class ProductionController {
         navigationService.showModal(criarOrdemDrawer);
     }
 
-    // ── Pagination (dynamic, same pattern as OrdersController) ────────────────
-
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus);
-        left.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarOrdens(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
-        center.setAlignment(Pos.CENTER);
-        HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button();
-        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarOrdens(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int fi = i;
-                p.setOnAction(e -> { paginaAtual = fi; carregarOrdens(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button();
-        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarOrdens(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<OrdemProducaoSimpleDTO> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
-    }
-
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private HBox criarBadgeEstado(EstadoOrdemProducao estado) {
@@ -982,19 +889,7 @@ public class ProductionController {
             case PAUSADA -> "Pausada";
             case ANULADA -> "Anulada";
         };
-        HBox badge = new HBox(6);
-        badge.setAlignment(Pos.CENTER_LEFT);
-        badge.setPadding(new Insets(4, 10, 4, 10));
-        badge.setStyle(String.format(
-                "-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;" +
-                        "-fx-background-color: %s20; -fx-border-color: %s;",
-                color.replace("#", ""), color));
-        FontIcon ic = new FontIcon(icon);
-        ic.setIconColor(Color.web(color));
-        Label lbl = new Label(label);
-        lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
-        badge.getChildren().addAll(ic, lbl);
-        return badge;
+        return UiFactory.statusBadge(label, icon, color);
     }
 
     private VBox criarSecao(String tituloText) {

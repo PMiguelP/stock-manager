@@ -14,23 +14,6 @@ import java.util.UUID;
 
 public interface NotificacaoRepository extends JpaRepository<Notificacao, UUID> {
 
-    @Query("SELECT n FROM Notificacao n WHERE n.lida = false ORDER BY n.createdAt DESC")
-    Page<Notificacao> findNotLidas(Pageable pageable);
-
-    @Query("SELECT n FROM Notificacao n WHERE n.lida = false AND (:cargoAlvo IS NULL OR n.cargoAlvo = :cargoAlvo) ORDER BY n.createdAt DESC")
-    Page<Notificacao> findNotLidasParaCargo(@Param("cargoAlvo") Cargo cargoAlvo, Pageable pageable);
-
-    @Query("SELECT n FROM Notificacao n WHERE " +
-            "(:tipoEvento IS NULL OR n.tipoEvento = :tipoEvento) AND " +
-            "(:cargoAlvo IS NULL OR n.cargoAlvo = :cargoAlvo) AND " +
-            "(:lida IS NULL OR n.lida = :lida)")
-    Page<Notificacao> findByFiltros(
-            @Param("tipoEvento") TipoEventoNotificacao tipoEvento,
-            @Param("cargoAlvo") Cargo cargoAlvo,
-            @Param("lida") Boolean lida,
-            Pageable pageable
-    );
-
     @Query("SELECT n FROM Notificacao n WHERE n.linkReferencia = :linkReferencia")
     List<Notificacao> findByLinkReferencia(@Param("linkReferencia") UUID linkReferencia);
 
@@ -60,5 +43,4 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, UUID> 
             @Param("funcionarioId") UUID funcionarioId
     );
 
-    long countByLida(Boolean lida);
 }

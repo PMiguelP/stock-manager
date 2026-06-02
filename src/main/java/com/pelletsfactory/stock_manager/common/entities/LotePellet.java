@@ -5,6 +5,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -35,6 +36,9 @@ public class LotePellet {
 
     @Column(name = "localizacao_armazem", length = 100)
     private String localizacaoArmazem;
+
+    @OneToMany(mappedBy = "lote")
+    private List<AlocacaoLoteEncomenda> alocacoes;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -111,6 +115,14 @@ public class LotePellet {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public List<AlocacaoLoteEncomenda> getAlocacoes() {
+        return alocacoes;
+    }
+
+    public void setAlocacoes(List<AlocacaoLoteEncomenda> alocacoes) {
+        this.alocacoes = alocacoes;
     }
 
     public Instant getUpdatedAt() {

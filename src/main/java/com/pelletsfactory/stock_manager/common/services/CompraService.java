@@ -11,6 +11,8 @@ import com.pelletsfactory.stock_manager.common.mapper.EncomendaFornecedorMapper;
 import com.pelletsfactory.stock_manager.common.mapper.ItemEncomendaFornecedorMapper;
 import com.pelletsfactory.stock_manager.common.repositories.*;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.CalculationUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -31,7 +33,6 @@ public class CompraService {
     private final MateriaPrimaRepository matPrimaRepo;
     private final StockService stockService;
     private final FinanceiroService financeiroService;
-    private final NotificacaoService notificacaoService;
     private final MoedaRepository moedaRepo;
     private final EncomendaFornecedorMapper encomendaFornecedorMapper;
     private final ItemEncomendaFornecedorMapper itemEncomendaFornecedorMapper;
@@ -43,7 +44,6 @@ public class CompraService {
             MateriaPrimaRepository matPrimaRepo,
             StockService stockService,
             FinanceiroService financeiroService,
-            NotificacaoService notificacaoService,
             MoedaRepository moedaRepo,
             EncomendaFornecedorMapper encomendaFornecedorMapper,
             ItemEncomendaFornecedorMapper itemEncomendaFornecedorMapper) {
@@ -53,15 +53,13 @@ public class CompraService {
         this.matPrimaRepo = matPrimaRepo;
         this.stockService = stockService;
         this.financeiroService = financeiroService;
-        this.notificacaoService = notificacaoService;
         this.moedaRepo = moedaRepo;
         this.encomendaFornecedorMapper = encomendaFornecedorMapper;
         this.itemEncomendaFornecedorMapper = itemEncomendaFornecedorMapper;
     }
 
     /**
-     * SubmitDraftOrder: Criar encomenda de fornecedor em estado RASCUNHO
-     * Apenas ASSISTENTE_COMERCIAL
+     * Cria uma encomenda de fornecedor em rascunho.
      */
     @Transactional
     public EncomendaFornecedorResponseDTO gerarEncomendaRascunho(UUID fornecedorId, UUID moedaId) {
@@ -85,14 +83,13 @@ public class CompraService {
     }
 
     /**
-     * Adicionar item à encomenda com CalculateTaxes automático
-     * O IVA é calculado automaticamente: valor_iva_calculado = preco_unitario_net * quantidade * (taxa_iva / 100)
+     * Adiciona um item ao rascunho e recalcula os totais com arredondamento monetário.
      */
     @Transactional
     public void adicionarItemEncomenda(UUID encomendaId, UUID materiaPrimaId, Double quantidade, Double precoUnitarioNet, Double taxaIva) {
         SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
 
-        EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
         // Validar que está em RASCUNHO
         if (!EstadoEncomendaFornecedor.RASCUNHO.equals(encomenda.getEstado())) {
@@ -102,9 +99,11 @@ public class CompraService {
         MateriaPrima matPrima = matPrimaRepo.findById(materiaPrimaId)
                 .orElseThrow(() -> new EntityNotFoundException("Matéria-prima não encontrada"));
 
-        // Calcular IVA automaticamente
-        Double valorSubtotal = precoUnitarioNet * quantidade;
-        Double valorIvaCalculado = valorSubtotal * (taxaIva / 100.0);
+        CalculationUtils.requirePositive(quantidade, "Quantidade");
+        CalculationUtils.requirePositive(precoUnitarioNet, "Preço unitário");
+        CalculationUtils.requirePercentage(taxaIva, "Taxa de IVA");
+        Double valorSubtotal = CalculationUtils.subtotal(quantidade, precoUnitarioNet);
+        Double valorIvaCalculado = CalculationUtils.vat(valorSubtotal, taxaIva);
 
         ItemEncomendaFornecedor item = new ItemEncomendaFornecedor();
         item.setEncomenda(encomenda);
@@ -128,13 +127,13 @@ public class CompraService {
     public EncomendaFornecedorResponseDTO confirmarEncomenda(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
 
-        EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
         if (!EstadoEncomendaFornecedor.RASCUNHO.equals(encomenda.getEstado())) {
             throw new RuntimeException("Apenas encomendas em rascunho podem ser confirmadas");
         }
 
-        if (encomenda.getItens() == null || encomenda.getItens().isEmpty()) {
+        if (itemEncomendaFornecedorRepo.findByEncomendaId(encomendaId).isEmpty()) {
             throw new RuntimeException("Encomenda deve ter pelo menos um item");
         }
 
@@ -143,34 +142,22 @@ public class CompraService {
     }
 
     /**
-     * InventoryInflow: Confirmar recebimento de encomenda
-     * 1. Muda estado para RECEBIDA
-     * 2. Para cada item, adiciona stock em MateriaPrima
-     * 3. Cria MovimentoFinanceiro de SAIDA
+     * Confirma o recebimento, adiciona as matérias-primas ao stock e regista a saída financeira.
      */
     @Transactional
     public EncomendaFornecedorResponseDTO confirmarRecebimento(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.RESPONSAVEL_LOGISTICA);
 
-        EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
         if (!EstadoEncomendaFornecedor.EFETIVA.equals(encomenda.getEstado())) {
             throw new RuntimeException("Apenas encomendas efetivas podem ser recebidas");
         }
 
-        // 1. Para cada item, incrementar stock da matéria-prima
-        for (ItemEncomendaFornecedor item : encomenda.getItens()) {
-            MateriaPrima matPrima = item.getMateriaPrima();
-            matPrima.setStockAtual(matPrima.getStockAtual() + item.getQuantidade());
-            matPrimaRepo.save(matPrima);
-
-            // Verificar se stock subiu acima do mínimo (para notificações)
-            if (matPrima.getStockAtual() > matPrima.getStockMinimo()) {
-                // Stock voltou ao normal - poderia criar notificação
-            }
+        for (ItemEncomendaFornecedor item : itemEncomendaFornecedorRepo.findByEncomendaId(encomendaId)) {
+            stockService.adicionarStockMateriaPrima(item.getMateriaPrima().getId(), item.getQuantidade());
         }
 
-        // 2. Mudar estado para RECEBIDA
         encomenda.setEstado(EstadoEncomendaFornecedor.RECEBIDA);
         financeiroService.registarSaida(encomenda, encomenda.getTotalFinal());
 
@@ -184,7 +171,7 @@ public class CompraService {
     public EncomendaFornecedorResponseDTO atualizarEncomenda(UUID encomendaId, UUID fornecedorId) {
         SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
 
-        EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
         if (!EstadoEncomendaFornecedor.RASCUNHO.equals(encomenda.getEstado())) {
             throw new RuntimeException("Apenas encomendas em rascunho podem ser atualizadas");
@@ -203,7 +190,7 @@ public class CompraService {
     public EncomendaFornecedorResponseDTO anumarEncomenda(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
 
-        EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
         if (EstadoEncomendaFornecedor.RECEBIDA.equals(encomenda.getEstado())) {
             throw new RuntimeException("Não é possível anular encomenda já recebida");
@@ -223,12 +210,7 @@ public class CompraService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "data";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "data");
 
         Page<EncomendaFornecedor> pageResult = encomendaFornecedorRepo.findByFornecedorId(fornecedorId, pageable);
         return pageResult.map(encomendaFornecedorMapper::toResponseDTO);
@@ -256,22 +238,27 @@ public class CompraService {
                 .orElseThrow(() -> new EntityNotFoundException("Encomenda não encontrada com o ID: " + id));
     }
 
+    private EncomendaFornecedor buscarParaAtualizarOuFalhar(UUID id) {
+        return encomendaFornecedorRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("Encomenda não encontrada com o ID: " + id));
+    }
+
     /**
      * Recalcular totais da encomenda (somatório de itens)
      */
     private void recalcularTotaisEncomenda(UUID encomendaId) {
         EncomendaFornecedor encomenda = buscarPorIdOuFalhar(encomendaId);
-        List<ItemEncomendaFornecedor> itens = encomenda.getItens();
+        List<ItemEncomendaFornecedor> itens = itemEncomendaFornecedorRepo.findByEncomendaId(encomendaId);
 
-        Double totalLiquido = itens.stream()
-                .mapToDouble(item -> item.getPrecoUnitarioNet() * item.getQuantidade())
-                .sum();
+        Double totalLiquido = CalculationUtils.money(itens.stream()
+                .mapToDouble(item -> CalculationUtils.subtotal(item.getQuantidade(), item.getPrecoUnitarioNet()))
+                .sum());
 
-        Double totalIva = itens.stream()
+        Double totalIva = CalculationUtils.money(itens.stream()
                 .mapToDouble(ItemEncomendaFornecedor::getValorIvaCalculado)
-                .sum();
+                .sum());
 
-        Double totalFinal = totalLiquido + totalIva;
+        Double totalFinal = CalculationUtils.total(totalLiquido, totalIva);
 
         encomenda.setTotalLiquido(totalLiquido);
         encomenda.setTotalIva(totalIva);
@@ -291,12 +278,7 @@ public class CompraService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "data";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "data");
 
         return encomendaFornecedorRepo.findByFiltros(fornecedorId, estado, pageable)
                 .map(encomendaFornecedorMapper::toSimpleDTO);

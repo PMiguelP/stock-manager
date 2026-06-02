@@ -6,7 +6,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=springuser
-      - POSTGRES_PASSWORD=Thepassword
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-Thepassword}
       - POSTGRES_DB=pellets_factory
     volumes:
       - postgres_data:/var/lib/postgresql/data

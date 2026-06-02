@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record EncomendaFornecedorRequestDTO(
         UUID fornecedorId,
@@ -17,18 +18,11 @@ public record EncomendaFornecedorRequestDTO(
         if (data == null || data.isBlank()) {
             throw new IllegalArgumentException("Data é obrigatória");
         }
-        if (totalLiquido == null || totalLiquido < 0) {
-            throw new IllegalArgumentException("Total líquido não pode ser negativo");
-        }
-        if (totalIva == null || totalIva < 0) {
-            throw new IllegalArgumentException("Total IVA não pode ser negativo");
-        }
-        if (totalFinal == null || totalFinal < 0) {
-            throw new IllegalArgumentException("Total final não pode ser negativo");
-        }
+        ValidationUtils.requireNonNegative(totalLiquido, "Total líquido");
+        ValidationUtils.requireNonNegative(totalIva, "Total IVA");
+        ValidationUtils.requireNonNegative(totalFinal, "Total final");
         if (moedaId == null) {
             throw new IllegalArgumentException("ID da moeda é obrigatório");
         }
     }
 }
-

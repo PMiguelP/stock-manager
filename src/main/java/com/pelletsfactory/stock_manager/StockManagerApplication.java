@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager;
 
 import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -12,6 +13,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.stage.StageStyle;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.WebApplicationType;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
@@ -30,13 +32,16 @@ public class StockManagerApplication extends Application {
     @Override
     public void init() {
         // Inicializa o contexto Spring
-        this.springContext = new SpringApplicationBuilder(StockManagerApplication.class).run();
+        this.springContext = new SpringApplicationBuilder(StockManagerApplication.class)
+                .web(WebApplicationType.NONE)
+                .run();
     }
 
     @Override
     public void start(Stage stage) throws Exception {
 
         ThemePreferencesService themePreferencesService = springContext.getBean(ThemePreferencesService.class);
+        I18nService i18nService = springContext.getBean(I18nService.class);
         themePreferencesService.applyCurrentTheme();
 
         stage.initStyle(StageStyle.UNDECORATED);
@@ -46,6 +51,7 @@ public class StockManagerApplication extends Application {
         loader.setControllerFactory(springContext::getBean);
 
         Parent root = loader.load();
+        i18nService.applyTo(root);
         enableWindowDrag(root, stage);
 
         Scene scene = new Scene(root, 1920, 1080);

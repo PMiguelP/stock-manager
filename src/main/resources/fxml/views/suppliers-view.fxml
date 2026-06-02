@@ -10,19 +10,19 @@
 
         <HBox alignment="CENTER_LEFT">
             <VBox>
-                <Label text="Suppliers Management" styleClass="title-2"/>
-                <Label text="Manage your supplier database" styleClass="text-muted"/>
+                <Label text="suppliers.title" styleClass="title-2"/>
+                <Label text="suppliers.subtitle" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="+ Add New Supplier" onAction="#handleAbrirModal" styleClass="accent"/>
+            <Button text="suppliers.add" onAction="#handleAbrirModal" styleClass="accent"/>
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtSearch" promptText="Search suppliers by name, tax ID, contact, or email..." prefWidth="480"/>
-            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
+            <TextField fx:id="txtSearch" promptText="suppliers.search" prefWidth="480"/>
+            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
                 <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
             </Button>
-            <Button text="Limpar" onAction="#handleLimpar" styleClass="flat">
+            <Button text="common.clear" onAction="#handleLimpar" styleClass="flat">
                 <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>
@@ -30,11 +30,11 @@
 
         <TableView fx:id="tblSuppliers" VBox.vgrow="ALWAYS" styleClass="striped">
             <columns>
-                <TableColumn fx:id="colSupplierID" text="SUPPLIER ID" prefWidth="120" minWidth="100" maxWidth="140"/>
-                <TableColumn fx:id="colName" text="NAME" prefWidth="220"/>
-                <TableColumn fx:id="colTaxId" text="TAX ID" prefWidth="130"/>
-                <TableColumn fx:id="colContactPerson" text="CONTACT PERSON" prefWidth="160"/>
-                <TableColumn fx:id="colActions" text="ACTIONS" prefWidth="80" minWidth="80" maxWidth="80" resizable="false"/>
+                <TableColumn fx:id="colSupplierID" text="suppliers.id" prefWidth="120" minWidth="100" maxWidth="140"/>
+                <TableColumn fx:id="colName" text="common.name" prefWidth="220"/>
+                <TableColumn fx:id="colTaxId" text="clients.taxId" prefWidth="130"/>
+                <TableColumn fx:id="colContactPerson" text="suppliers.contactPerson" prefWidth="160"/>
+                <TableColumn fx:id="colActions" text="common.actions" prefWidth="80" minWidth="80" maxWidth="80" resizable="false"/>
             </columns>
             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>

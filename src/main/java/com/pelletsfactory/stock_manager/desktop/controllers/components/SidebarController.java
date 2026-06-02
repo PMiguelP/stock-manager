@@ -26,6 +26,7 @@ import javafx.scene.control.ToggleGroup;
 import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
@@ -41,8 +42,9 @@ public class SidebarController {
     private final NavigationService navigationService;
     private final ThemePreferencesService themePreferencesService;
     private final I18nService i18nService;
+    private final ConfigurableApplicationContext springContext;
 
-    @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction,
+    @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction, btnAllocations,
             btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
             btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches, btnSettings;
     @FXML private Button btnSair;
@@ -65,10 +67,12 @@ public class SidebarController {
     public SidebarController(NavigationService navigationService,
                              ThemePreferencesService themePreferencesService,
                              I18nService i18nService,
-                             LanguagePreferencesService languagePreferencesService) {
+                             LanguagePreferencesService languagePreferencesService,
+                             ConfigurableApplicationContext springContext) {
         this.navigationService = navigationService;
         this.themePreferencesService = themePreferencesService;
         this.i18nService = i18nService;
+        this.springContext = springContext;
         languagePreferencesService.addLanguageChangeListener(lang ->
                 Platform.runLater(this::applyTranslations));
     }
@@ -80,7 +84,7 @@ public class SidebarController {
         applyTranslations();
 
         navButtons = List.of(
-                btnDashboard, btnFuncionarios, btnOrders, btnProduction,
+                btnDashboard, btnFuncionarios, btnOrders, btnProduction, btnAllocations,
                 btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
                 btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches,
                 btnSettings
@@ -100,6 +104,7 @@ public class SidebarController {
         navByViewId.put(ViewId.FUNCIONARIOS, btnFuncionarios);
         navByViewId.put(ViewId.ORDERS, btnOrders);
         navByViewId.put(ViewId.PRODUCTION, btnProduction);
+        navByViewId.put(ViewId.ALLOCATIONS, btnAllocations);
         navByViewId.put(ViewId.STOCK, btnStock);
         navByViewId.put(ViewId.CLIENTS, btnClients);
         navByViewId.put(ViewId.SUPPLIERS, btnSuppliers);
@@ -122,20 +127,21 @@ public class SidebarController {
         lblProcurementSection.setText(i18nService.translate("sidebar.procurement"));
         lblCatalogSection.setText(i18nService.translate("sidebar.catalog"));
 
-        btnDashboard.setText(i18nService.translate("Dashboard"));
-        btnFuncionarios.setText(i18nService.translate("Employees"));
-        btnOrders.setText(i18nService.translate("Orders"));
-        btnProduction.setText(i18nService.translate("Production"));
-        btnStock.setText(i18nService.translate("Stock"));
-        btnClients.setText(i18nService.translate("Clients"));
-        btnSuppliers.setText(i18nService.translate("Suppliers"));
-        btnPurchaseOrders.setText(i18nService.translate("Purchase Orders"));
-        btnRawMaterials.setText(i18nService.translate("Raw Materials"));
-        btnPelletTypes.setText(i18nService.translate("Pellet Types"));
-        btnFormulas.setText(i18nService.translate("Formulas"));
-        btnBatches.setText(i18nService.translate("Batches"));
-        btnSettings.setText(i18nService.translate("Settings"));
-        btnSair.setText(i18nService.translate("Logout"));
+        btnDashboard.setText(i18nService.translate("dashboard.title"));
+        btnFuncionarios.setText(i18nService.translate("nav.employees"));
+        btnOrders.setText(i18nService.translate("nav.orders"));
+        btnProduction.setText(i18nService.translate("nav.production"));
+        btnAllocations.setText(i18nService.translate("nav.allocations"));
+        btnStock.setText(i18nService.translate("stock.title"));
+        btnClients.setText(i18nService.translate("nav.clients"));
+        btnSuppliers.setText(i18nService.translate("nav.suppliers"));
+        btnPurchaseOrders.setText(i18nService.translate("purchaseOrders.title"));
+        btnRawMaterials.setText(i18nService.translate("rawMaterials.title"));
+        btnPelletTypes.setText(i18nService.translate("pelletTypes.title"));
+        btnFormulas.setText(i18nService.translate("nav.formulas"));
+        btnBatches.setText(i18nService.translate("nav.batches"));
+        btnSettings.setText(i18nService.translate("settings.title"));
+        btnSair.setText(i18nService.translate("nav.logout"));
     }
 
     private void loadThemeLogo() {
@@ -188,6 +194,12 @@ public class SidebarController {
     private void handleProduction() {
         switchView(btnProduction);
         navigationService.navigateTo("/production");
+    }
+
+    @FXML
+    private void handleAllocations() {
+        switchView(btnAllocations);
+        navigationService.navigateTo("/allocations");
     }
 
     @FXML
@@ -326,9 +338,12 @@ public class SidebarController {
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
                     getClass().getResource("/fxml/login-view.fxml")
             );
+            loader.setControllerFactory(springContext::getBean);
 
             javafx.stage.Stage stage = (javafx.stage.Stage) btnSair.getScene().getWindow();
-            javafx.scene.Scene scene = new javafx.scene.Scene(loader.load(), 450, 600);
+            javafx.scene.Parent root = loader.load();
+            i18nService.applyTo(root);
+            javafx.scene.Scene scene = new javafx.scene.Scene(root, 450, 600);
             stage.setScene(scene);
             stage.centerOnScreen();
 

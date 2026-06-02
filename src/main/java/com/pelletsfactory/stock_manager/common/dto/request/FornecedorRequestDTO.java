@@ -25,6 +25,8 @@ public record FornecedorRequestDTO(
         if (email != null && email.length() > 100) {
             throw new IllegalArgumentException("Email não pode exceder 100 caracteres");
         }
+        if (email != null && !email.isBlank() && !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            throw new IllegalArgumentException("Email inválido");
+        }
     }
 }
-

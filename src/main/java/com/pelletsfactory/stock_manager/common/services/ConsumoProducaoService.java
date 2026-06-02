@@ -7,11 +7,15 @@ import com.pelletsfactory.stock_manager.common.entities.ConsumoProducao;
 import com.pelletsfactory.stock_manager.common.entities.MateriaPrima;
 import com.pelletsfactory.stock_manager.common.entities.OrdemProducao;
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
+import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import com.pelletsfactory.stock_manager.common.mapper.ConsumoProducaoMapper;
 import com.pelletsfactory.stock_manager.common.repositories.ConsumoProducaoRepository;
+import com.pelletsfactory.stock_manager.common.repositories.ComposicaoPelletRepository;
 import com.pelletsfactory.stock_manager.common.repositories.MateriaPrimaRepository;
 import com.pelletsfactory.stock_manager.common.repositories.OrdemProducaoRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.ProductionUnitUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -29,16 +33,22 @@ public class ConsumoProducaoService {
     private final ConsumoProducaoRepository consumoRepo;
     private final OrdemProducaoRepository ordemRepo;
     private final MateriaPrimaRepository matPrimaRepo;
+    private final ComposicaoPelletRepository composicaoRepo;
+    private final StockService stockService;
     private final ConsumoProducaoMapper mapper;
 
     public ConsumoProducaoService(
             ConsumoProducaoRepository consumoRepo,
             OrdemProducaoRepository ordemRepo,
             MateriaPrimaRepository matPrimaRepo,
+            ComposicaoPelletRepository composicaoRepo,
+            StockService stockService,
             ConsumoProducaoMapper mapper) {
         this.consumoRepo = consumoRepo;
         this.ordemRepo = ordemRepo;
         this.matPrimaRepo = matPrimaRepo;
+        this.composicaoRepo = composicaoRepo;
+        this.stockService = stockService;
         this.mapper = mapper;
     }
 
@@ -50,7 +60,7 @@ public class ConsumoProducaoService {
         SecurityUtils.checkPermission(Cargo.OPERADOR_PRODUCAO);
 
         // Buscar ordem e matéria-prima
-        OrdemProducao ordem = ordemRepo.findById(dto.ordemProducaoId())
+        OrdemProducao ordem = ordemRepo.findByIdForUpdate(dto.ordemProducaoId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Ordem de produção não encontrada"
                 ));
@@ -60,24 +70,15 @@ public class ConsumoProducaoService {
                         "Matéria-prima não encontrada"
                 ));
 
-        // Validar stock disponível
-        if (materiaPrima.getStockAtual() < dto.quantidadeConsumidaReal()) {
-            throw new IllegalArgumentException(
-                    "Stock insuficiente de " + materiaPrima.getNome() +
-                            ". Disponível: " + materiaPrima.getStockAtual() + "kg"
-            );
-        }
+        validarConsumoPermitido(ordem, materiaPrima);
 
         // Criar consumo
         ConsumoProducao consumo = mapper.toEntity(dto);
         consumo.setOrdem(ordem);
         consumo.setMateriaPrima(materiaPrima);
 
-        // Descrementar stock
-        materiaPrima.setStockAtual(materiaPrima.getStockAtual() - dto.quantidadeConsumidaReal());
-
         ConsumoProducao saved = consumoRepo.save(consumo);
-        matPrimaRepo.save(materiaPrima);
+        stockService.subtrairStockMateriaPrima(materiaPrima.getId(), dto.quantidadeConsumidaReal());
 
         return mapper.toResponseDTO(saved);
     }
@@ -90,22 +91,24 @@ public class ConsumoProducaoService {
         SecurityUtils.checkPermission(Cargo.OPERADOR_PRODUCAO);
 
         ConsumoProducao consumo = buscarPorIdOuFalhar(id);
+        ordemRepo.findByIdForUpdate(consumo.getOrdem().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Ordem de produção não encontrada"));
+        if (!consumo.getOrdem().getId().equals(dto.ordemProducaoId())
+                || !consumo.getMateriaPrima().getId().equals(dto.materiaPrimaId())) {
+            throw new IllegalArgumentException("Não é possível trocar a ordem ou a matéria-prima de um consumo existente");
+        }
+        validarConsumoPermitido(consumo.getOrdem(), consumo.getMateriaPrima());
 
         // Se a quantidade mudou, ajustar stock
         if (!consumo.getQuantidadeConsumidaReal().equals(dto.quantidadeConsumidaReal())) {
             MateriaPrima matPrima = consumo.getMateriaPrima();
             
             // Devolver quantidade anterior
-            matPrima.setStockAtual(matPrima.getStockAtual() + consumo.getQuantidadeConsumidaReal());
+            stockService.adicionarStockMateriaPrima(matPrima.getId(), consumo.getQuantidadeConsumidaReal());
 
             // Descontar quantidade nova
             Double novaQtd = dto.quantidadeConsumidaReal();
-            if (matPrima.getStockAtual() < novaQtd) {
-                throw new IllegalArgumentException("Stock insuficiente");
-            }
-            matPrima.setStockAtual(matPrima.getStockAtual() - novaQtd);
-
-            matPrimaRepo.save(matPrima);
+            stockService.subtrairStockMateriaPrima(matPrima.getId(), novaQtd);
         }
 
         mapper.updateEntityFromDTO(dto, consumo);
@@ -122,13 +125,17 @@ public class ConsumoProducaoService {
         SecurityUtils.checkPermission(Cargo.OPERADOR_PRODUCAO);
 
         ConsumoProducao consumo = buscarPorIdOuFalhar(id);
+        ordemRepo.findByIdForUpdate(consumo.getOrdem().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Ordem de produção não encontrada"));
+        if (consumo.getOrdem().getEstado() != EstadoOrdemProducao.EM_PRODUCAO) {
+            throw new IllegalStateException("Apenas consumos de ordens em produção podem ser eliminados");
+        }
 
         // Devolver stock
         MateriaPrima matPrima = consumo.getMateriaPrima();
-        matPrima.setStockAtual(matPrima.getStockAtual() + consumo.getQuantidadeConsumidaReal());
+        stockService.adicionarStockMateriaPrima(matPrima.getId(), consumo.getQuantidadeConsumidaReal());
 
         consumoRepo.delete(consumo);
-        matPrimaRepo.save(matPrima);
     }
 
     /**
@@ -157,15 +164,7 @@ public class ConsumoProducaoService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "createdAt";
-        }
-
-        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "createdAt");
         Page<ConsumoProducao> consumosPage = consumoRepo.findByOrdemId(ordemId, pageable);
         return consumosPage.map(mapper::toResponseDTO);
     }
@@ -180,15 +179,7 @@ public class ConsumoProducaoService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "createdAt";
-        }
-
-        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "createdAt");
         Page<ConsumoProducao> consumosPage = consumoRepo.findByOrdemId(ordemId, pageable);
         return consumosPage.map(mapper::toSimpleDTO);
     }
@@ -209,5 +200,17 @@ public class ConsumoProducaoService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Consumo de produção não encontrado com ID: " + id
                 ));
+    }
+
+    private void validarConsumoPermitido(OrdemProducao ordem, MateriaPrima materiaPrima) {
+        if (ordem.getEstado() != EstadoOrdemProducao.EM_PRODUCAO) {
+            throw new IllegalStateException("Apenas ordens em produção podem registar consumos");
+        }
+        ProductionUnitUtils.requireKilograms(materiaPrima);
+        boolean pertenceAFormula = composicaoRepo.findByFormulaId(ordem.getFormula().getId()).stream()
+                .anyMatch(comp -> comp.getMateriaPrima().getId().equals(materiaPrima.getId()));
+        if (!pertenceAFormula) {
+            throw new IllegalArgumentException("A matéria-prima não pertence à fórmula da ordem");
+        }
     }
 }

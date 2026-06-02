@@ -70,7 +70,7 @@ public class RawMaterialsController {
 
     @FXML
     public void initialize() {
-        pagination = new PaginationControls(10, this::carregarMaterias);
+        pagination = new PaginationControls(10, this::carregarMaterias, i18nService);
         cmbFiltroStatus.setItems(FXCollections.observableArrayList(
                 i18nService.translate("Normal"),
                 i18nService.translate("Low"),
@@ -232,11 +232,6 @@ public class RawMaterialsController {
         navigationService.showModal(drawerAdicionar);
     }
 
-    @FXML
-    private void handleRefresh() {
-        carregarMaterias();
-    }
-
     private void configurarDrawerAdicionar() {
         drawerAdicionar = UiFactory.drawerRoot(550);
         HBox header = UiFactory.drawerHeader("New Raw Material", navigationService::hideModal);
@@ -299,10 +294,9 @@ public class RawMaterialsController {
             return;
         }
 
-        Double stockAtual = parseDoubleOuNull(txtStockAdicionar.getText());
-        Double stockMinimo = parseDoubleOuNull(txtMinimoAdicionar.getText());
-
         try {
+            Double stockAtual = parseNumeroNaoNegativoOuNull(txtStockAdicionar.getText(), "Stock atual");
+            Double stockMinimo = parseNumeroNaoNegativoOuNull(txtMinimoAdicionar.getText(), "Stock mínimo");
             MateriaPrimaRequestDTO dto = new MateriaPrimaRequestDTO(
                     txtNomeAdicionar.getText().trim(),
                     cmbUnidadeAdicionar.getValue().trim(),
@@ -319,14 +313,18 @@ public class RawMaterialsController {
         }
     }
 
-    private Double parseDoubleOuNull(String raw) {
+    private Double parseNumeroNaoNegativoOuNull(String raw, String campo) {
         if (raw == null || raw.isBlank()) {
             return null;
         }
         try {
-            return Double.parseDouble(raw.replace(",", "."));
+            double valor = Double.parseDouble(raw.replace(",", "."));
+            if (!Double.isFinite(valor) || valor < 0) {
+                throw new NumberFormatException();
+            }
+            return valor;
         } catch (NumberFormatException e) {
-            return null;
+            throw new IllegalArgumentException(campo + " deve ser um número igual ou superior a zero");
         }
     }
 

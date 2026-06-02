@@ -3,6 +3,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorSimpleDTO;
 import com.pelletsfactory.stock_manager.common.services.FornecedorService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
@@ -25,6 +26,7 @@ public class SuppliersController {
     private final FornecedorService fornecedorService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private VBox vboxContainer;
     @FXML private TextField txtSearch;
@@ -43,15 +45,16 @@ public class SuppliersController {
     private final ObservableList<FornecedorSimpleDTO> fornecedores = FXCollections.observableArrayList();
 
     public SuppliersController(FornecedorService fornecedorService, NavigationService navigationService,
-                               ToastService toastService) {
+                               ToastService toastService, I18nService i18nService) {
         this.fornecedorService = fornecedorService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        pagination = new PaginationControls(10, this::carregarFornecedores);
+        pagination = new PaginationControls(10, this::carregarFornecedores, i18nService);
         configurarTabela();
         configurarDrawerAdicionar();
         carregarFornecedores();
@@ -184,25 +187,7 @@ public class SuppliersController {
         form.setPadding(new Insets(30));
 
         ScrollPane scrollPane = UiFactory.transparentScroll(form);
-        HBox footer = UiFactory.drawerFooter();
-        footer.setSpacing(12);
-
-        Button btnUpdate = new Button("Update Supplier");
-        btnUpdate.getStyleClass().add("accent");
-        btnUpdate.setPrefHeight(44);
-        btnUpdate.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnUpdate, Priority.ALWAYS);
-        btnUpdate.setOnAction(e -> toastService.showSuccess("Em breve", "Funcionalidade disponível em breve"));
-
-        Button btnDelete = new Button("Delete");
-        btnDelete.setPrefHeight(44);
-        btnDelete.setMaxWidth(Double.MAX_VALUE);
-        btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
-        HBox.setHgrow(btnDelete, Priority.ALWAYS);
-        btnDelete.setOnAction(e -> toastService.showSuccess("Em breve", "Funcionalidade disponível em breve"));
-
-        footer.getChildren().addAll(btnUpdate, btnDelete);
-        root.getChildren().addAll(header, scrollPane, footer);
+        root.getChildren().addAll(header, scrollPane);
         return root;
     }
 

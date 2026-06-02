@@ -11,7 +11,10 @@ import com.pelletsfactory.stock_manager.common.mapper.ComposicaoPelletMapper;
 import com.pelletsfactory.stock_manager.common.repositories.ComposicaoPelletRepository;
 import com.pelletsfactory.stock_manager.common.repositories.FormulaProducaoRepository;
 import com.pelletsfactory.stock_manager.common.repositories.MateriaPrimaRepository;
+import com.pelletsfactory.stock_manager.common.repositories.OrdemProducaoRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.ProductionUnitUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -29,16 +32,19 @@ public class ComposicaoPelletService {
     private final ComposicaoPelletRepository composicaoRepo;
     private final FormulaProducaoRepository formulaRepo;
     private final MateriaPrimaRepository matPrimaRepo;
+    private final OrdemProducaoRepository ordemRepo;
     private final ComposicaoPelletMapper mapper;
 
     public ComposicaoPelletService(
             ComposicaoPelletRepository composicaoRepo,
             FormulaProducaoRepository formulaRepo,
             MateriaPrimaRepository matPrimaRepo,
+            OrdemProducaoRepository ordemRepo,
             ComposicaoPelletMapper mapper) {
         this.composicaoRepo = composicaoRepo;
         this.formulaRepo = formulaRepo;
         this.matPrimaRepo = matPrimaRepo;
+        this.ordemRepo = ordemRepo;
         this.mapper = mapper;
     }
 
@@ -50,7 +56,7 @@ public class ComposicaoPelletService {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
         // Buscar fórmula e matéria-prima
-        FormulaProducao formula = formulaRepo.findById(dto.formulaId())
+        FormulaProducao formula = formulaRepo.findByIdForUpdate(dto.formulaId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Fórmula não encontrada"
                 ));
@@ -59,6 +65,12 @@ public class ComposicaoPelletService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Matéria-prima não encontrada"
                 ));
+        ProductionUnitUtils.requireKilograms(materiaPrima);
+        validarFormulaSemOrdens(dto.formulaId());
+        if (composicaoRepo.existsByFormulaProducaoIdAndMateriaPrimaId(dto.formulaId(), dto.materiaPrimaId())) {
+            throw new IllegalArgumentException("A matéria-prima já pertence à fórmula");
+        }
+        validarTotalFormula(dto.formulaId(), dto.quantidadePorKg(), null);
 
         // Criar composição
         ComposicaoPellet composicao = mapper.toEntity(dto);
@@ -77,6 +89,15 @@ public class ComposicaoPelletService {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
         ComposicaoPellet composicao = buscarPorIdOuFalhar(id);
+        formulaRepo.findByIdForUpdate(composicao.getFormulaProducao().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Fórmula não encontrada"));
+        validarFormulaSemOrdens(composicao.getFormulaProducao().getId());
+        if (!composicao.getFormulaProducao().getId().equals(dto.formulaId())
+                || !composicao.getMateriaPrima().getId().equals(dto.materiaPrimaId())) {
+            throw new IllegalArgumentException("Não é possível trocar a fórmula ou a matéria-prima de uma composição existente");
+        }
+        ProductionUnitUtils.requireKilograms(composicao.getMateriaPrima());
+        validarTotalFormula(dto.formulaId(), dto.quantidadePorKg(), id);
 
         mapper.updateEntityFromDTO(dto, composicao);
 
@@ -92,6 +113,9 @@ public class ComposicaoPelletService {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
         ComposicaoPellet composicao = buscarPorIdOuFalhar(id);
+        formulaRepo.findByIdForUpdate(composicao.getFormulaProducao().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Fórmula não encontrada"));
+        validarFormulaSemOrdens(composicao.getFormulaProducao().getId());
         composicaoRepo.delete(composicao);
     }
 
@@ -121,15 +145,7 @@ public class ComposicaoPelletService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "createdAt";
-        }
-
-        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "createdAt");
         Page<ComposicaoPellet> composicaoPage = composicaoRepo.findByFormulaId(formulaId, pageable);
         return composicaoPage.map(mapper::toResponseDTO);
     }
@@ -144,15 +160,7 @@ public class ComposicaoPelletService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "createdAt";
-        }
-
-        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "createdAt");
         Page<ComposicaoPellet> composicaoPage = composicaoRepo.findByFormulaId(formulaId, pageable);
         return composicaoPage.map(mapper::toSimpleDTO);
     }
@@ -188,5 +196,27 @@ public class ComposicaoPelletService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Composição não encontrada com ID: " + id
                 ));
+    }
+
+    /**
+     * Uma fórmula pode ser preenchida progressivamente, mas nunca ultrapassar 1 kg.
+     */
+    private void validarTotalFormula(UUID formulaId, Double novaQuantidade, UUID composicaoIgnoradaId) {
+        if (novaQuantidade == null || !Double.isFinite(novaQuantidade) || novaQuantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade por kg deve ser maior que zero");
+        }
+        double total = composicaoRepo.findByFormulaId(formulaId).stream()
+                .filter(composicao -> !composicao.getId().equals(composicaoIgnoradaId))
+                .mapToDouble(ComposicaoPellet::getQuantidadePorKg)
+                .sum();
+        if (total + novaQuantidade > 1.000001) {
+            throw new IllegalArgumentException("A composição total da fórmula não pode exceder 1 kg");
+        }
+    }
+
+    private void validarFormulaSemOrdens(UUID formulaId) {
+        if (ordemRepo.existsByFormulaId(formulaId)) {
+            throw new IllegalStateException("Não é possível alterar a composição de uma fórmula já usada numa ordem");
+        }
     }
 }

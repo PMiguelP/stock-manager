@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record LotePelletRequestDTO(
         UUID ordemProducaoId,
@@ -22,9 +23,7 @@ public record LotePelletRequestDTO(
         if (codigoLote.trim().length() < 3 || codigoLote.trim().length() > 50) {
             throw new IllegalArgumentException("O código do lote deve ter entre 3 e 50 caracteres");
         }
-        if (quantidadeKg == null || quantidadeKg <= 0) {
-            throw new IllegalArgumentException("A quantidade em kg deve ser superior a zero");
-        }
+        ValidationUtils.requirePositive(quantidadeKg, "A quantidade em kg");
         // Localização é opcional na DB, mas se enviada, validamos o tamanho
         if (localizacaoArmazem != null && localizacaoArmazem.length() > 100) {
             throw new IllegalArgumentException("A localização no armazém não pode exceder 100 caracteres");

@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record ComposicaoPelletRequestDTO(
         UUID formulaId,
@@ -14,8 +15,6 @@ public record ComposicaoPelletRequestDTO(
         if (materiaPrimaId == null) {
             throw new IllegalArgumentException("O ID da matéria-prima é obrigatório");
         }
-        if (quantidadePorKg == null || quantidadePorKg <= 0) {
-            throw new IllegalArgumentException("A quantidade por kg deve ser superior a zero (ex: 0.01)");
-        }
+        ValidationUtils.requirePositive(quantidadePorKg, "A quantidade por kg");
     }
 }

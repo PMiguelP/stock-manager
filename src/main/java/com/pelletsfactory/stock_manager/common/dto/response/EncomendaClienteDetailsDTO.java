@@ -19,9 +19,8 @@ public record EncomendaClienteDetailsDTO(
         String moedaCodigo,
         String codigoTracking,
         List<ItemEncomendaClienteResponseDTO> itens,
-        List<AlocacaoOrdemEncomendaResponseDTO> alocacoes,
+        List<AlocacaoLoteEncomendaResponseDTO> alocacoes,
         Instant createdAt,
         Instant updatedAt
 ) {
 }
-

@@ -43,12 +43,12 @@
             <StackPane style="-fx-background-color: -color-accent-emphasis;
                             -fx-min-width: 38; -fx-max-width: 38; -fx-min-height: 38; -fx-max-height: 38;
                             -fx-shape: 'M 100, 100 m -75, 0 a 75,75 0 1,0 150,0 a 75,75 0 1,0 -150,0';">
-                <Label fx:id="lblUserInitials" text="--" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;"/>
+                <Label fx:id="lblUserInitials" text="common.initialsPlaceholder" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;"/>
             </StackPane>
 
             <VBox alignment="CENTER_LEFT">
-                <Label fx:id="lblUserName" text="Funcionário" style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
-                <Label fx:id="lblUserNumber" text="Nº funcionário" styleClass="text-muted" style="-fx-font-size: 11px;"/>
+                <Label fx:id="lblUserName" text="header.employee" style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
+                <Label fx:id="lblUserNumber" text="header.employeeNumber" styleClass="text-muted" style="-fx-font-size: 11px;"/>
             </VBox>
         </HBox>
     </HBox>

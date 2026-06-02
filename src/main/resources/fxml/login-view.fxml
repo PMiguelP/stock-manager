@@ -25,42 +25,42 @@
             <VBox fx:id="logoBox" spacing="8"/>
 
             <VBox spacing="5">
-                <Label fx:id="lblWelcome" text="Welcome"/>
-                <Label fx:id="lblSubtitle" text="Sign in with your employee credentials"/>
+                <Label fx:id="lblWelcome" text="login.welcome"/>
+                <Label fx:id="lblSubtitle" text="login.subtitle"/>
             </VBox>
 
             <VBox spacing="8">
-                <Label text="Employee Number"/>
+                <Label text="login.employeeNumber"/>
                 <HBox fx:id="employeeFieldBox" alignment="CENTER_LEFT" spacing="10">
                     <padding>
                         <Insets top="0" right="12" bottom="0" left="12"/>
                     </padding>
                     <FontIcon fx:id="employeeIcon"/>
-                    <TextField fx:id="txtEmployeeNumber" promptText="e.g. 1042" HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="txtEmployeeNumber" promptText="login.employeePlaceholder" HBox.hgrow="ALWAYS"/>
                 </HBox>
             </VBox>
 
             <VBox spacing="8">
-                <Label text="PIN"/>
+                <Label text="login.pin"/>
                 <HBox fx:id="pinFieldBox" alignment="CENTER_LEFT" spacing="10">
                     <padding>
                         <Insets top="0" right="12" bottom="0" left="12"/>
                     </padding>
                     <FontIcon fx:id="pinIcon"/>
-                    <PasswordField fx:id="txtPin" promptText="4-digit PIN" HBox.hgrow="ALWAYS"/>
+                    <PasswordField fx:id="txtPin" promptText="login.pinPlaceholder" HBox.hgrow="ALWAYS"/>
                 </HBox>
             </VBox>
 
             <HBox alignment="CENTER_RIGHT">
-                <Hyperlink fx:id="lnkForgotPin" text="Forgot PIN?" onAction="#handleForgotPin"/>
+                <Hyperlink fx:id="lnkForgotPin" text="login.forgotPin" onAction="#handleForgotPin"/>
             </HBox>
 
             <Label fx:id="lblErro" visible="false" managed="false"/>
 
-            <Button fx:id="btnLogin" text="Login" onAction="#handleLogin" maxWidth="Infinity" prefHeight="46"/>
+            <Button fx:id="btnLogin" text="login.login" onAction="#handleLogin" maxWidth="Infinity" prefHeight="46"/>
 
             <Region VBox.vgrow="ALWAYS"/>
-            <Label text="v1.0.0  Pellets Factory"/>
+            <Label text="login.version"/>
         </VBox>
     </StackPane>
 
@@ -71,8 +71,8 @@
             <padding>
                 <Insets top="36" right="36" bottom="36" left="36"/>
             </padding>
-            <Label fx:id="lblVisualTitle" text="Operations Intelligence"/>
-            <Label fx:id="lblVisualSubtitle" text="Control procurement, production, and stock in one place."/>
+            <Label fx:id="lblVisualTitle" text="login.visualTitle"/>
+            <Label fx:id="lblVisualSubtitle" text="login.visualSubtitle"/>
         </VBox>
     </StackPane>
 

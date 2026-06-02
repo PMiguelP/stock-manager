@@ -1,5 +1,7 @@
 package com.pelletsfactory.stock_manager.common.dto.request;
 
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
+
 public record MateriaPrimaRequestDTO(
         String nome,
         String unidade,
@@ -13,12 +15,11 @@ public record MateriaPrimaRequestDTO(
         if (unidade == null || unidade.isBlank()) {
             throw new IllegalArgumentException("Unidade da matéria-prima é obrigatória");
         }
-        if (stockAtual != null && stockAtual < 0) {
-            throw new IllegalArgumentException("Stock atual não pode ser negativo");
+        if (stockAtual != null) {
+            ValidationUtils.requireNonNegative(stockAtual, "Stock atual");
         }
-        if (stockMinimo != null && stockMinimo < 0) {
-            throw new IllegalArgumentException("Stock mínimo não pode ser negativo");
+        if (stockMinimo != null) {
+            ValidationUtils.requireNonNegative(stockMinimo, "Stock mínimo");
         }
     }
 }
-

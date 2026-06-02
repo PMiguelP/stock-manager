@@ -44,65 +44,72 @@ public class NavigationService {
         this.eventPublisher = eventPublisher;
         this.i18nService = i18nService;
         initializeRoutes();
-        languagePreferencesService.addLanguageChangeListener(lang -> reloadCurrentRoute());
+        languagePreferencesService.addLanguageChangeListener(lang -> {
+            i18nService.reload();
+            reloadCurrentRoute();
+        });
     }
 
     private void initializeRoutes() {
-        addRoute("/dashboard", "/fxml/views/dashboard-view.fxml", "Dashboard",
-                "Visao geral do sistema", ViewId.DASHBOARD,
-                "Home", "Dashboard");
+        addRoute("/dashboard", "/fxml/views/dashboard-view.fxml", "dashboard.title",
+                "dashboard.subtitle", ViewId.DASHBOARD,
+                "nav.home", "dashboard.title");
 
-        addRoute("/funcionarios", "/fxml/views/funcionario-view.fxml", "Employees",
-                "Team management", ViewId.FUNCIONARIOS,
-                "Home", "Administration", "Employees");
+        addRoute("/funcionarios", "/fxml/views/funcionario-view.fxml", "employees.title",
+                "employees.subtitle", ViewId.FUNCIONARIOS,
+                "nav.home", "nav.administration", "nav.employees");
 
-        addRoute("/settings", "/fxml/views/settings-view.fxml", "Settings",
-                "Application preferences", ViewId.SETTINGS,
-                "Home", "Administration", "Settings");
+        addRoute("/settings", "/fxml/views/settings-view.fxml", "settings.title",
+                "settings.subtitle", ViewId.SETTINGS,
+                "nav.home", "nav.administration", "settings.title");
 
-        addRoute("/orders", "/fxml/views/orders-view.fxml", "Orders",
-                "Customer orders and fulfillment", ViewId.ORDERS,
-                "Home", "Operations", "Orders");
+        addRoute("/orders", "/fxml/views/orders-view.fxml", "orders.title",
+                "orders.subtitle", ViewId.ORDERS,
+                "nav.home", "nav.operations", "nav.orders");
 
-        addRoute("/production", "/fxml/views/production-view.fxml", "Production",
-                "Production planning and batches", ViewId.PRODUCTION,
-                "Home", "Operations", "Production");
+        addRoute("/production", "/fxml/views/production-view.fxml", "production.title",
+                "production.subtitle", ViewId.PRODUCTION,
+                "nav.home", "nav.operations", "nav.production");
 
-        addRoute("/stock", "/fxml/views/stock-view.fxml", "Stock",
-                "Inventory levels and turnover", ViewId.STOCK,
-                "Home", "Inventory", "Stock");
+        addRoute("/allocations", "/fxml/views/allocations-view.fxml", "allocations.title",
+                "allocations.subtitle", ViewId.ALLOCATIONS,
+                "nav.home", "nav.operations", "nav.allocations");
 
-        addRoute("/clients", "/fxml/views/clients-view.fxml", "Clients",
-                "Customer portfolio", ViewId.CLIENTS,
-                "Home", "Sales", "Clients");
+        addRoute("/stock", "/fxml/views/stock-view.fxml", "stock.title",
+                "stock.subtitle", ViewId.STOCK,
+                "nav.home", "nav.inventory", "stock.title");
 
-        addRoute("/suppliers", "/fxml/views/suppliers-view.fxml", "Suppliers",
-                "Supplier directory", ViewId.SUPPLIERS,
-                "Home", "Procurement", "Suppliers");
+        addRoute("/clients", "/fxml/views/clients-view.fxml", "clients.title",
+                "clients.subtitle", ViewId.CLIENTS,
+                "nav.home", "nav.sales", "nav.clients");
 
-        addRoute("/purchase-orders", "/fxml/views/purchase-orders-view.fxml", "Purchase Orders",
-                "Inbound order tracking", ViewId.PURCHASE_ORDERS,
-                "Home", "Procurement", "Purchase Orders");
+        addRoute("/suppliers", "/fxml/views/suppliers-view.fxml", "suppliers.title",
+                "suppliers.subtitle", ViewId.SUPPLIERS,
+                "nav.home", "nav.procurement", "nav.suppliers");
 
-        addRoute("/raw-materials", "/fxml/views/raw-materials-view.fxml", "Raw Materials",
-                "Material stock and reorder points", ViewId.RAW_MATERIALS,
-                "Home", "Inventory", "Raw Materials");
+        addRoute("/purchase-orders", "/fxml/views/purchase-orders-view.fxml", "purchaseOrders.title",
+                "purchaseOrders.subtitle", ViewId.PURCHASE_ORDERS,
+                "nav.home", "nav.procurement", "purchaseOrders.title");
 
-        addRoute("/pellet-types", "/fxml/views/pellet-types-view.fxml", "Pellet Types",
-                "Product variants and specs", ViewId.PELLET_TYPES,
-                "Home", "Catalog", "Pellet Types");
+        addRoute("/raw-materials", "/fxml/views/raw-materials-view.fxml", "rawMaterials.title",
+                "rawMaterials.subtitle", ViewId.RAW_MATERIALS,
+                "nav.home", "nav.inventory", "rawMaterials.title");
 
-        addRoute("/formulas", "/fxml/views/formulas-view.fxml", "Formulas",
-                "Production recipes", ViewId.FORMULAS,
-                "Home", "Catalog", "Formulas");
+        addRoute("/pellet-types", "/fxml/views/pellet-types-view.fxml", "pelletTypes.title",
+                "pelletTypes.subtitle", ViewId.PELLET_TYPES,
+                "nav.home", "nav.catalog", "pelletTypes.title");
 
-        addRoute("/batches", "/fxml/views/batches-view.fxml", "Batches",
-                "Batch traceability", ViewId.BATCHES,
-                "Home", "Catalog", "Batches");
+        addRoute("/formulas", "/fxml/views/formulas-view.fxml", "formulas.title",
+                "formulas.subtitle", ViewId.FORMULAS,
+                "nav.home", "nav.catalog", "nav.formulas");
 
-        addRoute("/notifications", "/fxml/views/notifications-view.fxml", "Notifications",
-                "Notifications center", ViewId.NOTIFICATIONS,
-                "Home", "Notifications");
+        addRoute("/batches", "/fxml/views/batches-view.fxml", "batches.title",
+                "batches.subtitle", ViewId.BATCHES,
+                "nav.home", "nav.catalog", "nav.batches");
+
+        addRoute("/notifications", "/fxml/views/notifications-view.fxml", "notifications.title",
+                "notifications.subtitle", ViewId.NOTIFICATIONS,
+                "nav.home", "notifications.title");
     }
 
     private void addRoute(String route,

@@ -14,7 +14,7 @@ public class NotificacaoMapper {
 
         Notificacao entity = new Notificacao(dto.titulo(), dto.mensagem(), dto.tipoEvento());
         entity.setCargoAlvo(dto.cargoAlvo());
-        entity.setRequerAcao(Boolean.TRUE.equals(dto.requerAcao()));
+        entity.setRequerAcao(dto.requerAcao());
         entity.setLinkReferencia(dto.linkReferencia());
 
         return entity;

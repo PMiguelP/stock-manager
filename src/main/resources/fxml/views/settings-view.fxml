@@ -13,21 +13,21 @@
     </padding>
 
     <VBox spacing="5">
-        <Label styleClass="title-2" text="Settings" />
-        <Label styleClass="text-muted" text="Manage your account and visual preferences" />
+        <Label styleClass="title-2" text="settings.title" />
+        <Label styleClass="text-muted" text="settings.subtitle" />
     </VBox>
 
     <HBox spacing="30" VBox.vgrow="ALWAYS">
         <VBox prefWidth="280" spacing="5" style="-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 15; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
-            <Button fx:id="navAppearanceBtn" alignment="CENTER_LEFT" maxWidth="Infinity" onAction="#scrollToAppearance" text="Appearance">
+            <Button fx:id="navAppearanceBtn" alignment="CENTER_LEFT" maxWidth="Infinity" onAction="#scrollToAppearance" text="settings.appearance">
                 <graphic><FontIcon iconLiteral="mdi2p-palette-outline" iconSize="18"/></graphic>
                 <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
             </Button>
-            <Button fx:id="navLanguageBtn" alignment="CENTER_LEFT" maxWidth="Infinity" onAction="#scrollToLanguage" text="Language &amp; Region">
+            <Button fx:id="navLanguageBtn" alignment="CENTER_LEFT" maxWidth="Infinity" onAction="#scrollToLanguage" text="settings.languageRegion">
                 <graphic><FontIcon iconLiteral="mdi2w-web" iconSize="18"/></graphic>
                 <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
             </Button>
-            <Button fx:id="navSecurityBtn" alignment="CENTER_LEFT" maxWidth="Infinity" onAction="#scrollToSecurity" text="Security">
+            <Button fx:id="navSecurityBtn" alignment="CENTER_LEFT" maxWidth="Infinity" onAction="#scrollToSecurity" text="settings.security">
                 <graphic><FontIcon iconLiteral="mdi2l-lock-outline" iconSize="18"/></graphic>
                 <padding><Insets bottom="12" left="15" right="15" top="12"/></padding>
             </Button>
@@ -39,17 +39,17 @@
                 <VBox fx:id="appearanceSection" spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                     <HBox alignment="CENTER_LEFT" spacing="10">
                         <FontIcon iconLiteral="mdi2p-palette-outline" iconSize="20" styleClass="text-accent"/>
-                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="Appearance" />
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="settings.appearance" />
                     </HBox>
 
                     <VBox spacing="15">
-                        <Label style="-fx-font-weight: bold;" text="Theme" />
+                        <Label style="-fx-font-weight: bold;" text="settings.theme" />
                         <HBox spacing="16">
                             <ToggleButton fx:id="cardDark" HBox.hgrow="ALWAYS" maxWidth="Infinity" text="">
                                 <graphic>
                                     <VBox spacing="10">
                                         <Region prefHeight="84" style="-fx-background-color: #0f1328; -fx-background-radius: 10;" />
-                                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Dark" />
+                                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="settings.dark" />
                                     </VBox>
                                 </graphic>
                             </ToggleButton>
@@ -57,7 +57,7 @@
                                 <graphic>
                                     <VBox spacing="10">
                                         <Region prefHeight="84" style="-fx-background-color: #f3f3f3; -fx-background-radius: 10;" />
-                                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Light" />
+                                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="settings.light" />
                                     </VBox>
                                 </graphic>
                             </ToggleButton>
@@ -65,7 +65,7 @@
                                 <graphic>
                                     <VBox spacing="10">
                                         <Region prefHeight="84" style="-fx-background-color: linear-gradient(to right, #f3f3f3, #21263a); -fx-background-radius: 10;" />
-                                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Auto" />
+                                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="settings.auto" />
                                     </VBox>
                                 </graphic>
                             </ToggleButton>
@@ -73,7 +73,7 @@
                     </VBox>
 
                     <VBox spacing="10">
-                        <Label style="-fx-font-weight: bold;" text="Accent Color" />
+                        <Label style="-fx-font-weight: bold;" text="settings.accentColor" />
                         <HBox spacing="12">
                             <Button fx:id="accentBlue" text="" />
                             <Button fx:id="accentGreen" text="" />
@@ -88,11 +88,11 @@
                 <VBox fx:id="languageSection" spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                     <HBox alignment="CENTER_LEFT" spacing="10">
                         <FontIcon iconLiteral="mdi2w-web" iconSize="20" styleClass="success"/>
-                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="Language &amp; Region" />
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="settings.languageRegion" />
                     </HBox>
 
                     <VBox spacing="8">
-                        <Label text="Language" />
+                        <Label text="settings.language" />
                         <ComboBox fx:id="cmbLanguage" maxWidth="Infinity" prefHeight="44" />
                     </VBox>
                 </VBox>
@@ -100,28 +100,28 @@
                 <VBox fx:id="securitySection" spacing="20" style="-fx-background-color: -color-bg-subtle; -fx-padding: 25; -fx-background-radius: 8; -fx-border-color: -color-border-default; -fx-border-radius: 8;">
                     <HBox alignment="CENTER_LEFT" spacing="10">
                         <FontIcon iconLiteral="mdi2l-lock-outline" iconSize="20" styleClass="danger"/>
-                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="Security" />
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 16px;" text="settings.security" />
                     </HBox>
 
                     <VBox spacing="8">
-                        <Label text="Current PIN" />
+                        <Label text="settings.currentPin" />
                         <HBox fx:id="currentPinBox" alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 12 0 12;">
                             <StackPane fx:id="currentPinIcon" />
-                            <PasswordField fx:id="txtCurrentPin" maxWidth="Infinity" promptText="Enter current PIN" HBox.hgrow="ALWAYS" />
+                            <PasswordField fx:id="txtCurrentPin" maxWidth="Infinity" promptText="settings.enterCurrentPin" HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>
 
                     <VBox spacing="8">
-                        <Label text="New PIN" />
+                        <Label text="settings.newPin" />
                         <HBox fx:id="newPinBox" alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 12 0 12;">
                             <StackPane fx:id="newPinIcon" />
-                            <PasswordField fx:id="txtNewPin" maxWidth="Infinity" promptText="Enter new PIN" HBox.hgrow="ALWAYS" />
+                            <PasswordField fx:id="txtNewPin" maxWidth="Infinity" promptText="settings.enterNewPin" HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>
 
                     <Label fx:id="lblPinFeedback" text="" />
 
-                    <Button onAction="#handleUpdatePin" styleClass="accent" text="Update PIN" />
+                    <Button onAction="#handleUpdatePin" styleClass="accent" text="settings.updatePin" />
                 </VBox>
 
             </VBox>

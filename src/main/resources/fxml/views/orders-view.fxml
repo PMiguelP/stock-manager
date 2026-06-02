@@ -9,20 +9,20 @@
 
         <HBox alignment="CENTER_LEFT">
             <VBox>
-                <Label text="Encomendas de Clientes" styleClass="title-2"/>
-                <Label text="Gestão de pedidos e entregas" styleClass="text-muted"/>
+                <Label text="orders.title" styleClass="title-2"/>
+                <Label text="orders.subtitle" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Nova Encomenda" onAction="#handleAbrirModal" styleClass="accent"/>
+            <Button text="orders.new" onAction="#handleAbrirModal" styleClass="accent"/>
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtFiltroCliente" promptText="Procurar por cliente..." prefWidth="250"/>
-            <ComboBox fx:id="cmbFiltroEstado" prefWidth="200" promptText="Filtrar por Estado"/>
-            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
+            <TextField fx:id="txtFiltroCliente" promptText="orders.searchCustomer" prefWidth="250"/>
+            <ComboBox fx:id="cmbFiltroEstado" prefWidth="200" promptText="common.filterByStatus"/>
+            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
                 <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
             </Button>
-            <Button text="Limpar" onAction="#handleMostrarTodos" styleClass="flat">
+            <Button text="common.clear" onAction="#handleMostrarTodos" styleClass="flat">
                 <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>
@@ -30,13 +30,13 @@
 
         <TableView fx:id="tblEncomendas" VBox.vgrow="ALWAYS" styleClass="striped">
             <columns>
-                <TableColumn fx:id="colCliente" text="Cliente" prefWidth="200"/>
-                <TableColumn fx:id="colData" text="Data" prefWidth="120"/>
-                <TableColumn fx:id="colEstado" text="Estado" prefWidth="150"/>
-                <TableColumn fx:id="colTotal" text="Total" prefWidth="120"/>
-                <TableColumn fx:id="colMoeda" text="Moeda" prefWidth="80"/>
-                <TableColumn fx:id="colTracking" text="Tracking" prefWidth="150"/>
-                <TableColumn fx:id="colAcoes" text="Ações" prefWidth="80" minWidth="80" maxWidth="80" resizable="false"/>
+                <TableColumn fx:id="colCliente" text="clients.customer" prefWidth="200"/>
+                <TableColumn fx:id="colData" text="common.date" prefWidth="120"/>
+                <TableColumn fx:id="colEstado" text="common.status" prefWidth="150"/>
+                <TableColumn fx:id="colTotal" text="common.total" prefWidth="120"/>
+                <TableColumn fx:id="colMoeda" text="common.currency" prefWidth="80"/>
+                <TableColumn fx:id="colTracking" text="orders.tracking" prefWidth="150"/>
+                <TableColumn fx:id="colAcoes" text="common.actions" prefWidth="80" minWidth="80" maxWidth="80" resizable="false"/>
             </columns>
             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>

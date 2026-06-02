@@ -4,6 +4,7 @@ import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletDetailsDTO
 import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletSimpleDTO;
 import com.pelletsfactory.stock_manager.common.services.FormulaProducaoService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
@@ -32,6 +33,7 @@ public class PelletTypesController {
     private final FormulaProducaoService formulaService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private VBox vboxContainer;
     @FXML private TextField txtFiltroNome;
@@ -53,22 +55,19 @@ public class PelletTypesController {
     public PelletTypesController(StockService stockService,
                                  FormulaProducaoService formulaService,
                                  NavigationService navigationService,
-                                 ToastService toastService) {
+                                 ToastService toastService,
+                                 I18nService i18nService) {
         this.stockService = stockService;
         this.formulaService = formulaService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        pagination = new PaginationControls(10, this::carregarPelletTypes);
+        pagination = new PaginationControls(10, this::carregarPelletTypes, i18nService);
         configurarTabela();
-        carregarPelletTypes();
-    }
-
-    @FXML
-    private void handleRefresh() {
         carregarPelletTypes();
     }
 

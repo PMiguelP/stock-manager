@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pellets Factory | Order Tracking</title>
+    <link rel="stylesheet" th:href="@{/css/tracking.css}" href="/css/tracking.css">
+</head>
+<body>
+<header class="site-header">
+    <div class="header-inner">
+        <a class="brand" th:href="@{/tracking}" aria-label="Pellets Factory">
+            <img src="/logodarkbg.png" alt="Pellets Factory">
+        </a>
+        <span class="portal-label">Customer order portal</span>
+    </div>
+</header>
+
+<main>
+    <section class="tracking-hero" aria-labelledby="tracking-title">
+        <div class="hero-overlay"></div>
+        <div class="page-shell hero-content">
+            <span class="eyebrow">Live order status</span>
+            <h1 id="tracking-title">Track your order</h1>
+            <p>Follow your pellets from confirmation to dispatch with your tracking ID.</p>
+
+            <form class="tracking-form" th:action="@{/tracking}" method="get">
+                <label class="search-field">
+                    <span class="search-icon" aria-hidden="true"></span>
+                    <span class="sr-only">Tracking ID</span>
+                    <input name="code" type="search" th:value="${trackingCode}"
+                           placeholder="Enter your tracking ID" autocomplete="off" required>
+                </label>
+                <button type="submit">Track order</button>
+            </form>
+        </div>
+    </section>
+
+    <div class="page-shell content-shell">
+        <section class="empty-state" th:if="${notFound}">
+            <span class="empty-icon" aria-hidden="true">?</span>
+            <div>
+                <h2>Tracking ID not found</h2>
+                <p>Check the code and try again. The tracking ID is provided when your order is shipped.</p>
+            </div>
+        </section>
+
+        <div class="result-stack" th:if="${order != null}">
+            <section class="result-header">
+                <div>
+                    <span class="eyebrow">Order overview</span>
+                    <h2 th:text="${order.orderReference}">ORD-00000000</h2>
+                    <p>Last updated <time th:text="${order.lastUpdated}">2026-05-31 14:30</time></p>
+                </div>
+                <div class="header-status">
+                    <span>Current status</span>
+                    <strong class="status-pill" th:classappend="${order.statusClass}" th:text="${order.status}">Pending</strong>
+                </div>
+            </section>
+
+            <section class="shipment panel">
+                <div class="section-heading">
+                    <div>
+                        <span class="eyebrow">Shipment progress</span>
+                        <h2>Your order journey</h2>
+                    </div>
+                    <div class="tracking-code">
+                        <span>Tracking ID</span>
+                        <strong th:text="${order.trackingCode}">PEL-2026-000123</strong>
+                    </div>
+                </div>
+
+                <p class="cancelled-message" th:if="${order.cancelled}">
+                    This order was cancelled. Contact our team if you need further information.
+                </p>
+
+                <ol class="timeline" th:unless="${order.cancelled}">
+                    <li th:each="stage : ${order.stages}" th:classappend="${stage.state}">
+                        <span class="timeline-marker" aria-hidden="true"></span>
+                        <h3 th:text="${stage.title}">Pending</h3>
+                        <p th:text="${stage.description}">Your order has been received</p>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="summary-grid">
+                <article class="summary-item">
+                    <span>Client</span>
+                    <strong th:text="${order.clientName}">Client name</strong>
+                </article>
+                <article class="summary-item">
+                    <span>Order date</span>
+                    <strong th:text="${#temporals.format(order.orderDate, 'yyyy-MM-dd')}">2026-01-01</strong>
+                </article>
+                <article class="summary-item">
+                    <span>Total quantity</span>
+                    <strong th:text="|${#numbers.formatDecimal(order.quantityKg / 1000.0, 1, 3)} tons|">0.000 tons</strong>
+                </article>
+                <article class="summary-item">
+                    <span>Currency</span>
+                    <strong th:text="${order.currencyCode}">EUR</strong>
+                </article>
+            </section>
+
+            <section class="panel order-details">
+                <div class="section-heading">
+                    <div>
+                        <span class="eyebrow">Commercial detail</span>
+                        <h2>Order items</h2>
+                    </div>
+                    <span class="item-count" th:text="|${order.items.size()} item(s)|">1 item</span>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Pellet type</th>
+                            <th>Quantity</th>
+                            <th>Unit price</th>
+                            <th>VAT rate</th>
+                            <th>VAT amount</th>
+                            <th>Total</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${order.items}">
+                            <td data-label="Pellet type" th:text="${item.pelletType}">ENplus A1</td>
+                            <td data-label="Quantity" th:text="|${#numbers.formatDecimal(item.quantityKg, 1, 2)} kg|">0.00 kg</td>
+                            <td data-label="Unit price" th:text="|${order.currencySymbol}${#numbers.formatDecimal(item.unitPriceNet, 1, 2)}/kg|">€0.00/kg</td>
+                            <td data-label="VAT rate" th:text="|${#numbers.formatDecimal(item.vatRate, 1, 2)}%|">23.00%</td>
+                            <td data-label="VAT amount" th:text="|${order.currencySymbol}${#numbers.formatDecimal(item.vatAmount, 1, 2)}|">€0.00</td>
+                            <td data-label="Total" class="line-total" th:text="|${order.currencySymbol}${#numbers.formatDecimal(item.total, 1, 2)}|">€0.00</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <dl class="totals">
+                    <div>
+                        <dt>Subtotal</dt>
+                        <dd th:text="|${order.currencySymbol}${#numbers.formatDecimal(order.totalNet, 1, 2)}|">€0.00</dd>
+                    </div>
+                    <div>
+                        <dt>VAT</dt>
+                        <dd th:text="|${order.currencySymbol}${#numbers.formatDecimal(order.totalVat, 1, 2)}|">€0.00</dd>
+                    </div>
+                    <div class="grand-total">
+                        <dt>Order total</dt>
+                        <dd th:text="|${order.currencySymbol}${#numbers.formatDecimal(order.total, 1, 2)}|">€0.00</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="support-strip">
+                <div>
+                    <span class="eyebrow">Need help?</span>
+                    <h2>Questions about your order?</h2>
+                    <p>Our customer team is ready to help with your shipment.</p>
+                </div>
+                <a href="mailto:support@pelletsfactory.com">support@pelletsfactory.com</a>
+            </section>
+
+            <div class="print-row">
+                <button type="button" onclick="window.print()">Print order details</button>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

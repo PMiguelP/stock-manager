@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
+import com.pelletsfactory.stock_manager.common.utils.DecimalUtils;
 
 @Entity
 @Table(name = "encomendas_fornecedor")
@@ -31,14 +33,14 @@ public class EncomendaFornecedor {
     @Column(nullable = false, length = 50)
     private EstadoEncomendaFornecedor estado = EstadoEncomendaFornecedor.RASCUNHO;
 
-    @Column(name = "total_liquido", nullable = false)
-    private Double totalLiquido;
+    @Column(name = "total_liquido", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalLiquido;
 
-    @Column(name = "total_iva", nullable = false)
-    private Double totalIva;
+    @Column(name = "total_iva", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalIva;
 
-    @Column(name = "total_final", nullable = false)
-    private Double totalFinal;
+    @Column(name = "total_final", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalFinal;
 
     @ManyToOne
     @JoinColumn(name = "moeda_id", nullable = false)
@@ -62,11 +64,11 @@ public class EncomendaFornecedor {
                                Double totalFinal, Moeda moeda, List<ItemEncomendaFornecedor> itens) {
         this.fornecedor = fornecedor;
         this.data = data;
-        this.totalLiquido = totalLiquido;
-        this.totalIva = totalIva;
-        this.totalFinal = totalFinal;
+        setTotalLiquido(totalLiquido);
+        setTotalIva(totalIva);
+        setTotalFinal(totalFinal);
         this.moeda = moeda;
-        this.itens = itens; //TODO: check this
+        this.itens = itens;
     }
 
     public UUID getId() {
@@ -98,27 +100,27 @@ public class EncomendaFornecedor {
     }
 
     public Double getTotalLiquido() {
-        return totalLiquido;
+        return DecimalUtils.toDouble(totalLiquido);
     }
 
     public void setTotalLiquido(Double totalLiquido) {
-        this.totalLiquido = totalLiquido;
+        this.totalLiquido = DecimalUtils.fromDouble(totalLiquido, 2);
     }
 
     public Double getTotalIva() {
-        return totalIva;
+        return DecimalUtils.toDouble(totalIva);
     }
 
     public void setTotalIva(Double totalIva) {
-        this.totalIva = totalIva;
+        this.totalIva = DecimalUtils.fromDouble(totalIva, 2);
     }
 
     public Double getTotalFinal() {
-        return totalFinal;
+        return DecimalUtils.toDouble(totalFinal);
     }
 
     public void setTotalFinal(Double totalFinal) {
-        this.totalFinal = totalFinal;
+        this.totalFinal = DecimalUtils.fromDouble(totalFinal, 2);
     }
 
     public Moeda getMoeda() {

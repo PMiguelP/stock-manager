@@ -6,6 +6,7 @@ public enum ViewId {
     SETTINGS,
     ORDERS,
     PRODUCTION,
+    ALLOCATIONS,
     STOCK,
     CLIENTS,
     SUPPLIERS,
@@ -16,4 +17,3 @@ public enum ViewId {
     BATCHES,
     NOTIFICATIONS
 }
-

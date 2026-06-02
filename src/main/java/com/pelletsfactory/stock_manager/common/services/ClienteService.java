@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteDetailsDTO;
+import com.pelletsfactory.stock_manager.common.dto.request.ClienteRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.ClienteSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaClienteSimpleDTO;
@@ -11,6 +12,8 @@ import com.pelletsfactory.stock_manager.common.mapper.EncomendaClienteMapper;
 import com.pelletsfactory.stock_manager.common.repositories.ClienteRepository;
 import com.pelletsfactory.stock_manager.common.repositories.EncomendaClienteRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.NifUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -44,15 +47,22 @@ public class ClienteService {
     public ClienteResponseDTO registarCliente(String nome, String nif, String contacto, String email) {
         SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
 
-        if (clienteRepo.existsByNif(nif)) {
-            throw new IllegalArgumentException("Já existe cliente com este NIF: " + nif);
+        String nifNormalizado = NifUtils.normalizeRequired(nif);
+        ClienteRequestDTO dados = new ClienteRequestDTO(
+                nome == null ? null : nome.trim(),
+                nifNormalizado,
+                contacto == null ? null : contacto.trim(),
+                email == null ? null : email.trim()
+        );
+        if (clienteRepo.existsByNif(nifNormalizado)) {
+            throw new IllegalArgumentException("Já existe cliente com este NIF: " + nifNormalizado);
         }
 
         Cliente cliente = new Cliente();
-        cliente.setNome(nome);
-        cliente.setNif(nif);
-        cliente.setContacto(contacto);
-        cliente.setEmail(email);
+        cliente.setNome(dados.nome());
+        cliente.setNif(nifNormalizado);
+        cliente.setContacto(dados.contacto());
+        cliente.setEmail(dados.email());
 
         return clienteMapper.toResponseDTO(clienteRepo.save(cliente));
     }
@@ -70,14 +80,9 @@ public class ClienteService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "nome";
-        }
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "nome");
 
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
-
-        return clienteRepo.findByFiltros(nome, nif, pageable)
+        return clienteRepo.findByFiltros(nome, NifUtils.normalizeNullable(nif), pageable)
                 .map(clienteMapper::toSimpleDTO);
     }
 
@@ -105,4 +110,5 @@ public class ClienteService {
                 cliente.getUpdatedAt()
         );
     }
+
 }

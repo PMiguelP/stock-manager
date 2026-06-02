@@ -1,5 +1,6 @@
 package com.pelletsfactory.stock_manager.desktop.utils;
 
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -12,9 +13,12 @@ import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 
+import java.text.MessageFormat;
+
 public final class PaginationControls {
 
     private final Runnable reload;
+    private final I18nService i18nService;
     private final Label statusLabel = new Label();
     private final HBox pageButtons = new HBox(5);
     private final ComboBox<Integer> pageSizeSelect = new ComboBox<>(
@@ -26,9 +30,10 @@ public final class PaginationControls {
     private int totalPages;
     private boolean attached;
 
-    public PaginationControls(int pageSize, Runnable reload) {
+    public PaginationControls(int pageSize, Runnable reload, I18nService i18nService) {
         this.pageSize = pageSize;
         this.reload = reload;
+        this.i18nService = i18nService;
         statusLabel.getStyleClass().add("text-muted");
         pageSizeSelect.setValue(pageSize);
         pageSizeSelect.setOnAction(e -> {
@@ -74,7 +79,7 @@ public final class PaginationControls {
         left.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(left, Priority.ALWAYS);
 
-        HBox center = new HBox(10, new Label("Por página"), pageSizeSelect);
+        HBox center = new HBox(10, new Label(i18nService.translate("common.perPage")), pageSizeSelect);
         center.setAlignment(Pos.CENTER);
         HBox.setHgrow(center, Priority.ALWAYS);
 
@@ -95,13 +100,18 @@ public final class PaginationControls {
 
     private void updateStatus(Page<?> page) {
         if (page.getTotalElements() == 0) {
-            statusLabel.setText("Sem resultados");
+            statusLabel.setText(i18nService.translate("common.noResults"));
             return;
         }
 
         long start = (long) page.getNumber() * page.getSize() + 1;
         long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        statusLabel.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
+        statusLabel.setText(MessageFormat.format(
+                i18nService.translate("common.showingRange"),
+                start,
+                end,
+                page.getTotalElements()
+        ));
     }
 
     private void updateButtons() {

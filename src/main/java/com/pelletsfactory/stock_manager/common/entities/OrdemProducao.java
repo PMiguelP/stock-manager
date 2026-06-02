@@ -7,9 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "ordens_producao")
@@ -54,9 +52,6 @@ public class OrdemProducao {
     @OneToMany(mappedBy = "ordem")
     private List<LotePellet> lotes;
 
-    @OneToMany(mappedBy = "ordem")
-    private List<AlocacaoOrdemEncomenda> alocacoes;
-
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
@@ -76,65 +71,6 @@ public class OrdemProducao {
         this.quantidadePlaneada = quantidadePlaneada;
         this.dataInicio = dataInicio;
         this.estado = estado;
-    }
-
-    @Transient
-    public List<EncomendaCliente> getEncomendasAssociadas() {
-        if (alocacoes == null || alocacoes.isEmpty()) {
-            return List.of();
-        }
-
-        return alocacoes.stream()
-                .map(AlocacaoOrdemEncomenda::getEncomendaCliente)
-                .distinct()
-                .collect(Collectors.toList());
-    }
-
-    @Transient
-    public List<Cliente> getClientesAssociados() {
-        return getEncomendasAssociadas().stream()
-                .map(EncomendaCliente::getCliente)
-                .distinct()
-                .collect(Collectors.toList());
-    }
-
-    @Transient
-    public Map<UUID, Double> getQuantidadePorEncomenda() {
-        if (alocacoes == null || alocacoes.isEmpty()) {
-            return Map.of();
-        }
-
-        return alocacoes.stream()
-                .collect(Collectors.groupingBy(
-                        alocacao -> alocacao.getEncomendaCliente().getId(),
-                        Collectors.summingDouble(AlocacaoOrdemEncomenda::getQuantidadeReservada)
-                ));
-    }
-
-    @Transient
-    public Double getQuantidadeTotalAlocada() {
-        if (alocacoes == null || alocacoes.isEmpty()) {
-            return 0.0;
-        }
-
-        return alocacoes.stream()
-                .mapToDouble(AlocacaoOrdemEncomenda::getQuantidadeReservada)
-                .sum();
-    }
-
-    @Transient
-    public Double getCapacidadeDisponivel() {
-        return quantidadePlaneada - getQuantidadeTotalAlocada();
-    }
-
-    @Transient
-    public boolean isProducaoParaStock() {
-        return alocacoes == null || alocacoes.isEmpty();
-    }
-
-    @Transient
-    public boolean temCapacidadeDisponivel(Double quantidadeRequerida) {
-        return getCapacidadeDisponivel() >= quantidadeRequerida;
     }
 
     public UUID getId() {
@@ -219,14 +155,6 @@ public class OrdemProducao {
 
     public void setLotes(List<LotePellet> lotes) {
         this.lotes = lotes;
-    }
-
-    public List<AlocacaoOrdemEncomenda> getAlocacoes() {
-        return alocacoes;
-    }
-
-    public void setAlocacoes(List<AlocacaoOrdemEncomenda> alocacoes) {
-        this.alocacoes = alocacoes;
     }
 
     public Instant getCreatedAt() {

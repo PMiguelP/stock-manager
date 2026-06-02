@@ -10,15 +10,19 @@ import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import com.pelletsfactory.stock_manager.common.mapper.OrdemProducaoMapper;
 import com.pelletsfactory.stock_manager.common.repositories.*;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.ProductionUnitUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.EnumSet;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -30,6 +34,8 @@ public class OrdemProducaoService {
     private final FormulaProducaoRepository formulaRepo;
     private final ConsumoProducaoRepository consumoRepo;
     private final ComposicaoPelletRepository composicaoRepo;
+    private final LotePelletRepository loteRepo;
+    private final MateriaPrimaRepository materiaPrimaRepo;
     private final OrdemProducaoMapper mapper;
 
     public OrdemProducaoService(
@@ -39,6 +45,8 @@ public class OrdemProducaoService {
             FormulaProducaoRepository formulaRepo,
             ConsumoProducaoRepository consumoRepo,
             ComposicaoPelletRepository composicaoRepo,
+            LotePelletRepository loteRepo,
+            MateriaPrimaRepository materiaPrimaRepo,
             OrdemProducaoMapper mapper) {
         this.ordemRepo = ordemRepo;
         this.funcRepo = funcRepo;
@@ -46,6 +54,8 @@ public class OrdemProducaoService {
         this.formulaRepo = formulaRepo;
         this.consumoRepo = consumoRepo;
         this.composicaoRepo = composicaoRepo;
+        this.loteRepo = loteRepo;
+        this.materiaPrimaRepo = materiaPrimaRepo;
         this.mapper = mapper;
     }
 
@@ -68,14 +78,16 @@ public class OrdemProducaoService {
             );
         }
 
-        // Validar stock de matérias-primas
-        validarStockMateriasParaProducao(formula, dto.quantidadePlaneada());
+        validarFormulaProntaParaProducao(formula);
+        validarStockMateriasParaProducao(formula, dto.quantidadePlaneada(), null);
 
         // Criar entidade
         OrdemProducao ordem = mapper.toEntity(dto);
         ordem.setTipoPellet(tipoPellet);
         ordem.setFuncionario(funcionario);
         ordem.setFormula(formula);
+        ordem.setEstado(EstadoOrdemProducao.PENDENTE);
+        ordem.setQuantidadeProduzidaReal(0.0);
 
         OrdemProducao saved = ordemRepo.save(ordem);
         return mapper.toResponseDTO(saved);
@@ -88,11 +100,10 @@ public class OrdemProducaoService {
     public OrdemProducaoResponseDTO atualizarOrdem(UUID id, OrdemProducaoRequestDTO dto) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
 
-        // Não pode atualizar ordens já concluídas
-        if (ordem.getEstado() == EstadoOrdemProducao.CONCLUIDA) {
-            throw new IllegalArgumentException("Não é possível atualizar uma ordem concluída");
+        if (ordem.getEstado() != EstadoOrdemProducao.PENDENTE) {
+            throw new IllegalArgumentException("Apenas ordens pendentes podem ser atualizadas");
         }
 
         Funcionario funcionario = buscarFuncionarioOuFalhar(dto.funcionarioId());
@@ -105,12 +116,17 @@ public class OrdemProducaoService {
             );
         }
 
-        validarStockMateriasParaProducao(formula, dto.quantidadePlaneada());
+        validarFormulaProntaParaProducao(formula);
+        validarStockMateriasParaProducao(formula, dto.quantidadePlaneada(), ordem.getId());
 
+        EstadoOrdemProducao estadoOriginal = ordem.getEstado();
+        Double quantidadeProduzidaOriginal = ordem.getQuantidadeProduzidaReal();
         ordem.setTipoPellet(tipoPellet);
         ordem.setFuncionario(funcionario);
         ordem.setFormula(formula);
         mapper.updateEntityFromDTO(dto, ordem);
+        ordem.setEstado(estadoOriginal);
+        ordem.setQuantidadeProduzidaReal(quantidadeProduzidaOriginal);
         OrdemProducao updated = ordemRepo.save(ordem);
         return mapper.toResponseDTO(updated);
     }
@@ -122,16 +138,20 @@ public class OrdemProducaoService {
     public OrdemProducaoResponseDTO mudarEstado(UUID id, String novoEstado) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
         EstadoOrdemProducao estado = EstadoOrdemProducao.valueOf(novoEstado);
 
         // Validar transição de estado
         validarTransicaoEstado(ordem.getEstado(), estado);
 
         if (estado == EstadoOrdemProducao.EM_PRODUCAO) {
+            validarStockMateriasParaProducao(ordem.getFormula(), ordem.getQuantidadePlaneada(), ordem.getId());
             ordem.setDataInicio(Instant.now());
         } else if (estado == EstadoOrdemProducao.CONCLUIDA) {
+            validarConclusao(ordem);
             ordem.setDataFim(Instant.now());
+        } else if (estado == EstadoOrdemProducao.ANULADA) {
+            validarAnulacao(ordem);
         }
 
         ordem.setEstado(estado);
@@ -146,7 +166,7 @@ public class OrdemProducaoService {
     public OrdemProducaoResponseDTO registarProducaoReal(UUID id, Double quantidadeProduzida) {
         SecurityUtils.checkPermission(Cargo.OPERADOR_PRODUCAO);
 
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
 
         if (ordem.getEstado() != EstadoOrdemProducao.EM_PRODUCAO) {
             throw new IllegalArgumentException(
@@ -154,6 +174,9 @@ public class OrdemProducaoService {
             );
         }
 
+        if (quantidadeProduzida == null || !Double.isFinite(quantidadeProduzida) || quantidadeProduzida < 0) {
+            throw new IllegalArgumentException("Quantidade produzida deve ser um valor não negativo");
+        }
         if (quantidadeProduzida > ordem.getQuantidadePlaneada()) {
             throw new IllegalArgumentException(
                     "Quantidade produzida não pode exceder quantidade planeada"
@@ -172,7 +195,7 @@ public class OrdemProducaoService {
     public void apagarOrdem(UUID id) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
 
         if (ordem.getEstado() != EstadoOrdemProducao.PENDENTE) {
             throw new IllegalArgumentException(
@@ -195,15 +218,7 @@ public class OrdemProducaoService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "dataInicio";
-        }
-
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "dataInicio");
 
         Page<OrdemProducao> ordensPage = ordemRepo.findByFiltros(estado, tipoPelletId, funcionarioId, pageable);
 
@@ -224,7 +239,7 @@ public class OrdemProducaoService {
      * Obter por ID
      */
     public OrdemProducaoResponseDTO buscarPorId(UUID id) {
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
         return mapper.toResponseDTO(ordem);
     }
 
@@ -256,42 +271,37 @@ public class OrdemProducaoService {
     }
 
     /**
-     * PauseProduction: Pausar ordem de produção
-     * Apenas RESPONSAVEL_PRODUCAO
+     * Pausa uma ordem que está em produção.
      */
     @Transactional
-    public OrdemProducaoResponseDTO pausarProducao(UUID id, String motivo) {
+    public OrdemProducaoResponseDTO pausarProducao(UUID id) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
 
         if (ordem.getEstado() != EstadoOrdemProducao.EM_PRODUCAO) {
             throw new RuntimeException("Apenas ordens em produção podem ser pausadas");
         }
 
         ordem.setEstado(EstadoOrdemProducao.PAUSADA);
-        // Opcional: registar motivo em um campo (se existir na DB)
-
         OrdemProducao updated = ordemRepo.save(ordem);
         return mapper.toResponseDTO(updated);
     }
 
     /**
-     * ResumeProduction: Retomar ordem pausada
-     * Apenas RESPONSAVEL_PRODUCAO
+     * Retoma uma ordem pausada se as matérias-primas continuarem disponíveis.
      */
     @Transactional
     public OrdemProducaoResponseDTO retomar(UUID id) {
         SecurityUtils.checkPermission(Cargo.RESPONSAVEL_PRODUCAO);
 
-        OrdemProducao ordem = buscarPorIdOuFalhar(id);
+        OrdemProducao ordem = buscarPorIdParaAtualizarOuFalhar(id);
 
         if (ordem.getEstado() != EstadoOrdemProducao.PAUSADA) {
             throw new RuntimeException("Apenas ordens pausadas podem ser retomadas");
         }
 
-        // Validar que ainda há stock disponível
-        validarStockMateriasParaProducao(ordem.getFormula(), ordem.getQuantidadePlaneada());
+        validarStockMateriasParaProducao(ordem.getFormula(), ordem.getQuantidadePlaneada(), ordem.getId());
 
         ordem.setEstado(EstadoOrdemProducao.EM_PRODUCAO);
 
@@ -299,12 +309,17 @@ public class OrdemProducaoService {
         return mapper.toResponseDTO(updated);
     }
 
-    // ===== MÉTODOS PRIVADOS =====
-
     private Funcionario buscarFuncionarioOuFalhar(UUID id) {
         return funcRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Funcionário não encontrado com ID: " + id
+                ));
+    }
+
+    private OrdemProducao buscarPorIdParaAtualizarOuFalhar(UUID id) {
+        return ordemRepo.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Ordem de produção não encontrada com ID: " + id
                 ));
     }
 
@@ -322,21 +337,96 @@ public class OrdemProducaoService {
                 ));
     }
 
-    private void validarStockMateriasParaProducao(FormulaProducao formula, Double quantidade) {
-        // Obter composição
+    /**
+     * Considera o consumo esperado ainda não realizado das restantes ordens abertas.
+     * Isto evita prometer a mesma matéria-prima a várias ordens em simultâneo.
+     */
+    private void validarStockMateriasParaProducao(FormulaProducao formula, Double quantidade, UUID ordemIgnoradaId) {
+        if (quantidade == null || !Double.isFinite(quantidade) || quantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade planeada deve ser maior que zero");
+        }
         var composicoes = composicaoRepo.findByFormulaId(formula.getId());
 
-        // Para cada matéria-prima na fórmula, validar stock
+        composicoes.stream()
+                .map(ComposicaoPellet::getMateriaPrima)
+                .sorted(Comparator.comparing(materia -> materia.getId().toString()))
+                .forEach(materia -> materiaPrimaRepo.findByIdForUpdate(materia.getId())
+                        .orElseThrow(() -> new EntityNotFoundException("Matéria-prima não encontrada")));
+
         for (ComposicaoPellet comp : composicoes) {
+            ProductionUnitUtils.requireKilograms(comp.getMateriaPrima());
             Double necessario = comp.getQuantidadePorKg() * quantidade;
             Double stockAtual = comp.getMateriaPrima().getStockAtual();
+            double comprometido = ordemRepo.findCompromissosMateriaPrima(
+                            comp.getMateriaPrima().getId(),
+                            ordemIgnoradaId,
+                            EnumSet.of(
+                                    EstadoOrdemProducao.PENDENTE,
+                                    EstadoOrdemProducao.EM_PRODUCAO,
+                                    EstadoOrdemProducao.PAUSADA
+                            ))
+                    .stream()
+                    .mapToDouble(compromisso -> Math.max(
+                            compromisso.getQuantidadeEsperada() - compromisso.getQuantidadeConsumida(),
+                            0.0))
+                    .sum();
 
-            if (stockAtual < necessario) {
+            if (stockAtual - comprometido < necessario) {
                 throw new IllegalArgumentException(
                         "Stock insuficiente de " + comp.getMateriaPrima().getNome() +
-                                ". Necessário: " + necessario + "kg, Disponível: " + stockAtual + "kg"
+                                ". Necessário: " + necessario + "kg, Disponível: " + (stockAtual - comprometido) + "kg"
                 );
             }
+        }
+    }
+
+    private void validarFormulaProntaParaProducao(FormulaProducao formula) {
+        if (!Boolean.TRUE.equals(formula.getAtiva())) {
+            throw new IllegalArgumentException("A fórmula selecionada não está ativa");
+        }
+        var composicoes = composicaoRepo.findByFormulaId(formula.getId());
+        composicoes.forEach(comp -> ProductionUnitUtils.requireKilograms(comp.getMateriaPrima()));
+        double totalPorKg = composicoes.stream().mapToDouble(ComposicaoPellet::getQuantidadePorKg).sum();
+        if (Math.abs(totalPorKg - 1.0) > 0.000001) {
+            throw new IllegalArgumentException("A composição da fórmula deve totalizar exatamente 1 kg");
+        }
+    }
+
+    private void validarConclusao(OrdemProducao ordem) {
+        double produzido = ordem.getQuantidadeProduzidaReal() != null ? ordem.getQuantidadeProduzidaReal() : 0.0;
+        if (produzido <= 0) {
+            throw new IllegalStateException("Registe a quantidade produzida antes de concluir a ordem");
+        }
+        var consumos = consumoRepo.findByOrdemId(ordem.getId());
+        if (consumos.isEmpty()) {
+            throw new IllegalStateException("Registe os consumos antes de concluir a ordem");
+        }
+        Map<UUID, Double> consumoPorMateria = consumos.stream()
+                .collect(Collectors.groupingBy(
+                        consumo -> consumo.getMateriaPrima().getId(),
+                        Collectors.summingDouble(ConsumoProducao::getQuantidadeConsumidaReal)
+                ));
+        boolean faltaAlgumaMateria = composicaoRepo.findByFormulaId(ordem.getFormula().getId()).stream()
+                .map(ComposicaoPellet::getMateriaPrima)
+                .map(MateriaPrima::getId)
+                .anyMatch(materiaId -> consumoPorMateria.getOrDefault(materiaId, 0.0) <= 0);
+        if (faltaAlgumaMateria) {
+            throw new IllegalStateException("Registe o consumo de todas as matérias-primas da fórmula antes de concluir");
+        }
+        double quantidadeEmLotes = loteRepo.findByOrdemId(ordem.getId()).stream()
+                .mapToDouble(LotePellet::getQuantidadeKg)
+                .sum();
+        if (Math.abs(quantidadeEmLotes - produzido) > 0.000001) {
+            throw new IllegalStateException("A quantidade dos lotes deve coincidir com a produção real");
+        }
+    }
+
+    private void validarAnulacao(OrdemProducao ordem) {
+        if (!loteRepo.findByOrdemId(ordem.getId()).isEmpty()) {
+            throw new IllegalStateException("Não é possível anular uma ordem com lotes registados");
+        }
+        if (!consumoRepo.findByOrdemId(ordem.getId()).isEmpty()) {
+            throw new IllegalStateException("Não é possível anular uma ordem com consumos registados");
         }
     }
 

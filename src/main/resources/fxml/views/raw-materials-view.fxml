@@ -8,32 +8,29 @@
     <VBox fx:id="vboxContainer" spacing="20" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
         <HBox alignment="CENTER_LEFT">
             <VBox>
-                <Label text="Raw Materials" styleClass="title-2"/>
-                <Label text="Inventory and reorder tracking" styleClass="text-muted"/>
+                <Label text="rawMaterials.title" styleClass="title-2"/>
+                <Label text="rawMaterials.subtitle" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="+ Add Raw Material" onAction="#handleAbrirModal" styleClass="accent"/>
-            <Button text="Refresh" onAction="#handleRefresh" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2r-refresh" iconSize="16"/></graphic>
-            </Button>
+            <Button text="rawMaterials.add" onAction="#handleAbrirModal" styleClass="accent"/>
         </HBox>
 
         <HBox fx:id="alertBox" spacing="10" alignment="CENTER_LEFT"
               style="-fx-background-color: #f59e0b20; -fx-border-color: #f59e0b; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16;">
             <FontIcon iconLiteral="mdi2a-alert-outline" iconSize="18"/>
             <VBox>
-                <Label text="Low Stock Alert" style="-fx-text-fill: #f59e0b; -fx-font-weight: bold;"/>
+                <Label text="rawMaterials.lowStockAlert" style="-fx-text-fill: #f59e0b; -fx-font-weight: bold;"/>
                 <Label fx:id="lblAlertCount" text="" styleClass="text-muted"/>
             </VBox>
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtSearch" promptText="Search by name or ID..." prefWidth="320" onAction="#handleFiltrar"/>
-            <ComboBox fx:id="cmbFiltroStatus" prefWidth="180" promptText="Filter by Status"/>
-            <Button text="Filtrar" onAction="#handleFiltrar" styleClass="button-outlined">
+            <TextField fx:id="txtSearch" promptText="common.searchByNameOrId" prefWidth="320" onAction="#handleFiltrar"/>
+            <ComboBox fx:id="cmbFiltroStatus" prefWidth="180" promptText="common.filterByStatus"/>
+            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
                 <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
             </Button>
-            <Button text="Limpar" onAction="#handleLimpar" styleClass="flat">
+            <Button text="common.clear" onAction="#handleLimpar" styleClass="flat">
                 <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>
@@ -41,13 +38,13 @@
 
         <TableView fx:id="tblRawMaterials" VBox.vgrow="ALWAYS" styleClass="striped">
             <columns>
-                <TableColumn fx:id="colMaterialId" text="Material ID" prefWidth="130"/>
-                <TableColumn fx:id="colName" text="Name" prefWidth="240"/>
-                <TableColumn fx:id="colUnit" text="Unit of Measure" prefWidth="160"/>
-                <TableColumn fx:id="colStock" text="Current Stock" prefWidth="160"/>
-                <TableColumn fx:id="colMinimum" text="Minimum Stock" prefWidth="160"/>
-                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
-                <TableColumn fx:id="colActions" text="Actions" prefWidth="90"/>
+                <TableColumn fx:id="colMaterialId" text="rawMaterials.materialId" prefWidth="130"/>
+                <TableColumn fx:id="colName" text="common.name" prefWidth="240"/>
+                <TableColumn fx:id="colUnit" text="rawMaterials.unit" prefWidth="160"/>
+                <TableColumn fx:id="colStock" text="stock.current" prefWidth="160"/>
+                <TableColumn fx:id="colMinimum" text="stock.minimum" prefWidth="160"/>
+                <TableColumn fx:id="colStatus" text="common.status" prefWidth="120"/>
+                <TableColumn fx:id="colActions" text="common.actions" prefWidth="90"/>
             </columns>
             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
         </TableView>

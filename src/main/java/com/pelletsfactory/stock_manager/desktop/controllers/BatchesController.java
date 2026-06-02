@@ -332,7 +332,7 @@ public class BatchesController {
         double quantidade;
         try {
             quantidade = Double.parseDouble(txtQuantidadeKg.getText().trim().replace(",", "."));
-            if (quantidade <= 0) throw new NumberFormatException();
+            if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
             formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, "Quantidade inválida (use número positivo)");
             return;
@@ -384,12 +384,6 @@ public class BatchesController {
         formValidationService.clearError(txtQuantidadeKg, lblErroQuantidade);
 
         navigationService.showModal(drawerRoot);
-    }
-
-    @FXML
-    private void handleRefresh() {
-        paginaAtual = 0;
-        carregarLotes();
     }
 
     @FXML

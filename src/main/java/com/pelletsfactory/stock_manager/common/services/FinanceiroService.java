@@ -5,15 +5,14 @@ import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroS
 import com.pelletsfactory.stock_manager.common.entities.EncomendaCliente;
 import com.pelletsfactory.stock_manager.common.entities.EncomendaFornecedor;
 import com.pelletsfactory.stock_manager.common.entities.MovimentoFinanceiro;
-import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import com.pelletsfactory.stock_manager.common.mapper.MovimentoFinanceiroMapper;
 import com.pelletsfactory.stock_manager.common.repositories.MovimentoFinanceiroRepository;
-import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.CalculationUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 import jakarta.persistence.EntityNotFoundException;
 
@@ -32,10 +31,17 @@ public class FinanceiroService {
     public MovimentoFinanceiroResponseDTO registarEntrada(
             EncomendaCliente encomendaCliente,
             Double valor) {
+        if (encomendaCliente == null || encomendaCliente.getId() == null) {
+            throw new IllegalArgumentException("Encomenda de cliente é obrigatória");
+        }
+        CalculationUtils.requirePositive(valor, "Valor do movimento");
+        if (movimentoFinanceiroRepo.existsByEncomendaClienteId(encomendaCliente.getId())) {
+            throw new IllegalStateException("A receita desta encomenda já foi registada");
+        }
 
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.setTipoMovimento(TipoMovimento.ENTRADA);
-        movimento.setValorTotal(valor);
+        movimento.setValorTotal(CalculationUtils.money(valor));
         movimento.setMoeda(encomendaCliente.getMoeda());
         movimento.setEncomendaCliente(encomendaCliente);
         return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
@@ -45,21 +51,19 @@ public class FinanceiroService {
     public MovimentoFinanceiroResponseDTO registarSaida(
             EncomendaFornecedor encomendaFornecedor,
             Double valor) {
+        if (encomendaFornecedor == null || encomendaFornecedor.getId() == null) {
+            throw new IllegalArgumentException("Encomenda de fornecedor é obrigatória");
+        }
+        CalculationUtils.requirePositive(valor, "Valor do movimento");
+        if (movimentoFinanceiroRepo.existsByEncomendaFornecedorId(encomendaFornecedor.getId())) {
+            throw new IllegalStateException("A despesa desta encomenda já foi registada");
+        }
 
         MovimentoFinanceiro movimento = new MovimentoFinanceiro();
         movimento.setTipoMovimento(TipoMovimento.SAIDA);
-        movimento.setValorTotal(valor);
+        movimento.setValorTotal(CalculationUtils.money(valor));
         movimento.setMoeda(encomendaFornecedor.getMoeda());
         movimento.setEncomendaFornecedor(encomendaFornecedor);
-        return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
-    }
-
-    @Transactional
-    public MovimentoFinanceiroResponseDTO atualizarMovimentoFinanceiro(UUID movimentoId, Double novoValor) {
-        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
-        MovimentoFinanceiro movimento = movimentoFinanceiroRepo.findById(movimentoId)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Movimento financeiro não encontrado"));
-        movimento.setValorTotal(novoValor);
         return movimentoMapper.toResponseDTO(movimentoFinanceiroRepo.save(movimento));
     }
 
@@ -75,15 +79,7 @@ public class FinanceiroService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "createdAt";
-        }
-
-        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC;
-
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        org.springframework.data.domain.Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "createdAt");
         return movimentoFinanceiroRepo.findAll(pageable).map(movimentoMapper::toResponseDTO);
     }
 
@@ -95,39 +91,22 @@ public class FinanceiroService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "createdAt";
-        }
-
-        org.springframework.data.domain.Sort.Direction dir = "ASC".equalsIgnoreCase(direction)
-                ? org.springframework.data.domain.Sort.Direction.ASC
-                : org.springframework.data.domain.Sort.Direction.DESC;
-
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
-                page - 1, pageSize, org.springframework.data.domain.Sort.by(dir, sortBy));
+        org.springframework.data.domain.Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "createdAt");
 
         return movimentoFinanceiroRepo.findByFiltros(tipoMovimento, moedaId, pageable)
                 .map(movimentoMapper::toSimpleDTO);
     }
 
-    public java.util.List<MovimentoFinanceiroResponseDTO> listarMovimentosFinanceirosSimples() {
-        return movimentoFinanceiroRepo.findAll().stream()
-                .map(movimentoMapper::toResponseDTO)
-                .toList();
-    }
-
-
+    /**
+     * Calcula saldo apenas quando todos os movimentos usam a mesma moeda.
+     * Misturar moedas produziria um valor contabilístico incorreto.
+     */
     public Double calcularSaldoAtual() {
-        // TODO: Calcula saldo atual (soma de entradas - saídas). Retorna Double com o saldo
-        List<MovimentoFinanceiro> movimentos = movimentoFinanceiroRepo.findAll();
-        double entradas = movimentos.stream()
-                .filter(m -> m.getTipoMovimento() == TipoMovimento.ENTRADA)
-                .mapToDouble(MovimentoFinanceiro::getValorTotal)
-                .sum();
-        double saidas = movimentos.stream()
-                .filter(m -> m.getTipoMovimento() == TipoMovimento.SAIDA)
-                .mapToDouble(MovimentoFinanceiro::getValorTotal)
-                .sum();
-        return entradas - saidas;
+        if (movimentoFinanceiroRepo.countDistinctCurrencies() > 1) {
+            throw new IllegalStateException("Não é possível calcular um saldo único com moedas diferentes");
+        }
+        double entradas = movimentoFinanceiroRepo.sumByTipoMovimento(TipoMovimento.ENTRADA);
+        double saidas = movimentoFinanceiroRepo.sumByTipoMovimento(TipoMovimento.SAIDA);
+        return CalculationUtils.money(entradas - saidas);
     }
 }

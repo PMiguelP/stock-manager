@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.stream.Stream;
 
 @Component
 public class OrdemProducaoMapper {
@@ -120,14 +121,15 @@ public class OrdemProducaoMapper {
                                 ))
                                 .toList()
                         : null,
-                entity.getAlocacoes() != null ?
-                        entity.getAlocacoes().stream()
+                entity.getLotes() != null ?
+                        entity.getLotes().stream()
+                                .flatMap(lote -> lote.getAlocacoes() != null ? lote.getAlocacoes().stream() : Stream.empty())
                                 .map(a -> new AlocacaoSimpleDTO(
-                                        a.getEncomendaCliente().getId(),
-                                        a.getEncomendaCliente().getCliente() != null ? a.getEncomendaCliente().getCliente().getNome() : "—",
-                                        a.getEncomendaCliente().getEstado(),
+                                        a.getItemEncomenda().getEncomenda().getId(),
+                                        a.getItemEncomenda().getEncomenda().getCliente() != null ? a.getItemEncomenda().getEncomenda().getCliente().getNome() : "—",
+                                        a.getItemEncomenda().getEncomenda().getEstado(),
                                         a.getQuantidadeReservada(),
-                                        a.getEncomendaCliente().getCodigoTracking()
+                                        a.getItemEncomenda().getEncomenda().getCodigoTracking()
                                 ))
                                 .toList()
                         : null,

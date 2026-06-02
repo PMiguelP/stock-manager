@@ -7,7 +7,9 @@ import com.pelletsfactory.stock_manager.common.services.FornecedorService;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -34,6 +36,7 @@ public class PurchaseOrdersController {
     private final MoedaService moedaService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private VBox vboxContainer;
     @FXML private TextField txtSearch;
@@ -51,19 +54,13 @@ public class PurchaseOrdersController {
     private List<FornecedorSimpleDTO> fornecedores = new ArrayList<>();
     private VBox drawerCriar;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private VBox itemsContainerRef;
     private Label lblCriarSubtotal;
     private Label lblCriarVat;
     private Label lblCriarGrandTotal;
     private ComboBox<FornecedorSimpleDTO> cmbFornecedorCriar;
-    private DatePicker dtPickerCriar;
     private final List<ItemRow> itemRows = new ArrayList<>();
 
     private final ObservableList<EncomendaFornecedorSimpleDTO> encomendas = FXCollections.observableArrayList();
@@ -73,29 +70,25 @@ public class PurchaseOrdersController {
                                     StockService stockService,
                                     MoedaService moedaService,
                                     NavigationService navigationService,
-                                    ToastService toastService) {
+                                    ToastService toastService,
+                                    I18nService i18nService) {
         this.compraService = compraService;
         this.fornecedorService = fornecedorService;
         this.stockService = stockService;
         this.moedaService = moedaService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarEncomendas, i18nService);
         configurarFiltroStatus();
         carregarDadosAuxiliares();
         configurarTabela();
         configurarDrawerCriar();
         carregarEncomendas();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     private void configurarFiltroStatus() {
@@ -141,7 +134,7 @@ public class PurchaseOrdersController {
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) { setGraphic(null); return; }
-                int seq = paginaAtual * itemsPerPage + getIndex() + 1;
+                int seq = pagination.currentPage() * pagination.pageSize() + getIndex() + 1;
                 Label lbl = new Label(String.format("PO-%03d", seq));
                 lbl.setStyle("-fx-font-weight: 700; -fx-font-size: 13px;");
                 setGraphic(lbl);
@@ -190,7 +183,7 @@ public class PurchaseOrdersController {
                     int idx = getIndex();
                     if (idx >= 0 && idx < getTableView().getItems().size()) {
                         EncomendaFornecedorSimpleDTO dto = getTableView().getItems().get(idx);
-                        handleAbrirDetalhes(dto, paginaAtual * itemsPerPage + idx + 1);
+                        handleAbrirDetalhes(dto, pagination.currentPage() * pagination.pageSize() + idx + 1);
                     }
                 });
             }
@@ -246,7 +239,7 @@ public class PurchaseOrdersController {
         try {
             EstadoEncomendaFornecedor estado = cmbFiltroStatus.getValue();
             Page<EncomendaFornecedorSimpleDTO> page = compraService.listarEncomendasComFiltrosSimples(
-                    null, estado, paginaAtual + 1, itemsPerPage, "data", "DESC");
+                    null, estado, pagination.pageNumberForService(), pagination.pageSize(), "data", "DESC");
 
             List<EncomendaFornecedorSimpleDTO> content = new ArrayList<>(page.getContent());
             String search = txtSearch.getText() != null ? txtSearch.getText().trim().toLowerCase() : "";
@@ -256,10 +249,8 @@ public class PurchaseOrdersController {
             }
 
             encomendas.setAll(content);
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             toastService.showError("Erro", "Erro ao carregar encomendas: " + e.getMessage());
         }
@@ -272,7 +263,6 @@ public class PurchaseOrdersController {
         if (lblCriarVat != null)        lblCriarVat.setText("VAT (23%): €0.00");
         if (lblCriarGrandTotal != null) lblCriarGrandTotal.setText("Grand Total: €0.00");
         if (cmbFornecedorCriar != null) cmbFornecedorCriar.setValue(null);
-        if (dtPickerCriar != null)      dtPickerCriar.setValue(LocalDate.now());
         itemRows.clear();
         navigationService.showModal(drawerCriar);
     }
@@ -401,9 +391,6 @@ public class PurchaseOrdersController {
             @Override public FornecedorSimpleDTO fromString(String s) { return null; }
         });
 
-        dtPickerCriar = new DatePicker(LocalDate.now());
-        dtPickerCriar.setMaxWidth(Double.MAX_VALUE);
-
         itemsContainerRef = new VBox(10);
         Button btnAddItem = new Button("+ Add Item");
         btnAddItem.getStyleClass().add("button-outlined");
@@ -424,7 +411,6 @@ public class PurchaseOrdersController {
 
         form.getChildren().addAll(
                 criarCampoFormulario("Supplier",   cmbFornecedorCriar),
-                criarCampoFormulario("Order Date", dtPickerCriar),
                 itemsSection,
                 summary
         );
@@ -482,7 +468,7 @@ public class PurchaseOrdersController {
         try {
             criarRascunho();
             navigationService.hideModal();
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarEncomendas();
             toastService.showSuccess("Sucesso", "Purchase order saved as draft.");
         } catch (Exception e) {
@@ -496,7 +482,7 @@ public class PurchaseOrdersController {
             UUID encomendaId = criarRascunho();
             compraService.confirmarEncomenda(encomendaId);
             navigationService.hideModal();
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarEncomendas();
             toastService.showSuccess("Sucesso", "Purchase order confirmed.");
         } catch (Exception e) {
@@ -514,7 +500,9 @@ public class PurchaseOrdersController {
             return false;
         }
         for (ItemRow row : itemRows) {
-            if (row.getMaterial() == null || row.getParsedQty() <= 0 || row.getParsedPrice() <= 0) {
+            if (row.getMaterial() == null
+                    || !Double.isFinite(row.getParsedQty()) || row.getParsedQty() <= 0
+                    || !Double.isFinite(row.getParsedPrice()) || row.getParsedPrice() <= 0) {
                 toastService.showError("Validação", "Preencha todos os itens corretamente.");
                 return false;
             }
@@ -541,66 +529,7 @@ public class PurchaseOrdersController {
         return new VBox(8, lbl, input);
     }
 
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus);
-        left.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarEncomendas(); });
-        HBox center = new HBox(10, new Label("Per page"), cmbItemsPerPage);
-        center.setAlignment(Pos.CENTER);
-        HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button();
-        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarEncomendas(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int finalI = i;
-                p.setOnAction(e -> { paginaAtual = finalI; carregarEncomendas(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button();
-        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarEncomendas(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<EncomendaFornecedorSimpleDTO> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end   = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Showing " + start + " to " + end + " of " + page.getTotalElements());
-    }
-
-    @FXML private void handleFiltrar() { paginaAtual = 0; carregarEncomendas(); }
+    @FXML private void handleFiltrar() { pagination.resetPage(); carregarEncomendas(); }
 
     @FXML
     private void handleLimpar() {
@@ -673,6 +602,9 @@ public class PurchaseOrdersController {
         double getParsedPrice() {
             try { return Double.parseDouble(txtPrice.getText().replace(",", ".")); } catch (Exception e) { return 0; }
         }
-        double getTotal() { return getParsedQty() * getParsedPrice(); }
+        double getTotal() {
+            double total = getParsedQty() * getParsedPrice();
+            return Double.isFinite(total) ? total : 0;
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.common.dto.request;
 
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import java.util.UUID;
+import com.pelletsfactory.stock_manager.common.utils.ValidationUtils;
 
 public record MovimentoFinanceiroRequestDTO(
         TipoMovimento tipoMovimento,
@@ -14,12 +15,9 @@ public record MovimentoFinanceiroRequestDTO(
         if (tipoMovimento == null) {
             throw new IllegalArgumentException("Tipo de movimento é obrigatório");
         }
-        if (valorTotal == null || valorTotal <= 0) {
-            throw new IllegalArgumentException("Valor total deve ser superior a zero");
-        }
+        ValidationUtils.requirePositive(valorTotal, "Valor total");
         if (moedaId == null) {
             throw new IllegalArgumentException("ID da moeda é obrigatório");
         }
     }
 }
-

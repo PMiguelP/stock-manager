@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.response.EncomendaFornecedorSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.request.FornecedorRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.FornecedorSimpleDTO;
@@ -11,6 +12,8 @@ import com.pelletsfactory.stock_manager.common.mapper.FornecedorMapper;
 import com.pelletsfactory.stock_manager.common.repositories.EncomendaFornecedorRepository;
 import com.pelletsfactory.stock_manager.common.repositories.FornecedorRepository;
 import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
+import com.pelletsfactory.stock_manager.common.utils.NifUtils;
+import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -45,15 +48,21 @@ public class FornecedorService {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
 
         Fornecedor fornecedor = new Fornecedor();
-        String nifNormalizado = normalizarNif(nif);
+        String nifNormalizado = NifUtils.normalizeRequired(nif);
+        FornecedorRequestDTO dados = new FornecedorRequestDTO(
+                nome == null ? null : nome.trim(),
+                nifNormalizado,
+                contacto == null ? null : contacto.trim(),
+                email == null ? null : email.trim()
+        );
         if (fornecedorRepo.existsByNif(nifNormalizado)) {
             throw new IllegalArgumentException("Já existe fornecedor com este NIF: " + nifNormalizado);
         }
 
-        fornecedor.setNome(nome);
+        fornecedor.setNome(dados.nome());
         fornecedor.setNif(nifNormalizado);
-        fornecedor.setContacto(contacto);
-        fornecedor.setEmail(email);
+        fornecedor.setContacto(dados.contacto());
+        fornecedor.setEmail(dados.email());
 
         return fornecedorMapper.toResponseDTO(fornecedorRepo.save(fornecedor));
     }
@@ -71,14 +80,9 @@ public class FornecedorService {
             String sortBy,
             String direction) {
 
-        if (sortBy == null || sortBy.isEmpty()) {
-            sortBy = "nome";
-        }
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "nome");
 
-        Sort.Direction dir = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(dir, sortBy));
-
-        return fornecedorRepo.findByFiltros(nome, normalizarNifOuNulo(nif), pageable)
+        return fornecedorRepo.findByFiltros(nome, NifUtils.normalizeNullable(nif), pageable)
                 .map(fornecedorMapper::toSimpleDTO);
     }
 
@@ -107,17 +111,4 @@ public class FornecedorService {
         );
     }
 
-    private String normalizarNifOuNulo(String nif) {
-        if (nif == null || nif.isBlank()) {
-            return null;
-        }
-        return normalizarNif(nif);
-    }
-
-    private String normalizarNif(String nif) {
-        if (nif == null) {
-            return null;
-        }
-        return nif.trim().replaceFirst("(?i)^PT", "");
-    }
 }

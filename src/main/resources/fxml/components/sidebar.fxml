@@ -20,37 +20,43 @@
 
     <Label fx:id="lblMainSection" text="sidebar.main" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
-    <ToggleButton fx:id="btnDashboard" text="Dashboard" onAction="#handleDashboard" focusTraversable="false"
+    <ToggleButton fx:id="btnDashboard" text="dashboard.title" onAction="#handleDashboard" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2v-view-dashboard" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnFuncionarios" text="Employees" onAction="#handleFuncionarios" focusTraversable="false"
+    <ToggleButton fx:id="btnFuncionarios" text="nav.employees" onAction="#handleFuncionarios" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2a-account-group" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnOrders" text="Orders" onAction="#handleOrders" focusTraversable="false"
+    <ToggleButton fx:id="btnOrders" text="nav.orders" onAction="#handleOrders" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2c-cart" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnProduction" text="Production" onAction="#handleProduction" focusTraversable="false"
+    <ToggleButton fx:id="btnProduction" text="nav.production" onAction="#handleProduction" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2f-factory" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnStock" text="Stock" onAction="#handleStock" focusTraversable="false"
+    <ToggleButton fx:id="btnAllocations" text="nav.allocations" onAction="#handleAllocations" focusTraversable="false"
+            maxWidth="Infinity" alignment="CENTER_LEFT">
+        <graphic><FontIcon iconLiteral="mdi2s-swap-horizontal" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </ToggleButton>
+
+    <ToggleButton fx:id="btnStock" text="stock.title" onAction="#handleStock" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2p-package-variant" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnClients" text="Clients" onAction="#handleClients" focusTraversable="false"
+    <ToggleButton fx:id="btnClients" text="nav.clients" onAction="#handleClients" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2b-briefcase" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
@@ -58,19 +64,19 @@
 
     <Label fx:id="lblProcurementSection" text="sidebar.procurement" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
-    <ToggleButton fx:id="btnSuppliers" text="Suppliers" onAction="#handleSuppliers" focusTraversable="false"
+    <ToggleButton fx:id="btnSuppliers" text="nav.suppliers" onAction="#handleSuppliers" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2t-truck-delivery" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnPurchaseOrders" text="Purchase Orders" onAction="#handlePurchaseOrders" focusTraversable="false"
+    <ToggleButton fx:id="btnPurchaseOrders" text="purchaseOrders.title" onAction="#handlePurchaseOrders" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2c-clipboard-list" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnRawMaterials" text="Raw Materials" onAction="#handleRawMaterials" focusTraversable="false"
+    <ToggleButton fx:id="btnRawMaterials" text="rawMaterials.title" onAction="#handleRawMaterials" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2p-package-variant" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
@@ -78,19 +84,19 @@
 
     <Label fx:id="lblCatalogSection" text="sidebar.catalog" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
-    <ToggleButton fx:id="btnPelletTypes" text="Pellet Types" onAction="#handlePelletTypes" focusTraversable="false"
+    <ToggleButton fx:id="btnPelletTypes" text="pelletTypes.title" onAction="#handlePelletTypes" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2g-grain" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnFormulas" text="Formulas" onAction="#handleFormulas" focusTraversable="false"
+    <ToggleButton fx:id="btnFormulas" text="nav.formulas" onAction="#handleFormulas" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2f-flask" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
-    <ToggleButton fx:id="btnBatches" text="Batches" onAction="#handleBatches" focusTraversable="false"
+    <ToggleButton fx:id="btnBatches" text="nav.batches" onAction="#handleBatches" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2c-cube-outline" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
@@ -98,7 +104,7 @@
 
     <Region VBox.vgrow="ALWAYS"/>
 
-    <ToggleButton fx:id="btnSettings" text="Settings" onAction="#handleSettings" focusTraversable="false"
+    <ToggleButton fx:id="btnSettings" text="settings.title" onAction="#handleSettings" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2c-cog" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
@@ -106,7 +112,7 @@
 
     <Separator style="-fx-padding: 5 0 5 0;"/>
 
-    <Button fx:id="btnSair" text="Logout" onAction="#handleSair" maxWidth="Infinity" focusTraversable="false"
+    <Button fx:id="btnSair" text="nav.logout" onAction="#handleSair" maxWidth="Infinity" focusTraversable="false"
             alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2l-logout" iconSize="18"/></graphic>
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>

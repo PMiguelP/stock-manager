@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 
 import atlantafx.base.theme.Styles;
 import com.pelletsfactory.stock_manager.common.services.AuthService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
@@ -11,6 +12,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.paint.Color;
 import javafx.scene.Scene;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
@@ -50,6 +52,7 @@ public class LoginController {
     private final ConfigurableApplicationContext springContext;
     private final AuthService authService;
     private final ThemePreferencesService themePreferencesService;
+    private final I18nService i18nService;
 
     @FXML private HBox rootPane;
     @FXML private StackPane formSide;
@@ -75,11 +78,13 @@ public class LoginController {
     public LoginController(
             ConfigurableApplicationContext springContext,
             AuthService authService,
-            ThemePreferencesService themePreferencesService
+            ThemePreferencesService themePreferencesService,
+            I18nService i18nService
     ) {
         this.springContext = springContext;
         this.authService = authService;
         this.themePreferencesService = themePreferencesService;
+        this.i18nService = i18nService;
     }
 
     @FXML
@@ -278,8 +283,16 @@ public class LoginController {
             return;
         }
 
+        final int employeeNumber;
         try {
-            authService.login(Integer.parseInt(employeeNumberRaw), pin);
+            employeeNumber = Integer.parseInt(employeeNumberRaw);
+        } catch (NumberFormatException exception) {
+            showError("O número do funcionário não é válido.");
+            return;
+        }
+
+        try {
+            authService.login(employeeNumber, pin);
             abrirTelaPrincipal();
         } catch (RuntimeException ex) {
             showError(ex.getMessage() != null ? ex.getMessage() : "Credenciais inválidas.");
@@ -296,7 +309,9 @@ public class LoginController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main-view.fxml"));
             loader.setControllerFactory(springContext::getBean);
 
-            Scene scene = new Scene(loader.load(), 1400, 900);
+            Parent root = loader.load();
+            i18nService.applyTo(root);
+            Scene scene = new Scene(root, 1400, 900);
             themePreferencesService.applyToScene(scene);
             Stage stage = (Stage) btnLogin.getScene().getWindow();
             stage.setTitle("Pellets Factory - Stock Manager");

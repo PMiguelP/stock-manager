@@ -10,7 +10,10 @@ import com.pelletsfactory.stock_manager.common.services.MoedaService;
 import com.pelletsfactory.stock_manager.common.services.ClienteService;
 import com.pelletsfactory.stock_manager.common.services.VendaService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -33,6 +36,7 @@ public class OrdersController {
     private final MoedaService moedaService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private ComboBox<EstadoEncomendaCliente> cmbFiltroEstado;
     @FXML private TextField txtFiltroCliente;
@@ -54,12 +58,7 @@ public class OrdersController {
     private Label lblErroCliente;
     private Label lblErroMoeda;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<EncomendaClienteSimpleDTO> encomendas = FXCollections.observableArrayList();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -68,27 +67,23 @@ public class OrdersController {
                             ClienteService clienteService,
                             MoedaService moedaService,
                             NavigationService navigationService,
-                            ToastService toastService) {
+                            ToastService toastService,
+                            I18nService i18nService) {
         this.vendaService = vendaService;
         this.clienteService = clienteService;
         this.moedaService = moedaService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarEncomendas, i18nService);
         configurarTabela();
         configurarComboBoxes();
         configurarDrawerCriarEncomenda();
         carregarEncomendas();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     // ── Table ────────────────────────────────────────────────────────────────
@@ -178,14 +173,12 @@ public class OrdersController {
             EstadoEncomendaCliente estado = (cmbFiltroEstado != null) ? cmbFiltroEstado.getValue() : null;
 
             Page<EncomendaClienteSimpleDTO> page = vendaService.listarEncomendasComFiltrosSimples(
-                    null, estado, paginaAtual + 1, itemsPerPage, "data", "DESC"
+                    null, estado, pagination.pageNumberForService(), pagination.pageSize(), "data", "DESC"
             );
 
             encomendas.setAll(page.getContent());
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             mostrarErro("Erro ao carregar: " + e.getMessage());
         }
@@ -194,26 +187,8 @@ public class OrdersController {
     // ── Create order drawer ───────────────────────────────────────────────────
 
     private void configurarDrawerCriarEncomenda() {
-        criarEncomendaDrawer = new VBox(0);
-        criarEncomendaDrawer.setMinWidth(550);
-        criarEncomendaDrawer.setPrefWidth(550);
-        criarEncomendaDrawer.setMaxWidth(550);
-        criarEncomendaDrawer.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        // Header
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Nova Encomenda");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        criarEncomendaDrawer = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Nova Encomenda", navigationService::hideModal);
 
         // Form
         VBox form = new VBox(20);
@@ -278,7 +253,7 @@ public class OrdersController {
 
         try {
             vendaService.criarPedidoVenda(cmbCliente.getValue().id(), cmbMoeda.getValue().id());
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarEncomendas();
             navigationService.hideModal();
             mostrarSucesso("Encomenda criada com sucesso!");
@@ -321,25 +296,8 @@ public class OrdersController {
     }
 
     private VBox criarDrawerVisualizacao(EncomendaClienteDetailsDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Detalhes da Encomenda");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Detalhes da Encomenda", navigationService::hideModal);
 
         VBox secaoCliente = criarSecao("Informação do Cliente");
         VBox camposCliente = new VBox(15);
@@ -389,10 +347,7 @@ public class OrdersController {
         VBox form = new VBox(20, secaoCliente, secaoDetalhes, secaoItens);
         form.setPadding(new Insets(30));
 
-        ScrollPane scroll = new ScrollPane(form);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
+        ScrollPane scroll = UiFactory.transparentScroll(form);
 
         root.getChildren().addAll(header, scroll);
         return root;
@@ -454,11 +409,6 @@ public class OrdersController {
     private String valorOuVazio(String v) { return v != null && !v.isEmpty() ? v : "—"; }
 
     private HBox criarBadgeEstado(EstadoEncomendaCliente estado) {
-        HBox b = new HBox(8);
-        b.setAlignment(Pos.CENTER_LEFT);
-        b.setPadding(new Insets(4, 10, 4, 10));
-        b.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;");
-
         String color = switch (estado) {
             case PENDENTE -> "#eab308";
             case CONFIRMADA -> "#3b82f6";
@@ -467,9 +417,6 @@ public class OrdersController {
             case EXPEDIDA -> "#f97316";
             case CANCELADA -> "#ef4444";
         };
-        b.setStyle(b.getStyle() + String.format("-fx-background-color: %s20; -fx-border-color: %s;",
-                color.replace("#", ""), color));
-
         String icon = switch (estado) {
             case PENDENTE -> "mdi2c-clock-outline";
             case CONFIRMADA -> "mdi2c-check-circle-outline";
@@ -478,73 +425,7 @@ public class OrdersController {
             case EXPEDIDA -> "mdi2t-truck-delivery-outline";
             case CANCELADA -> "mdi2c-close-circle-outline";
         };
-        FontIcon ic = new FontIcon(icon);
-        ic.setIconColor(javafx.scene.paint.Color.web(color));
-        Label l = new Label(estado.name());
-        l.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
-        b.getChildren().addAll(ic, l);
-        return b;
-    }
-
-    // ── Pagination ────────────────────────────────────────────────────────────
-
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus);
-        left.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarEncomendas(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
-        center.setAlignment(Pos.CENTER);
-        HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button();
-        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarEncomendas(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int fi = i;
-                p.setOnAction(e -> { paginaAtual = fi; carregarEncomendas(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button();
-        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarEncomendas(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<EncomendaClienteSimpleDTO> page) {
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
+        return UiFactory.statusBadge(estado.name(), icon, color);
     }
 
     private void configurarComboBoxes() {
@@ -554,7 +435,7 @@ public class OrdersController {
     private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
     private void mostrarErro(String m) { toastService.showError("Erro", m); }
 
-    @FXML private void handleFiltrar() { paginaAtual = 0; carregarEncomendas(); }
+    @FXML private void handleFiltrar() { pagination.resetPage(); carregarEncomendas(); }
 
     @FXML
     private void handleMostrarTodos() {
