@@ -6,6 +6,7 @@ import com.pelletsfactory.stock_manager.common.dto.response.OrdemProducaoSimpleD
 import com.pelletsfactory.stock_manager.common.services.LotePelletService;
 import com.pelletsfactory.stock_manager.common.services.OrdemProducaoService;
 import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import javafx.collections.FXCollections;
@@ -31,6 +32,7 @@ public class BatchesController {
     private final NavigationService navigationService;
     private final FormValidationService formValidationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private VBox vboxContainer;
     @FXML private TextField txtFiltroCodigo;
@@ -68,12 +70,14 @@ public class BatchesController {
                              OrdemProducaoService ordemProducaoService,
                              NavigationService navigationService,
                              FormValidationService formValidationService,
-                             ToastService toastService) {
+                             ToastService toastService,
+                             I18nService i18nService) {
         this.lotePelletService = lotePelletService;
         this.ordemProducaoService = ordemProducaoService;
         this.navigationService = navigationService;
         this.formValidationService = formValidationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
@@ -128,7 +132,7 @@ public class BatchesController {
             {
                 btnDel.getStyleClass().addAll("button-icon", "flat");
                 btnDel.setGraphic(new FontIcon("mdi2t-trash-can-outline:18"));
-                btnDel.setTooltip(new Tooltip("Eliminar Lote"));
+                btnDel.setTooltip(new Tooltip(i18nService.translate("common.delete")));
                 btnDel.setOnAction(ev -> {
                     LotePelletSimpleDTO lote = getTableView().getItems().get(getIndex());
                     handleEliminarLote(lote);
@@ -166,7 +170,7 @@ public class BatchesController {
                     ? txtFiltroCodigo.getText() : null;
 
             Page<LotePelletSimpleDTO> page = lotePelletService.listarLotesComFiltros(
-                    paginaAtual + 1, itemsPerPage, codigo, null, null, "data_producao", "DESC"
+                    paginaAtual + 1, itemsPerPage, codigo, null, null, "dataProducao", "DESC"
             );
 
             lotes.setAll(page.getContent());
@@ -175,25 +179,26 @@ public class BatchesController {
             atualizarLabelStatus(page);
             atualizarBotoesPaginacao();
         } catch (Exception e) {
-            mostrarErro("Erro ao carregar lotes: " + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
     private void handleEliminarLote(LotePelletSimpleDTO lote) {
         Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmacao.setTitle("Eliminar Lote");
-        confirmacao.setHeaderText("Tem a certeza?");
-        confirmacao.setContentText("Esta ação vai eliminar o lote " + lote.codigoLote() + " e decrementar o stock.");
+        confirmacao.setTitle(i18nService.translate("common.delete"));
+        confirmacao.setHeaderText(i18nService.translate("common.confirmDelete"));
+        confirmacao.setContentText(lote.codigoLote());
+        confirmacao.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
 
-        if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+        if (confirmacao.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
 
         try {
             lotePelletService.apagarLote(lote.id());
             paginaAtual = 0;
             carregarLotes();
-            mostrarSucesso("Lote eliminado!");
+            mostrarSucesso(i18nService.translate("batches.deleted"));
         } catch (Exception e) {
-            mostrarErro("Erro ao eliminar: " + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
@@ -211,7 +216,7 @@ public class BatchesController {
         header.setPadding(new Insets(25));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Novo Lote de Pellet");
+        Label titulo = new Label(i18nService.translate("batches.newTitle"));
         titulo.getStyleClass().add("title-3");
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
@@ -246,7 +251,7 @@ public class BatchesController {
         cmbOrdem.setOnAction(e -> atualizarTipoPellet(cmbOrdem.getValue()));
 
         VBox campoTipoPellet = new VBox(6);
-        Label lblTipoPelletLabel = new Label("Tipo Pellet (preenchido automaticamente)");
+        Label lblTipoPelletLabel = new Label(i18nService.translate("batches.pelletTypeAuto"));
         lblTipoPelletLabel.getStyleClass().add("text-muted");
         HBox tipoPelletBox = new HBox(8);
         tipoPelletBox.setAlignment(Pos.CENTER_LEFT);
@@ -272,11 +277,11 @@ public class BatchesController {
         txtLocalizacao.setPromptText("Ex: Armazém A, Zona 3 (opcional)");
 
         form.getChildren().addAll(
-                criarCampoFormulario("Ordem de Produção *", cmbOrdem, lblErroOrdem),
+                criarCampoFormulario(i18nService.translate("batches.productionOrder") + " *", cmbOrdem, lblErroOrdem),
                 campoTipoPellet,
-                criarCampoFormulario("Código do Lote *", txtCodigoLote, lblErroCodigo),
-                criarCampoFormulario("Quantidade (kg) *", txtQuantidadeKg, lblErroQuantidade),
-                criarCampoFormulario("Localização no Armazém", txtLocalizacao)
+                criarCampoFormulario(i18nService.translate("batches.batchCode") + " *", txtCodigoLote, lblErroCodigo),
+                criarCampoFormulario(i18nService.translate("batches.quantityKg") + " *", txtQuantidadeKg, lblErroQuantidade),
+                criarCampoFormulario(i18nService.translate("batches.location"), txtLocalizacao)
         );
 
         ScrollPane scroll = new ScrollPane(form);
@@ -289,7 +294,7 @@ public class BatchesController {
         footer.setPadding(new Insets(25));
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnSalvar = new Button("Registar Lote");
+        Button btnSalvar = new Button(i18nService.translate("batches.save"));
         btnSalvar.getStyleClass().add("accent");
         btnSalvar.setPrefHeight(44);
         btnSalvar.setMaxWidth(Double.MAX_VALUE);
@@ -318,14 +323,14 @@ public class BatchesController {
 
     private void handleRegistarLote() {
         boolean valido = true;
-        valido = formValidationService.validateRequiredCombo(cmbOrdem, lblErroOrdem, "Ordem de produção é obrigatória") && valido;
-        valido = formValidationService.validateRequiredText(txtCodigoLote, lblErroCodigo, "Código do lote é obrigatório") && valido;
-        valido = formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, "Quantidade é obrigatória") && valido;
+        valido = formValidationService.validateRequiredCombo(cmbOrdem, lblErroOrdem, i18nService.translate("batches.orderRequired")) && valido;
+        valido = formValidationService.validateRequiredText(txtCodigoLote, lblErroCodigo, i18nService.translate("batches.codeRequired")) && valido;
+        valido = formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, i18nService.translate("batches.quantityRequired")) && valido;
 
         if (!valido) return;
 
         if (selectedTipoPelletId == null) {
-            mostrarErro("Selecione uma ordem de produção válida para determinar o tipo de pellet.");
+            mostrarErro(i18nService.translate("batches.selectValidOrder"));
             return;
         }
 
@@ -334,7 +339,7 @@ public class BatchesController {
             quantidade = Double.parseDouble(txtQuantidadeKg.getText().trim().replace(",", "."));
             if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
-            formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, "Quantidade inválida (use número positivo)");
+            formValidationService.validateRequiredText(txtQuantidadeKg, lblErroQuantidade, i18nService.translate("batches.quantityInvalid"));
             return;
         }
 
@@ -351,9 +356,9 @@ public class BatchesController {
             paginaAtual = 0;
             carregarLotes();
             navigationService.hideModal();
-            mostrarSucesso("Lote registado com sucesso!");
+            mostrarSucesso(i18nService.translate("batches.created"));
         } catch (Exception e) {
-            mostrarErro("Erro ao registar lote: " + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
@@ -427,7 +432,7 @@ public class BatchesController {
         cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
         cmbItemsPerPage.setValue(itemsPerPage);
         cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarLotes(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
+        HBox center = new HBox(10, new Label(i18nService.translate("common.perPage")), cmbItemsPerPage);
         center.setAlignment(Pos.CENTER);
         HBox.setHgrow(center, Priority.ALWAYS);
 
@@ -466,11 +471,16 @@ public class BatchesController {
     }
 
     private void atualizarLabelStatus(Page<LotePelletSimpleDTO> page) {
+        if (page.getTotalElements() == 0) {
+            lblPaginaStatus.setText(i18nService.translate("common.noResults"));
+            return;
+        }
         long start = (long) page.getNumber() * page.getSize() + 1;
         long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
+        lblPaginaStatus.setText(java.text.MessageFormat.format(
+                i18nService.translate("common.showingRange"), start, end, page.getTotalElements()));
     }
 
-    private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
-    private void mostrarErro(String m) { toastService.showError("Erro", m); }
+    private void mostrarSucesso(String m) { toastService.showSuccess(i18nService.translate("common.success"), m); }
+    private void mostrarErro(String m) { toastService.showError(i18nService.translate("common.error"), m); }
 }

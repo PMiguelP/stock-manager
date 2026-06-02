@@ -432,8 +432,8 @@ public class OrdersController {
         cmbFiltroEstado.setItems(FXCollections.observableArrayList(EstadoEncomendaCliente.values()));
     }
 
-    private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
-    private void mostrarErro(String m) { toastService.showError("Erro", m); }
+    private void mostrarSucesso(String m) { toastService.showSuccess(i18nService.translate("common.success"), m); }
+    private void mostrarErro(String m) { toastService.showError(i18nService.translate("common.error"), m); }
 
     @FXML private void handleFiltrar() { pagination.resetPage(); carregarEncomendas(); }
 

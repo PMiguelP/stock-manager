@@ -1,8 +1,10 @@
 package com.pelletsfactory.stock_manager.desktop.controllers;
 
+import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroResponseDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MovimentoFinanceiroSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MoedaSimpleDTO;
+import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletSimpleDTO;
 import com.pelletsfactory.stock_manager.common.enums.TipoMovimento;
 import com.pelletsfactory.stock_manager.common.services.FinanceiroService;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
@@ -316,12 +318,139 @@ public class StockController {
         return value != null && !value.isBlank() ? value : "-";
     }
 
-    private void mostrarErro(String m) { toastService.showError("Erro", m); }
+    private void mostrarErro(String m) { toastService.showError(i18nService.translate("common.error"), m); }
 
     @FXML private void handleFiltrar() { pagination.resetPage(); carregarMovimentos(); }
     @FXML private void handleMostrarTodos() {
         cmbFiltroTipo.setValue(null);
         cmbFiltroMoeda.setValue(null);
         handleFiltrar();
+    }
+
+    // ── Stock management drawers ──────────────────────────────────────────────
+
+    @FXML private void handleAdicionarPellets() { abrirDrawerAjusteStock(true, true); }
+    @FXML private void handleRemoverPellets()   { abrirDrawerAjusteStock(false, true); }
+    @FXML private void handleAdicionarMaterial() { abrirDrawerAjusteStock(true, false); }
+    @FXML private void handleRemoverMaterial()   { abrirDrawerAjusteStock(false, false); }
+
+    private void abrirDrawerAjusteStock(boolean adicionar, boolean pellets) {
+        VBox root = UiFactory.drawerRoot(480);
+        String titulo = adicionar
+                ? i18nService.translate(pellets ? "stock.addPelletsTitle" : "stock.addMaterialTitle")
+                : i18nService.translate(pellets ? "stock.removePelletsTitle" : "stock.removeMaterialTitle");
+        HBox header = UiFactory.drawerHeader(titulo, navigationService::hideModal);
+
+        // Tipo selector
+        ComboBox<Object> cmbTipo = new ComboBox<>();
+        cmbTipo.setMaxWidth(Double.MAX_VALUE);
+        cmbTipo.setPromptText(i18nService.translate("stock.selectType"));
+        Label lblErroTipo = criarErroLabel();
+
+        try {
+            if (pellets) {
+                var tipos = stockService.listarTiposPelletComFiltros(1, 100, null, null, "nome", "ASC").getContent();
+                cmbTipo.setConverter(new StringConverter<>() {
+                    @Override public String toString(Object o) { return o instanceof TipoPelletSimpleDTO t ? t.nome() : ""; }
+                    @Override public Object fromString(String s) { return null; }
+                });
+                cmbTipo.getItems().setAll(tipos);
+            } else {
+                var mats = stockService.listarMateriasPrimasComFiltros(1, 100, null, null, null, "nome", "ASC").getContent();
+                cmbTipo.setConverter(new StringConverter<>() {
+                    @Override public String toString(Object o) { return o instanceof MateriaPrimaSimpleDTO m ? m.nome() + " (" + m.unidade() + ")" : ""; }
+                    @Override public Object fromString(String s) { return null; }
+                });
+                cmbTipo.getItems().setAll(mats);
+            }
+        } catch (Exception e) {
+            mostrarErro(e.getMessage());
+            return;
+        }
+
+        cmbTipo.setOnAction(e -> { lblErroTipo.setVisible(false); lblErroTipo.setManaged(false); cmbTipo.setStyle(""); });
+
+        // Quantidade
+        TextField txtQtd = new TextField();
+        txtQtd.setPromptText("0.00");
+        Label lblErroQtd = criarErroLabel();
+        txtQtd.textProperty().addListener((obs, ov, nv) -> { lblErroQtd.setVisible(false); lblErroQtd.setManaged(false); txtQtd.setStyle(""); });
+
+        Label lblErroGeral = new Label();
+        lblErroGeral.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 8 12; -fx-background-color: #ef444420; -fx-background-radius: 6; -fx-border-color: #ef4444; -fx-border-radius: 6; -fx-border-width: 1;");
+        lblErroGeral.setWrapText(true);
+        lblErroGeral.setMaxWidth(Double.MAX_VALUE);
+        lblErroGeral.setVisible(false);
+        lblErroGeral.setManaged(false);
+
+        Label lblTipoLbl = new Label(pellets ? i18nService.translate("pellet.type") : i18nService.translate("rawMaterials.title"));
+        lblTipoLbl.getStyleClass().add("text-muted");
+        Label lblQtdLbl = new Label(i18nService.translate("stock.quantityKg"));
+        lblQtdLbl.getStyleClass().add("text-muted");
+
+        VBox form = new VBox(20,
+                new VBox(6, lblTipoLbl, cmbTipo, lblErroTipo),
+                new VBox(6, lblQtdLbl, txtQtd, lblErroQtd),
+                lblErroGeral
+        );
+        form.setPadding(new Insets(30));
+        ScrollPane scroll = UiFactory.transparentScroll(form);
+
+        HBox footer = UiFactory.drawerFooter();
+        Button btnConfirmar = new Button(titulo);
+        btnConfirmar.getStyleClass().add(adicionar ? "accent" : "danger");
+        btnConfirmar.setPrefHeight(44);
+        btnConfirmar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnConfirmar, Priority.ALWAYS);
+        btnConfirmar.setOnAction(e -> {
+            lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
+            boolean valido = true;
+            if (cmbTipo.getValue() == null) {
+                lblErroTipo.setText(i18nService.translate("stock.selectType"));
+                lblErroTipo.setVisible(true); lblErroTipo.setManaged(true);
+                cmbTipo.setStyle("-fx-border-color: #ef4444;");
+                valido = false;
+            }
+            Double quantidade = null;
+            try {
+                quantidade = Double.parseDouble(txtQtd.getText().replace(",", ".").trim());
+                if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                lblErroQtd.setText(i18nService.translate("stock.quantityInvalid"));
+                lblErroQtd.setVisible(true); lblErroQtd.setManaged(true);
+                txtQtd.setStyle("-fx-border-color: #ef4444;");
+                valido = false;
+            }
+            if (!valido) return;
+            try {
+                if (pellets) {
+                    UUID id = ((TipoPelletSimpleDTO) cmbTipo.getValue()).id();
+                    if (adicionar) stockService.adicionarStockPellet(id, quantidade);
+                    else           stockService.subtrairStockPellet(id, quantidade);
+                } else {
+                    UUID id = ((MateriaPrimaSimpleDTO) cmbTipo.getValue()).id();
+                    if (adicionar) stockService.adicionarStockMateriaPrima(id, quantidade);
+                    else           stockService.subtrairStockMateriaPrima(id, quantidade);
+                }
+                String msg = i18nService.translate(adicionar ? "stock.addedSuccess" : "stock.removedSuccess");
+                toastService.showSuccess(i18nService.translate("common.success"), msg);
+                navigationService.hideModal();
+                carregarDadosEstatisticos();
+            } catch (Exception ex) {
+                lblErroGeral.setText(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("common.saveError"));
+                lblErroGeral.setVisible(true); lblErroGeral.setManaged(true);
+            }
+        });
+        footer.getChildren().add(btnConfirmar);
+        root.getChildren().addAll(header, scroll, footer);
+        navigationService.showModal(root);
+    }
+
+    private Label criarErroLabel() {
+        Label lbl = new Label();
+        lbl.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 11px;");
+        lbl.setVisible(false);
+        lbl.setManaged(false);
+        return lbl;
     }
 }

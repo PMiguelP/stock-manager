@@ -65,6 +65,7 @@ public class ProductionController {
     private Label lblErroFuncionario;
     private Label lblErroQuantidade;
     private Label lblErroData;
+    private Label lblErroGeral;
 
     private PaginationControls pagination;
 
@@ -212,7 +213,7 @@ public class ProductionController {
             pagination.attachTo(vboxContainer);
             pagination.update(page);
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao carregar ordens: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
     }
 
@@ -223,7 +224,7 @@ public class ProductionController {
             OrdemProducaoDetailsDTO d = ordemService.obterDetalhes(ordem.id());
             navigationService.showModal(criarDrawerDetalhes(d));
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao obter detalhes: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
     }
 
@@ -372,9 +373,9 @@ public class ProductionController {
                             ordemService.apagarOrdem(d.id());
                             carregarOrdens();
                             navigationService.hideModal();
-                            toastService.showSuccess("Sucesso", "Ordem eliminada.");
+                            toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("production.deleted"));
                         } catch (Exception ex) {
-                            toastService.showError("Erro", "Não foi possível eliminar: " + ex.getMessage());
+                            toastService.showError(i18nService.translate("common.error"), ex.getMessage());
                         }
                     }
                 });
@@ -649,7 +650,7 @@ public class ProductionController {
                 carregarOrdens();
                 OrdemProducaoDetailsDTO fresh = ordemService.obterDetalhes(d.id());
                 navigationService.showModal(criarDrawerDetalhes(fresh));
-                toastService.showSuccess("Sucesso", "Ordem atualizada com sucesso.");
+                toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("production.updated"));
             } catch (Exception ex) {
                 toastService.showError("Erro", ex.getMessage());
             }
@@ -730,12 +731,20 @@ public class ProductionController {
         dpDataInicio.valueProperty().addListener((obs, ov, nv) -> esconderErro(lblErroData, dpDataInicio));
         lblErroData = criarErroLabel();
 
+        lblErroGeral = new Label();
+        lblErroGeral.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 8 12; -fx-background-color: #ef444420; -fx-background-radius: 6; -fx-border-color: #ef4444; -fx-border-radius: 6; -fx-border-width: 1;");
+        lblErroGeral.setWrapText(true);
+        lblErroGeral.setMaxWidth(Double.MAX_VALUE);
+        lblErroGeral.setVisible(false);
+        lblErroGeral.setManaged(false);
+
         form.getChildren().addAll(
                 criarCampoFormulario("Tipo de Pellet *", cmbTipoPellet, lblErroTipoPellet),
                 criarCampoFormulario("Fórmula de Produção *", cmbFormula, lblErroFormula),
                 criarCampoFormulario("Operador *", cmbFuncionario, lblErroFuncionario),
                 criarCampoFormulario("Quantidade Planeada (kg) *", txtQuantidade, lblErroQuantidade),
-                criarCampoFormulario("Data de Início *", dpDataInicio, lblErroData)
+                criarCampoFormulario("Data de Início *", dpDataInicio, lblErroData),
+                lblErroGeral
         );
 
         ScrollPane scroll = new ScrollPane(form);
@@ -813,6 +822,8 @@ public class ProductionController {
 
         if (!valido) return;
 
+        lblErroGeral.setVisible(false);
+        lblErroGeral.setManaged(false);
         try {
             OrdemProducaoRequestDTO dto = new OrdemProducaoRequestDTO(
                     cmbTipoPellet.getValue().id(),
@@ -827,9 +838,11 @@ public class ProductionController {
             pagination.resetPage();
             carregarOrdens();
             navigationService.hideModal();
-            toastService.showSuccess("Sucesso", "Ordem de produção criada com sucesso!");
+            toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("production.created"));
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao criar ordem: " + e.getMessage());
+            lblErroGeral.setText(e.getMessage() != null ? e.getMessage() : "Erro ao criar ordem de produção.");
+            lblErroGeral.setVisible(true);
+            lblErroGeral.setManaged(true);
         }
     }
 
@@ -843,11 +856,17 @@ public class ProductionController {
         try {
             cmbTipoPellet.setItems(FXCollections.observableArrayList(
                     stockService.listarTiposPelletComFiltros(1, 500, null, null, "nome", "ASC").getContent()));
-        } catch (Exception e) { cmbTipoPellet.setItems(FXCollections.emptyObservableList()); }
+        } catch (Exception e) {
+            cmbTipoPellet.setItems(FXCollections.emptyObservableList());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
+        }
         try {
             cmbFuncionario.setItems(FXCollections.observableArrayList(
                     funcionarioService.listarFuncionarios(1, 500, null, null, null, null, "nome", "ASC").getContent()));
-        } catch (Exception e) { cmbFuncionario.setItems(FXCollections.emptyObservableList()); }
+        } catch (Exception e) {
+            cmbFuncionario.setItems(FXCollections.emptyObservableList());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
+        }
 
         cmbTipoPellet.setValue(null);
         cmbFormula.setItems(FXCollections.emptyObservableList());
@@ -861,6 +880,8 @@ public class ProductionController {
         esconderErro(lblErroFuncionario, cmbFuncionario);
         esconderErro(lblErroQuantidade, txtQuantidade);
         esconderErro(lblErroData, dpDataInicio);
+        lblErroGeral.setVisible(false);
+        lblErroGeral.setManaged(false);
 
         navigationService.showModal(criarOrdemDrawer);
     }

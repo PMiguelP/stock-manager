@@ -1,6 +1,7 @@
 package com.pelletsfactory.stock_manager.common.services;
 
 import com.pelletsfactory.stock_manager.common.dto.request.MateriaPrimaRequestDTO;
+import com.pelletsfactory.stock_manager.common.dto.request.TipoPelletRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TipoPelletDetailsDTO;
@@ -60,6 +61,28 @@ public class StockService {
                 saved.getCreatedAt(),
                 saved.getUpdatedAt()
         );
+    }
+
+    @Transactional
+    public MateriaPrimaDetailsDTO atualizarMateriaPrima(UUID id, MateriaPrimaRequestDTO dto) {
+        MateriaPrima entity = materiaPrimaRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Matéria-prima não encontrada"));
+        materiaPrimaMapper.updateEntityFromDTO(dto, entity);
+        normalizarStockMateriaPrima(entity);
+        MateriaPrima saved = materiaPrimaRepo.save(entity);
+        return new MateriaPrimaDetailsDTO(
+                saved.getId(), saved.getNome(), saved.getUnidade(),
+                saved.getStockAtual(), saved.getStockMinimo(),
+                saved.getCreatedAt(), saved.getUpdatedAt()
+        );
+    }
+
+    @Transactional
+    public void apagarMateriaPrima(UUID id) {
+        if (!materiaPrimaRepo.existsById(id)) {
+            throw new EntityNotFoundException("Matéria-prima não encontrada");
+        }
+        materiaPrimaRepo.deleteById(id);
     }
 
     @Transactional
@@ -165,12 +188,13 @@ public class StockService {
             int pageSize,
             String nome,
             String unidade,
+            String status,
             String sortBy,
             String direction) {
 
         Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "nome");
 
-        return materiaPrimaRepo.findByFiltros(nome, unidade, pageable)
+        return materiaPrimaRepo.findByFiltros(nome, unidade, status, pageable)
                 .map(materiaPrimaMapper::toSimpleDTO);
     }
 
@@ -204,6 +228,32 @@ public class StockService {
                 materiaPrima.getCreatedAt(),
                 materiaPrima.getUpdatedAt()
         );
+    }
+
+    @Transactional
+    public TipoPelletDetailsDTO criarTipoPellet(TipoPelletRequestDTO dto) {
+        TipoPellet entity = tipoPelletMapper.toEntity(dto);
+        normalizarStockTipoPellet(entity);
+        TipoPellet saved = tipoPelletRepo.save(entity);
+        return obterDetalhesTipoPellet(saved.getId());
+    }
+
+    @Transactional
+    public TipoPelletDetailsDTO atualizarTipoPellet(UUID id, TipoPelletRequestDTO dto) {
+        TipoPellet entity = tipoPelletRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Tipo de pellet não encontrado"));
+        tipoPelletMapper.updateEntityFromDTO(dto, entity);
+        normalizarStockTipoPellet(entity);
+        tipoPelletRepo.save(entity);
+        return obterDetalhesTipoPellet(id);
+    }
+
+    @Transactional
+    public void apagarTipoPellet(UUID id) {
+        if (!tipoPelletRepo.existsById(id)) {
+            throw new EntityNotFoundException("Tipo de pellet não encontrado");
+        }
+        tipoPelletRepo.deleteById(id);
     }
 
     public TipoPelletDetailsDTO obterDetalhesTipoPellet(UUID tipoPelletId) {

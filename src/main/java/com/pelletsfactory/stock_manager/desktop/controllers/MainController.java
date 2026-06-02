@@ -38,6 +38,7 @@ public class MainController {
         // Agora o navigationService terá a referência do Modal que cobre tudo
         navigationService.setModalPane(modalPane);
         toastService.setToastContainer(toastContainer);
+        toastContainer.setViewOrder(-1.0);
 
         navigationService.navigateTo("/dashboard");
     }

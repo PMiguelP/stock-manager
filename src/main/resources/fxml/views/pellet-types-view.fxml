@@ -12,6 +12,7 @@
                 <Label text="pelletTypes.subtitle" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
+            <Button text="pelletTypes.new" onAction="#handleAbrirModal" styleClass="accent"/>
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">

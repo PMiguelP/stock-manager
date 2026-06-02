@@ -92,6 +92,31 @@ public class ClienteService {
                 .toList();
     }
 
+    @Transactional
+    public ClienteDetailsDTO atualizarCliente(UUID id, String nome, String nif, String contacto, String email) {
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
+        Cliente cliente = buscarClientePorId(id);
+        String nifNormalizado = NifUtils.normalizeRequired(nif);
+        if (!nifNormalizado.equals(cliente.getNif()) && clienteRepo.existsByNif(nifNormalizado)) {
+            throw new IllegalArgumentException("Já existe cliente com este NIF: " + nifNormalizado);
+        }
+        cliente.setNome(nome == null ? null : nome.trim());
+        cliente.setNif(nifNormalizado);
+        cliente.setContacto(contacto == null ? null : contacto.trim());
+        cliente.setEmail(email == null ? null : email.trim());
+        clienteRepo.save(cliente);
+        return obterDetalhesCliente(id);
+    }
+
+    @Transactional
+    public void apagarCliente(UUID id) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
+        if (!clienteRepo.existsById(id)) {
+            throw new EntityNotFoundException("Cliente não encontrado");
+        }
+        clienteRepo.deleteById(id);
+    }
+
     public ClienteDetailsDTO obterDetalhesCliente(UUID clienteId) {
         Cliente cliente = buscarClientePorId(clienteId);
 

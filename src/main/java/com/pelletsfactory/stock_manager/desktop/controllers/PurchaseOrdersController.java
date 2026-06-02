@@ -114,17 +114,17 @@ public class PurchaseOrdersController {
             List<MoedaSimpleDTO> moedas = moedaService.listarTodosSimplesDTO();
             if (!moedas.isEmpty()) moedaPadraoId = moedas.get(0).id();
         } catch (Exception e) {
-            toastService.showError("Erro", "Não foi possível carregar a moeda padrão.");
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("purchaseOrders.loadCurrencyError"));
         }
         try {
-            materiais = stockService.listarMateriasPrimasComFiltros(1, 200, null, null, "nome", "ASC").getContent();
+            materiais = stockService.listarMateriasPrimasComFiltros(1, 100, null, null, null, "nome", "ASC").getContent();
         } catch (Exception e) {
-            toastService.showError("Erro", "Não foi possível carregar matérias-primas.");
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("rawMaterials.loadError"));
         }
         try {
             fornecedores = fornecedorService.listarTodosFornecedoresSimples();
         } catch (Exception e) {
-            toastService.showError("Erro", "Não foi possível carregar fornecedores.");
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("suppliers.loadError"));
         }
     }
 
@@ -252,7 +252,7 @@ public class PurchaseOrdersController {
             pagination.attachTo(vboxContainer);
             pagination.update(page);
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao carregar encomendas: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
     }
 
@@ -272,7 +272,7 @@ public class PurchaseOrdersController {
             EncomendaFornecedorDetailsDTO details = compraService.obterDetalhesEncomendaFornecedor(dto.id());
             navigationService.showModal(criarDrawerDetalhes(details, poSeq));
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao carregar detalhes: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
     }
 
@@ -322,13 +322,92 @@ public class PurchaseOrdersController {
         footer.setPadding(new Insets(25));
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnFechar = new Button("Close");
-        btnFechar.getStyleClass().add("button-outlined");
-        btnFechar.setPrefHeight(44);
-        btnFechar.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnFechar, Priority.ALWAYS);
-        btnFechar.setOnAction(e -> navigationService.hideModal());
-        footer.getChildren().add(btnFechar);
+
+        EstadoEncomendaFornecedor estado = d.estado();
+        if (estado == EstadoEncomendaFornecedor.RASCUNHO) {
+            Button btnEliminar = new Button(i18nService.translate("common.delete"));
+            btnEliminar.getStyleClass().addAll("button-outlined", "danger");
+            btnEliminar.setPrefHeight(44);
+            btnEliminar.setOnAction(e -> {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle(i18nService.translate("common.delete"));
+                confirm.setHeaderText(i18nService.translate("common.confirmDelete"));
+                confirm.setContentText(String.format("PO-%03d", poSeq));
+                confirm.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
+                try {
+                    compraService.apagarEncomendaRascunho(d.id());
+                    toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.deleted"));
+                    navigationService.hideModal();
+                    carregarEncomendas();
+                } catch (Exception ex) {
+                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+                }
+            });
+
+            Button btnConfirmar = new Button("Confirmar Encomenda");
+            btnConfirmar.getStyleClass().add("accent");
+            btnConfirmar.setPrefHeight(44);
+            btnConfirmar.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(btnConfirmar, Priority.ALWAYS);
+            btnConfirmar.setOnAction(e -> {
+                try {
+                    compraService.confirmarEncomenda(d.id());
+                    toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.statusUpdated"));
+                    navigationService.hideModal();
+                    carregarEncomendas();
+                } catch (Exception ex) {
+                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+                }
+            });
+            footer.getChildren().addAll(btnEliminar, btnConfirmar);
+
+        } else if (estado == EstadoEncomendaFornecedor.EFETIVA) {
+            Button btnAnular = new Button("Anular");
+            btnAnular.getStyleClass().addAll("button-outlined", "danger");
+            btnAnular.setPrefHeight(44);
+            btnAnular.setOnAction(e -> {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Anular Encomenda");
+                confirm.setHeaderText(i18nService.translate("common.confirmDelete"));
+                confirm.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
+                try {
+                    compraService.anumarEncomenda(d.id());
+                    toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.statusUpdated"));
+                    navigationService.hideModal();
+                    carregarEncomendas();
+                } catch (Exception ex) {
+                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+                }
+            });
+
+            Button btnReceber = new Button("Marcar como Recebida");
+            btnReceber.getStyleClass().add("accent");
+            btnReceber.setPrefHeight(44);
+            btnReceber.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(btnReceber, Priority.ALWAYS);
+            btnReceber.setOnAction(e -> {
+                try {
+                    compraService.confirmarRecebimento(d.id());
+                    toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.statusUpdated"));
+                    navigationService.hideModal();
+                    carregarEncomendas();
+                } catch (Exception ex) {
+                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+                }
+            });
+            footer.getChildren().addAll(btnAnular, btnReceber);
+
+        } else {
+            Button btnFechar = new Button(i18nService.translate("common.cancel"));
+            btnFechar.getStyleClass().add("button-outlined");
+            btnFechar.setPrefHeight(44);
+            btnFechar.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(btnFechar, Priority.ALWAYS);
+            btnFechar.setOnAction(e -> navigationService.hideModal());
+            footer.getChildren().add(btnFechar);
+        }
 
         root.getChildren().addAll(header, scroll, footer);
         return root;
@@ -470,9 +549,9 @@ public class PurchaseOrdersController {
             navigationService.hideModal();
             pagination.resetPage();
             carregarEncomendas();
-            toastService.showSuccess("Sucesso", "Purchase order saved as draft.");
+            toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.savedDraft"));
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao guardar: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
     }
 
@@ -484,31 +563,31 @@ public class PurchaseOrdersController {
             navigationService.hideModal();
             pagination.resetPage();
             carregarEncomendas();
-            toastService.showSuccess("Sucesso", "Purchase order confirmed.");
+            toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.confirmed"));
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao confirmar: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
     }
 
     private boolean validarFormularioCriar() {
         if (cmbFornecedorCriar.getValue() == null) {
-            toastService.showError("Validação", "Selecione um fornecedor.");
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("purchaseOrders.supplierRequired"));
             return false;
         }
         if (itemRows.isEmpty()) {
-            toastService.showError("Validação", "Adicione pelo menos um item.");
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("purchaseOrders.itemsRequired"));
             return false;
         }
         for (ItemRow row : itemRows) {
             if (row.getMaterial() == null
                     || !Double.isFinite(row.getParsedQty()) || row.getParsedQty() <= 0
                     || !Double.isFinite(row.getParsedPrice()) || row.getParsedPrice() <= 0) {
-                toastService.showError("Validação", "Preencha todos os itens corretamente.");
+                toastService.showError(i18nService.translate("common.error"), i18nService.translate("purchaseOrders.itemsInvalid"));
                 return false;
             }
         }
         if (moedaPadraoId == null) {
-            toastService.showError("Erro", "Moeda padrão não disponível.");
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("purchaseOrders.noCurrency"));
             return false;
         }
         return true;

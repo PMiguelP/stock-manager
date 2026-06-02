@@ -79,6 +79,9 @@ public class I18nService {
         while (!stack.isEmpty()) {
             Node node = stack.pop();
             translateNode(node);
+            if (node instanceof Labeled labeled && labeled.getGraphic() != null) {
+                stack.push(labeled.getGraphic());
+            }
             if (node instanceof Parent parent) {
                 parent.getChildrenUnmodifiable().forEach(stack::push);
             }

@@ -72,7 +72,7 @@ public class VendaService {
      */
     @Transactional
     public EncomendaClienteResponseDTO criarPedidoVenda(UUID clienteId, UUID moedaId) {
-        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo .ADMINISTRADOR);
 
         Cliente cliente = clienteService.buscarClientePorId(clienteId);
 

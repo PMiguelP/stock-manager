@@ -24,11 +24,7 @@ public interface OrdemProducaoRepository extends JpaRepository<OrdemProducao, UU
     Optional<OrdemProducao> findByIdForUpdate(@Param("id") UUID id);
 
     @Query("SELECT DISTINCT op FROM OrdemProducao op " +
-            "LEFT JOIN FETCH op.lotes l " +
-            "LEFT JOIN FETCH l.alocacoes a " +
-            "LEFT JOIN FETCH a.itemEncomenda i " +
-            "LEFT JOIN FETCH i.encomenda e " +
-            "LEFT JOIN FETCH e.cliente c " +
+            "LEFT JOIN FETCH op.lotes " +
             "WHERE op.id = :id")
     Optional<OrdemProducao> findByIdWithDetalhes(@Param("id") UUID id);
 

@@ -183,6 +183,16 @@ public class CompraService {
         return encomendaFornecedorMapper.toResponseDTO(encomendaFornecedorRepo.save(encomenda));
     }
 
+    @Transactional
+    public void apagarEncomendaRascunho(UUID encomendaId) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
+        if (!EstadoEncomendaFornecedor.RASCUNHO.equals(encomenda.getEstado())) {
+            throw new IllegalStateException("Só é possível eliminar encomendas em rascunho");
+        }
+        encomendaFornecedorRepo.deleteById(encomendaId);
+    }
+
     /**
      * Anular encomenda
      */

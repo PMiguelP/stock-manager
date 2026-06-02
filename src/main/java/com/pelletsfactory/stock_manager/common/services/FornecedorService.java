@@ -92,6 +92,31 @@ public class FornecedorService {
                 .toList();
     }
 
+    @Transactional
+    public FornecedorDetailsDTO atualizarFornecedor(UUID id, String nome, String nif, String contacto, String email) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
+        Fornecedor fornecedor = buscarFornecedorPorId(id);
+        String nifNormalizado = NifUtils.normalizeRequired(nif);
+        if (!nifNormalizado.equals(fornecedor.getNif()) && fornecedorRepo.existsByNif(nifNormalizado)) {
+            throw new IllegalArgumentException("Já existe fornecedor com este NIF: " + nifNormalizado);
+        }
+        fornecedor.setNome(nome == null ? null : nome.trim());
+        fornecedor.setNif(nifNormalizado);
+        fornecedor.setContacto(contacto == null ? null : contacto.trim());
+        fornecedor.setEmail(email == null ? null : email.trim());
+        fornecedorRepo.save(fornecedor);
+        return obterDetalhesFornecedor(id);
+    }
+
+    @Transactional
+    public void apagarFornecedor(UUID id) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
+        if (!fornecedorRepo.existsById(id)) {
+            throw new EntityNotFoundException("Fornecedor não encontrado");
+        }
+        fornecedorRepo.deleteById(id);
+    }
+
     public FornecedorDetailsDTO obterDetalhesFornecedor(UUID fornecedorId) {
         Fornecedor fornecedor = buscarFornecedorPorId(fornecedorId);
 

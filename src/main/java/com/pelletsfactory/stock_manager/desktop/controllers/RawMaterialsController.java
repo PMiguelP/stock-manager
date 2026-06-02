@@ -4,6 +4,7 @@ import com.pelletsfactory.stock_manager.common.dto.request.MateriaPrimaRequestDT
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.MateriaPrimaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
@@ -33,6 +34,7 @@ public class RawMaterialsController {
     private final NavigationService navigationService;
     private final ToastService toastService;
     private final I18nService i18nService;
+    private final FormValidationService formValidationService;
 
     @FXML private VBox vboxContainer;
     @FXML private HBox alertBox;
@@ -53,6 +55,9 @@ public class RawMaterialsController {
     private ComboBox<String> cmbUnidadeAdicionar;
     private TextField txtStockAdicionar;
     private TextField txtMinimoAdicionar;
+    private Label lblErroNomeAdicionar;
+    private Label lblErroUnidadeAdicionar;
+    private Label lblErroStockAdicionar;
 
     private PaginationControls pagination;
 
@@ -61,21 +66,23 @@ public class RawMaterialsController {
     public RawMaterialsController(StockService stockService,
                                   NavigationService navigationService,
                                   ToastService toastService,
-                                  I18nService i18nService) {
+                                  I18nService i18nService,
+                                  FormValidationService formValidationService) {
         this.stockService = stockService;
         this.navigationService = navigationService;
         this.toastService = toastService;
         this.i18nService = i18nService;
+        this.formValidationService = formValidationService;
     }
 
     @FXML
     public void initialize() {
         pagination = new PaginationControls(10, this::carregarMaterias, i18nService);
-        cmbFiltroStatus.setItems(FXCollections.observableArrayList(
-                i18nService.translate("Normal"),
-                i18nService.translate("Low"),
-                i18nService.translate("Critical")
-        ));
+        cmbFiltroStatus.setItems(FXCollections.observableArrayList("Normal", "Low", "Critical"));
+        cmbFiltroStatus.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(String key) { return key == null ? "" : i18nService.translate(key); }
+            @Override public String fromString(String s) { return s; }
+        });
         configurarTabela();
         configurarDrawerAdicionar();
         carregarMaterias();
@@ -142,27 +149,27 @@ public class RawMaterialsController {
     private void carregarMaterias() {
         try {
             String nome = (txtSearch != null && !txtSearch.getText().isBlank()) ? txtSearch.getText() : null;
+            String status = cmbFiltroStatus.getValue();
             Page<MateriaPrimaSimpleDTO> page = stockService.listarMateriasPrimasComFiltros(
-                    pagination.pageNumberForService(), pagination.pageSize(), nome, null, "nome", "ASC"
+                    pagination.pageNumberForService(), pagination.pageSize(), nome, null, status, "nome", "ASC"
             );
 
             List<MateriaPrimaRow> rows = new ArrayList<>();
             for (int i = 0; i < page.getContent().size(); i++) {
                 MateriaPrimaSimpleDTO item = page.getContent().get(i);
-                String status = calcularStatus(item.stockAtual(), item.stockMinimo());
-                String statusLabel = i18nService.translate(status);
-                if (cmbFiltroStatus.getValue() == null || cmbFiltroStatus.getValue().equalsIgnoreCase(statusLabel)) {
-                    rows.add(MateriaPrimaRow.from(item, pagination.currentPage(), pagination.pageSize(), i, status));
-                }
+                String itemStatus = calcularStatus(item.stockAtual(), item.stockMinimo());
+                rows.add(MateriaPrimaRow.from(item, pagination.currentPage(), pagination.pageSize(), i, itemStatus));
             }
 
             materiais.setAll(rows);
             pagination.attachTo(vboxContainer);
             pagination.update(page);
-            atualizarAlerta();
         } catch (Exception e) {
-            mostrarErro("Erro ao carregar materias-primas: " + e.getMessage());
+            mostrarErro(i18nService.translate("rawMaterials.loadError") + ": " + e.getMessage());
         }
+        try {
+            atualizarAlerta();
+        } catch (Exception ignored) {}
     }
 
     private void atualizarAlerta() {
@@ -170,7 +177,7 @@ public class RawMaterialsController {
         if (count > 0) {
             alertBox.setVisible(true);
             alertBox.setManaged(true);
-            lblAlertCount.setText(count + " " + i18nService.translate("raw materials are below minimum stock threshold"));
+            lblAlertCount.setText(count + " " + i18nService.translate("rawMaterials.lowStockAlertCount"));
         } else {
             alertBox.setVisible(false);
             alertBox.setManaged(false);
@@ -234,33 +241,40 @@ public class RawMaterialsController {
 
     private void configurarDrawerAdicionar() {
         drawerAdicionar = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader("New Raw Material", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader("Nova Matéria-Prima", navigationService::hideModal);
 
         txtNomeAdicionar = new TextField();
-        txtNomeAdicionar.setPromptText("e.g., Wood Chips");
+        txtNomeAdicionar.setPromptText("ex: Aparas de Madeira");
+        lblErroNomeAdicionar = formValidationService.createErrorLabel();
 
         cmbUnidadeAdicionar = new ComboBox<>(FXCollections.observableArrayList("kg", "ton", "m3", "l"));
         cmbUnidadeAdicionar.setEditable(true);
-        cmbUnidadeAdicionar.setPromptText("Select unit");
+        cmbUnidadeAdicionar.setPromptText("Selecionar unidade");
         cmbUnidadeAdicionar.setMaxWidth(Double.MAX_VALUE);
+        lblErroUnidadeAdicionar = formValidationService.createErrorLabel();
 
         txtStockAdicionar = new TextField();
         txtStockAdicionar.setPromptText("0");
+        lblErroStockAdicionar = formValidationService.createErrorLabel();
 
         txtMinimoAdicionar = new TextField();
         txtMinimoAdicionar.setPromptText("0");
 
+        formValidationService.attachTextAutoClear(txtNomeAdicionar, lblErroNomeAdicionar);
+        formValidationService.attachComboAutoClear(cmbUnidadeAdicionar, lblErroUnidadeAdicionar);
+        formValidationService.attachTextAutoClear(txtStockAdicionar, lblErroStockAdicionar);
+
         VBox form = new VBox(20,
-                criarCampo("Material Name", txtNomeAdicionar),
-                criarCampo("Unit of Measure", cmbUnidadeAdicionar),
-                criarCampo("Current Stock", txtStockAdicionar),
-                criarCampo("Minimum Stock Threshold", txtMinimoAdicionar)
+                criarCampoComErro("Nome", txtNomeAdicionar, lblErroNomeAdicionar),
+                criarCampoComErro("Unidade de Medida", cmbUnidadeAdicionar, lblErroUnidadeAdicionar),
+                criarCampoComErro("Stock Atual", txtStockAdicionar, lblErroStockAdicionar),
+                criarCampo("Stock Mínimo", txtMinimoAdicionar)
         );
         form.setPadding(new Insets(30));
 
         ScrollPane scrollPane = UiFactory.transparentScroll(form);
         HBox footer = UiFactory.drawerFooter();
-        Button btnCreate = new Button("Create Material");
+        Button btnCreate = new Button("Guardar Matéria-Prima");
         btnCreate.getStyleClass().add("accent");
         btnCreate.setPrefHeight(44);
         btnCreate.setMaxWidth(Double.MAX_VALUE);
@@ -277,25 +291,42 @@ public class RawMaterialsController {
         return new VBox(8, lbl, input);
     }
 
+    private VBox criarCampoComErro(String label, Control input, Label erroLabel) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(6, lbl, input, erroLabel);
+    }
+
     private void limparFormulario() {
         txtNomeAdicionar.clear();
         cmbUnidadeAdicionar.setValue(null);
         txtStockAdicionar.clear();
         txtMinimoAdicionar.clear();
+        formValidationService.clearError(txtNomeAdicionar, lblErroNomeAdicionar);
+        formValidationService.clearError(cmbUnidadeAdicionar, lblErroUnidadeAdicionar);
+        formValidationService.clearError(txtStockAdicionar, lblErroStockAdicionar);
     }
 
     private void handleAdicionar() {
-        if (txtNomeAdicionar.getText().isBlank()) {
-            mostrarErro(i18nService.translate("Nome da matéria-prima é obrigatório"));
-            return;
-        }
-        if (cmbUnidadeAdicionar.getValue() == null || cmbUnidadeAdicionar.getValue().isBlank()) {
-            mostrarErro(i18nService.translate("Unidade da matéria-prima é obrigatória"));
-            return;
+        boolean valido = true;
+        valido = formValidationService.validateRequiredText(txtNomeAdicionar, lblErroNomeAdicionar, "Nome é obrigatório") && valido;
+        valido = formValidationService.validateRequiredCombo(cmbUnidadeAdicionar, lblErroUnidadeAdicionar, "Unidade é obrigatória") && valido;
+
+        Double stockAtual = null;
+        if (!txtStockAdicionar.getText().isBlank()) {
+            valido = formValidationService.validateRegex(
+                    txtStockAdicionar, lblErroStockAdicionar,
+                    "[0-9]+(\\.[0-9]+)?([,][0-9]+)?",
+                    "Stock deve ser um número não negativo"
+            ) && valido;
+            if (valido) {
+                stockAtual = Double.parseDouble(txtStockAdicionar.getText().replace(",", "."));
+            }
         }
 
+        if (!valido) return;
+
         try {
-            Double stockAtual = parseNumeroNaoNegativoOuNull(txtStockAdicionar.getText(), "Stock atual");
             Double stockMinimo = parseNumeroNaoNegativoOuNull(txtMinimoAdicionar.getText(), "Stock mínimo");
             MateriaPrimaRequestDTO dto = new MateriaPrimaRequestDTO(
                     txtNomeAdicionar.getText().trim(),
@@ -307,9 +338,9 @@ public class RawMaterialsController {
             pagination.resetPage();
             carregarMaterias();
             navigationService.hideModal();
-            mostrarSucesso(i18nService.translate("Matéria-prima criada!"));
+            mostrarSucesso(i18nService.translate("rawMaterials.created"));
         } catch (Exception e) {
-            mostrarErro(i18nService.translate("Erro ao criar matéria-prima: ") + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
@@ -333,43 +364,119 @@ public class RawMaterialsController {
             MateriaPrimaDetailsDTO d = stockService.obterDetalhesMateriaPrima(row.id());
             navigationService.showModal(criarDrawerDetalhes(d));
         } catch (Exception e) {
-            mostrarErro(i18nService.translate("Erro ao obter detalhes: ") + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
     private VBox criarDrawerDetalhes(MateriaPrimaDetailsDTO d) {
         VBox root = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader("Raw Material Details", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader("Editar Matéria-Prima", navigationService::hideModal);
 
-        TextField txtNome = new TextField(d.nome());
-        TextField txtUnidade = new TextField(d.unidade());
-        TextField txtStock = new TextField(d.stockAtual() != null ? d.stockAtual().toString() : "");
-        TextField txtMinimo = new TextField(d.stockMinimo() != null ? d.stockMinimo().toString() : "");
-        txtNome.setEditable(false);
-        txtUnidade.setEditable(false);
-        txtStock.setEditable(false);
-        txtMinimo.setEditable(false);
+        TextField txtNome = new TextField(d.nome() != null ? d.nome() : "");
+        Label lblErroNome = formValidationService.createErrorLabel();
+        formValidationService.attachTextAutoClear(txtNome, lblErroNome);
+
+        ComboBox<String> cmbUnidade = new ComboBox<>(FXCollections.observableArrayList("kg", "ton", "m3", "l"));
+        cmbUnidade.setEditable(true);
+        cmbUnidade.setValue(d.unidade());
+        cmbUnidade.setMaxWidth(Double.MAX_VALUE);
+        Label lblErroUnidade = formValidationService.createErrorLabel();
+        formValidationService.attachComboAutoClear(cmbUnidade, lblErroUnidade);
+
+        TextField txtStock = new TextField(d.stockAtual() != null ? String.format("%.2f", d.stockAtual()) : "");
+        Label lblErroStock = formValidationService.createErrorLabel();
+        formValidationService.attachTextAutoClear(txtStock, lblErroStock);
+
+        TextField txtMinimo = new TextField(d.stockMinimo() != null ? String.format("%.2f", d.stockMinimo()) : "");
 
         VBox form = new VBox(20,
-                criarCampo("Material Name", txtNome),
-                criarCampo("Unit of Measure", txtUnidade),
-                criarCampo("Current Stock", txtStock),
-                criarCampo("Minimum Stock Threshold", txtMinimo)
+                criarCampoComErro("Nome", txtNome, lblErroNome),
+                criarCampoComErro("Unidade de Medida", cmbUnidade, lblErroUnidade),
+                criarCampoComErro("Stock Atual", txtStock, lblErroStock),
+                criarCampo("Stock Mínimo", txtMinimo)
         );
         form.setPadding(new Insets(30));
 
         ScrollPane scrollPane = UiFactory.transparentScroll(form);
 
-        root.getChildren().addAll(header, scrollPane);
+        HBox footer = new HBox(12);
+        footer.setPadding(new Insets(25));
+        footer.setAlignment(Pos.CENTER_LEFT);
+        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+
+        Button btnGuardar = new Button("Guardar Alterações");
+        btnGuardar.getStyleClass().add("accent");
+        btnGuardar.setPrefHeight(44);
+        btnGuardar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
+
+        Button btnEliminar = new Button("Eliminar");
+        btnEliminar.setPrefHeight(44);
+        btnEliminar.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+
+        footer.getChildren().addAll(btnGuardar, btnEliminar);
+
+        btnGuardar.setOnAction(e -> {
+            boolean valido = true;
+            valido = formValidationService.validateRequiredText(txtNome, lblErroNome, "Nome é obrigatório") && valido;
+            valido = formValidationService.validateRequiredCombo(cmbUnidade, lblErroUnidade, "Unidade é obrigatória") && valido;
+
+            Double stockAtual = null;
+            if (!txtStock.getText().isBlank()) {
+                valido = formValidationService.validateRegex(txtStock, lblErroStock,
+                        "[0-9]+(\\.[0-9]+)?([,][0-9]+)?", "Stock deve ser um número não negativo") && valido;
+                if (valido) stockAtual = Double.parseDouble(txtStock.getText().replace(",", "."));
+            }
+            if (!valido) return;
+
+            try {
+                Double stockMinimo = parseNumeroNaoNegativoOuNull(txtMinimo.getText(), "Stock mínimo");
+                stockService.atualizarMateriaPrima(d.id(), new MateriaPrimaRequestDTO(
+                        txtNome.getText().trim(),
+                        cmbUnidade.getValue().trim(),
+                        stockAtual,
+                        stockMinimo
+                ));
+                pagination.resetPage();
+                carregarMaterias();
+                navigationService.hideModal();
+                mostrarSucesso(i18nService.translate("rawMaterials.updated"));
+            } catch (Exception ex) {
+                mostrarErro(ex.getMessage());
+            }
+        });
+
+        btnEliminar.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Eliminar a matéria-prima \"" + d.nome() + "\"?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setTitle("Confirmar eliminação");
+            confirm.setHeaderText(null);
+            confirm.showAndWait().ifPresent(bt -> {
+                if (bt == ButtonType.YES) {
+                    try {
+                        stockService.apagarMateriaPrima(d.id());
+                        pagination.resetPage();
+                        carregarMaterias();
+                        navigationService.hideModal();
+                        mostrarSucesso(i18nService.translate("rawMaterials.deleted"));
+                    } catch (Exception ex) {
+                        mostrarErro(ex.getMessage());
+                    }
+                }
+            });
+        });
+
+        root.getChildren().addAll(header, scrollPane, footer);
         return root;
     }
 
     private void mostrarErro(String m) {
-        toastService.showError(i18nService.translate("Erro"), m);
+        toastService.showError(i18nService.translate("common.error"), m);
     }
 
     private void mostrarSucesso(String m) {
-        toastService.showSuccess(i18nService.translate("Sucesso"), m);
+        toastService.showSuccess(i18nService.translate("common.success"), m);
     }
 
     private record MateriaPrimaRow(

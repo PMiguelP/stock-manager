@@ -9,12 +9,16 @@
     <VBox fx:id="vboxContainer" spacing="18" style="-fx-padding: 30; -fx-background-color: -color-bg-default;">
 
         <!-- Header -->
-        <HBox alignment="CENTER_LEFT" spacing="15">
+        <HBox alignment="CENTER_LEFT" spacing="10">
             <VBox spacing="4">
                 <Label text="stock.title" styleClass="title-2"/>
                 <Label text="stock.subtitle" styleClass="text-muted"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
+            <Button text="stock.removeMaterial" onAction="#handleRemoverMaterial" styleClass="button-outlined"/>
+            <Button text="stock.addMaterial" onAction="#handleAdicionarMaterial" styleClass="button-outlined"/>
+            <Button text="stock.removePellets" onAction="#handleRemoverPellets" styleClass="button-outlined"/>
+            <Button text="stock.addPellets" onAction="#handleAdicionarPellets" styleClass="accent"/>
         </HBox>
 
         <!-- Summary -->

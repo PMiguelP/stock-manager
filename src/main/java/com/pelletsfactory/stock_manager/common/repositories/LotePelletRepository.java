@@ -40,15 +40,10 @@ public interface LotePelletRepository extends JpaRepository<LotePellet, UUID> {
 
     List<LotePellet> findByDataProducaoGreaterThanEqualAndDataProducaoLessThan(Instant inicio, Instant fim);
 
-    @Query(value = "SELECT * FROM lotes_pellet l WHERE " +
-            "(:codigoLote IS NULL OR :codigoLote = '' OR LOWER(l.codigo_lote) LIKE LOWER(CONCAT('%', :codigoLote, '%'))) AND " +
-            "(:tipoPelletId IS NULL OR l.tipo_pellet_id = :tipoPelletId) AND " +
-            "(:ordemId IS NULL OR l.ordem_id = :ordemId)",
-            countQuery = "SELECT COUNT(*) FROM lotes_pellet l WHERE " +
-                    "(:codigoLote IS NULL OR :codigoLote = '' OR LOWER(l.codigo_lote) LIKE LOWER(CONCAT('%', :codigoLote, '%'))) AND " +
-                    "(:tipoPelletId IS NULL OR l.tipo_pellet_id = :tipoPelletId) AND " +
-                    "(:ordemId IS NULL OR l.ordem_id = :ordemId)",
-            nativeQuery = true)
+    @Query("SELECT l FROM LotePellet l WHERE " +
+            "(:codigoLote IS NULL OR :codigoLote = '' OR LOWER(l.codigoLote) LIKE LOWER(CONCAT('%', :codigoLote, '%'))) AND " +
+            "(:tipoPelletId IS NULL OR l.tipoPellet.id = :tipoPelletId) AND " +
+            "(:ordemId IS NULL OR l.ordem.id = :ordemId)")
     Page<LotePellet> findByFiltros(
             @Param("codigoLote") String codigoLote,
             @Param("tipoPelletId") UUID tipoPelletId,

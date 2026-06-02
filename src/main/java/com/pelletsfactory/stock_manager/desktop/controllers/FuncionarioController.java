@@ -6,6 +6,7 @@ import com.pelletsfactory.stock_manager.common.dto.response.FuncionarioSimpleDTO
 import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
 import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import javafx.collections.FXCollections;
@@ -28,6 +29,7 @@ public class FuncionarioController {
     private final NavigationService navigationService;
     private final FormValidationService formValidationService;
     private final ToastService toastService;
+    private final I18nService i18nService;
 
     @FXML private ComboBox<Cargo> cmbFiltroCargo;
     @FXML private TextField txtFiltroNome;
@@ -61,11 +63,13 @@ public class FuncionarioController {
     public FuncionarioController(FuncionarioService funcionarioService,
                                  NavigationService navigationService,
                                  FormValidationService formValidationService,
-                                 ToastService toastService) {
+                                 ToastService toastService,
+                                 I18nService i18nService) {
         this.funcionarioService = funcionarioService;
         this.navigationService = navigationService;
         this.formValidationService = formValidationService;
         this.toastService = toastService;
+        this.i18nService = i18nService;
     }
 
     @FXML
@@ -165,7 +169,7 @@ public class FuncionarioController {
             atualizarLabelStatus(page);
             atualizarBotoesPaginacao();
         } catch (Exception e) {
-            mostrarErro("Erro ao carregar: " + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
@@ -185,7 +189,7 @@ public class FuncionarioController {
             VBox detalhesDrawer = criarDrawerVisualizacao(d); // Este método agora usa 550px
             navigationService.showModal(detalhesDrawer);
         } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
+            mostrarErro(e.getMessage());
         }
     }
 
@@ -200,7 +204,7 @@ public class FuncionarioController {
         header.setPadding(new Insets(25));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Detalhes do Funcionário");
+        Label titulo = new Label(i18nService.translate("employees.detailsTitle"));
         titulo.getStyleClass().add("title-3");
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         Button btnClose = new Button(); btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
@@ -253,21 +257,21 @@ public class FuncionarioController {
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
 
-        Button btnGuardar = new Button("Guardar Funcionário");
+        Button btnGuardar = new Button(i18nService.translate("employees.save"));
         btnGuardar.getStyleClass().add("accent");
         btnGuardar.setPrefHeight(44);
         btnGuardar.setMaxWidth(Double.MAX_VALUE);
         btnGuardar.setDisable(true);
 
-        Button btnEditar = new Button("Editar");
+        Button btnEditar = new Button(i18nService.translate("common.edit"));
         btnEditar.getStyleClass().add("button-outlined");
         btnEditar.setPrefHeight(44);
         btnEditar.setMaxWidth(Double.MAX_VALUE);
 
-        Button btnEliminar = new Button("Eliminar");
+        Button btnEliminar = new Button(i18nService.translate("common.delete"));
         btnEliminar.setPrefHeight(44);
         btnEliminar.setMaxWidth(Double.MAX_VALUE);
-        btnEliminar.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+        btnEliminar.getStyleClass().addAll("button-outlined", "danger");
 
         HBox.setHgrow(btnGuardar, Priority.ALWAYS);
         HBox.setHgrow(btnEditar, Priority.ALWAYS);
@@ -304,19 +308,20 @@ public class FuncionarioController {
                 setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
                 btnGuardar.setDisable(true);
                 btnEditar.setDisable(false);
-                mostrarSucesso("Funcionário atualizado!");
+                mostrarSucesso(i18nService.translate("employees.updated"));
             } catch (Exception ex) {
-                mostrarErro("Erro ao atualizar: " + ex.getMessage());
+                mostrarErro(ex.getMessage());
             }
         });
 
         btnEliminar.setOnAction(e -> {
             Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
-            confirmacao.setTitle("Eliminar Funcionário");
-            confirmacao.setHeaderText("Tem a certeza?");
-            confirmacao.setContentText("Esta ação é irreversível e vai eliminar o funcionário selecionado.");
+            confirmacao.setTitle(i18nService.translate("common.delete"));
+            confirmacao.setHeaderText(i18nService.translate("common.confirmDelete"));
+            confirmacao.setContentText("\"" + d.nome() + "\"");
+            confirmacao.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
 
-            if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            if (confirmacao.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) {
                 return;
             }
 
@@ -324,9 +329,9 @@ public class FuncionarioController {
                 funcionarioService.apagarFuncionario(d.id());
                 carregarFuncionarios();
                 navigationService.hideModal();
-                mostrarSucesso("Funcionário eliminado!");
+                mostrarSucesso(i18nService.translate("employees.deleted"));
             } catch (Exception ex) {
-                mostrarErro("Erro ao eliminar: " + ex.getMessage());
+                mostrarErro(ex.getMessage());
             }
         });
 
@@ -374,7 +379,7 @@ public class FuncionarioController {
         header.setPadding(new Insets(25));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Novo Funcionário");
+        Label titulo = new Label(i18nService.translate("employees.newTitle"));
         titulo.getStyleClass().add("title-3");
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         Button btnF = new Button(); btnF.setGraphic(new FontIcon("mdi2c-close:22"));
@@ -400,17 +405,17 @@ public class FuncionarioController {
         formValidationService.attachTextAutoClear(txtContacto, lblErroContactoAdicionar);
 
         form.getChildren().addAll(
-                criarCampoFormulario("Nome Completo", txtNome, lblErroNomeAdicionar),
-                criarCampoFormulario("Cargo", cmbCargo, lblErroCargoAdicionar),
-                criarCampoFormulario("NIF", txtNif, lblErroNifAdicionar),
-                criarCampoFormulario("Telemóvel", txtContacto, lblErroContactoAdicionar)
+                criarCampoFormulario(i18nService.translate("employees.fullName"), txtNome, lblErroNomeAdicionar),
+                criarCampoFormulario(i18nService.translate("employees.role"), cmbCargo, lblErroCargoAdicionar),
+                criarCampoFormulario(i18nService.translate("employees.nif"), txtNif, lblErroNifAdicionar),
+                criarCampoFormulario(i18nService.translate("employees.phone"), txtContacto, lblErroContactoAdicionar)
         );
 
         HBox footer = new HBox();
         footer.setPadding(new Insets(25));
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnS = new Button("Guardar Funcionário");
+        Button btnS = new Button(i18nService.translate("employees.save"));
         btnS.getStyleClass().add("accent");
         btnS.setPrefHeight(44);
         btnS.setMaxWidth(Double.MAX_VALUE);
@@ -443,8 +448,8 @@ public class FuncionarioController {
             paginaAtual = 0;
             carregarFuncionarios();
             navigationService.hideModal();
-            mostrarSucesso("Funcionário criado!");
-        } catch (Exception e) { mostrarErro("Erro: " + e.getMessage()); }
+            mostrarSucesso(i18nService.translate("employees.created"));
+        } catch (Exception e) { mostrarErro(e.getMessage()); }
     }
 
     private boolean validarFormulario(TextField nomeField, Label nomeErro,
@@ -453,17 +458,32 @@ public class FuncionarioController {
                                       TextField contactoField, Label contactoErro) {
         boolean valido = true;
 
-        valido = formValidationService.validateRequiredText(nomeField, nomeErro, "Nome e obrigatório") && valido;
-        valido = formValidationService.validateRequiredCombo(cargoField, cargoErro, "Cargo e obrigatório") && valido;
-        valido = formValidationService.validateRequiredText(nifField, nifErro, "NIF e obrigatório") && valido;
-        valido = formValidationService.validateRequiredText(contactoField, contactoErro, "Telemovel e obrigatório") && valido;
+        valido = formValidationService.validateRequiredText(nomeField, nomeErro, i18nService.translate("employees.nameRequired")) && valido;
+        valido = formValidationService.validateRequiredCombo(cargoField, cargoErro, i18nService.translate("employees.roleRequired")) && valido;
+        valido = formValidationService.validateRequiredText(nifField, nifErro, i18nService.translate("employees.nifRequired")) && valido;
+        valido = formValidationService.validateRequiredText(contactoField, contactoErro, i18nService.translate("employees.phoneRequired")) && valido;
 
-        if (valido || !nifField.getText().trim().isEmpty()) {
+        if (!nomeField.getText().trim().isEmpty()) {
             valido = formValidationService.validateRegex(
-                    nifField,
-                    nifErro,
+                    nomeField, nomeErro,
+                    "[a-zA-ZÀ-ÿ\\s'\\-]+",
+                    i18nService.translate("employees.nameInvalid")
+            ) && valido;
+        }
+
+        if (!nifField.getText().trim().isEmpty()) {
+            valido = formValidationService.validateRegex(
+                    nifField, nifErro,
                     "\\d{9}",
-                    "NIF deve ter exatamente 9 digitos"
+                    i18nService.translate("employees.nifInvalid")
+            ) && valido;
+        }
+
+        if (!contactoField.getText().trim().isEmpty()) {
+            valido = formValidationService.validateRegex(
+                    contactoField, contactoErro,
+                    "9\\d{8}",
+                    i18nService.translate("employees.phoneInvalid")
             ) && valido;
         }
 
@@ -483,7 +503,7 @@ public class FuncionarioController {
         cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
         cmbItemsPerPage.setValue(itemsPerPage);
         cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarFuncionarios(); });
-        HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage); center.setAlignment(Pos.CENTER); HBox.setHgrow(center, Priority.ALWAYS);
+        HBox center = new HBox(10, new Label(i18nService.translate("common.perPage")), cmbItemsPerPage); center.setAlignment(Pos.CENTER); HBox.setHgrow(center, Priority.ALWAYS);
 
         paginationButtons = new HBox(5);
         HBox right = new HBox(paginationButtons); right.setAlignment(Pos.CENTER_RIGHT); HBox.setHgrow(right, Priority.ALWAYS);
@@ -515,9 +535,14 @@ public class FuncionarioController {
     }
 
     private void atualizarLabelStatus(Page<FuncionarioSimpleDTO> page) {
+        if (page.getTotalElements() == 0) {
+            lblPaginaStatus.setText(i18nService.translate("common.noResults"));
+            return;
+        }
         long start = (long) page.getNumber() * page.getSize() + 1;
         long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
+        lblPaginaStatus.setText(java.text.MessageFormat.format(
+                i18nService.translate("common.showingRange"), start, end, page.getTotalElements()));
     }
 
     private HBox criarBadgeCargo(Cargo cargo) {
@@ -550,8 +575,8 @@ public class FuncionarioController {
         formValidationService.clearError(txtNif, lblErroNifAdicionar);
         formValidationService.clearError(txtContacto, lblErroContactoAdicionar);
     }
-    private void mostrarSucesso(String m) { toastService.showSuccess("Sucesso", m); }
-    private void mostrarErro(String m) { toastService.showError("Erro", m); }
+    private void mostrarSucesso(String m) { toastService.showSuccess(i18nService.translate("common.success"), m); }
+    private void mostrarErro(String m) { toastService.showError(i18nService.translate("common.error"), m); }
     @FXML private void handleFiltrar() { paginaAtual = 0; carregarFuncionarios(); }
     @FXML private void handleMostrarTodos() { txtFiltroNome.clear(); cmbFiltroCargo.setValue(null); handleFiltrar(); }
 }

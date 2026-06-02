@@ -5,6 +5,8 @@ import com.pelletsfactory.stock_manager.common.dto.response.FormulaSimpleDTO;
 import com.pelletsfactory.stock_manager.common.dto.request.FormulaProducaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.services.FormulaProducaoService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import javafx.collections.FXCollections;
@@ -30,6 +32,8 @@ public class FormulaController {
     private final StockService stockService;
     private final NavigationService navigationService;
     private final ToastService toastService;
+    private final FormValidationService formValidationService;
+    private final I18nService i18nService;
 
     @FXML private TextField txtFiltroNome;
     @FXML private ComboBox<String> cmbFiltroStatus;
@@ -50,6 +54,8 @@ public class FormulaController {
     private Label lblWarning;
     private CheckBox chkAtiva;
     private List<IngredienteRow> ingredienteRows;
+    private Label lblErroCriarTipoPellet;
+    private Label lblErroCriarNome;
 
     private Label lblPaginaStatus;
     private ComboBox<Integer> cmbItemsPerPage;
@@ -63,11 +69,15 @@ public class FormulaController {
     public FormulaController(FormulaProducaoService formulaService,
                                      StockService stockService,
                                      NavigationService navigationService,
-                                     ToastService toastService) {
+                                     ToastService toastService,
+                                     FormValidationService formValidationService,
+                                     I18nService i18nService) {
         this.formulaService = formulaService;
         this.stockService = stockService;
         this.navigationService = navigationService;
         this.toastService = toastService;
+        this.formValidationService = formValidationService;
+        this.i18nService = i18nService;
     }
 
     @FXML
@@ -156,7 +166,7 @@ public class FormulaController {
         try {
             String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isEmpty()) ? txtFiltroNome.getText() : null;
             Boolean ativa = (cmbFiltroStatus != null && cmbFiltroStatus.getValue() != null)
-                    ? "Active".equals(cmbFiltroStatus.getValue()) : null;
+                    ? "Ativa".equals(cmbFiltroStatus.getValue()) : null;
 
             Page<FormulaSimpleDTO> page = formulaService.listarFormulasComFiltros(
                     paginaAtual + 1, itemsPerPage, nome, ativa, null, "nome", "ASC"
@@ -200,7 +210,7 @@ public class FormulaController {
         header.setPadding(new Insets(25));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Edit Production Formula");
+        Label titulo = new Label("Editar Fórmula de Produção");
         titulo.getStyleClass().add("title-3");
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
@@ -214,7 +224,8 @@ public class FormulaController {
         ComboBox<TipoPelletItem> cmbTipoPelletEdit = new ComboBox<>();
         cmbTipoPelletEdit.setMaxWidth(Double.MAX_VALUE);
         carregarTiposPellet(cmbTipoPelletEdit);
-        // Set current value
+        Label lblErroTipoPelletEdit = formValidationService.createErrorLabel();
+        formValidationService.attachComboAutoClear(cmbTipoPelletEdit, lblErroTipoPelletEdit);
         if (d.tipoPelletId() != null) {
             cmbTipoPelletEdit.getItems().stream()
                     .filter(item -> item.id().equals(d.tipoPelletId()))
@@ -223,10 +234,12 @@ public class FormulaController {
         }
 
         TextField txtVersaoEdit = new TextField(d.nome());
+        Label lblErroNomeEdit = formValidationService.createErrorLabel();
+        formValidationService.attachTextAutoClear(txtVersaoEdit, lblErroNomeEdit);
 
         Label lblTotalKgEdit = new Label("0.00 kg");
         lblTotalKgEdit.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
-        Label lblWarningEdit = new Label("Warning: Total should equal 1.00 kg");
+        Label lblWarningEdit = new Label("Atenção: O total deve ser igual a 1.00 kg");
         lblWarningEdit.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: 500;");
         lblWarningEdit.setVisible(true);
 
@@ -248,7 +261,7 @@ public class FormulaController {
             adicionarIngrediente(ingredientesContainerEdit, ingredienteRowsEdit, null, null, lblTotalKgEdit, lblWarningEdit);
         }
 
-        Button btnAddIngredient = new Button("+ Add Ingredient");
+        Button btnAddIngredient = new Button("+ Adicionar Ingrediente");
         btnAddIngredient.getStyleClass().add("accent");
         btnAddIngredient.setOnAction(e -> adicionarIngrediente(
                 ingredientesContainerEdit,
@@ -268,8 +281,8 @@ public class FormulaController {
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         VBox form = new VBox(20,
-                criarCampoFormulario("Pellet Type", cmbTipoPelletEdit),
-                criarCampoFormulario("Formula Name", txtVersaoEdit),
+                criarCampoFormularioComErro("Tipo de Pellet", cmbTipoPelletEdit, lblErroTipoPelletEdit),
+                criarCampoFormularioComErro("Nome da Fórmula", txtVersaoEdit, lblErroNomeEdit),
                 criarSecaoIngredientes(ingredientesContainerEdit, btnAddIngredient),
                 criarCampoTotal(lblTotalKgEdit, lblWarningEdit),
                 criarCampoStatus(chkAtivaEdit)
@@ -283,12 +296,12 @@ public class FormulaController {
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
 
-        Button btnGuardar = new Button("Update Formula");
+        Button btnGuardar = new Button("Atualizar Fórmula");
         btnGuardar.getStyleClass().add("accent");
         btnGuardar.setPrefHeight(44);
         btnGuardar.setMaxWidth(Double.MAX_VALUE);
 
-        Button btnEliminar = new Button("Delete");
+        Button btnEliminar = new Button("Eliminar");
         btnEliminar.setPrefHeight(44);
         btnEliminar.setMaxWidth(Double.MAX_VALUE);
         btnEliminar.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
@@ -297,8 +310,13 @@ public class FormulaController {
         HBox.setHgrow(btnEliminar, Priority.ALWAYS);
         footer.getChildren().addAll(btnGuardar, btnEliminar);
 
-        btnGuardar.setOnAction(e -> handleAtualizarFormula(
-                d.id(), cmbTipoPelletEdit, txtVersaoEdit, ingredienteRowsEdit, chkAtivaEdit));
+        btnGuardar.setOnAction(e -> {
+            boolean valido = true;
+            valido = formValidationService.validateRequiredCombo(cmbTipoPelletEdit, lblErroTipoPelletEdit, "Tipo de pellet é obrigatório") && valido;
+            valido = formValidationService.validateRequiredText(txtVersaoEdit, lblErroNomeEdit, "Nome da fórmula é obrigatório") && valido;
+            if (!valido) return;
+            handleAtualizarFormula(d.id(), cmbTipoPelletEdit, txtVersaoEdit, ingredienteRowsEdit, chkAtivaEdit);
+        });
 
         btnEliminar.setOnAction(e -> {
             Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
@@ -336,7 +354,7 @@ public class FormulaController {
         header.setPadding(new Insets(25));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Create Production Formula");
+        Label titulo = new Label("Nova Fórmula de Produção");
         titulo.getStyleClass().add("title-3");
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
@@ -349,15 +367,19 @@ public class FormulaController {
         // Form
         cmbTipoPellet = new ComboBox<>();
         cmbTipoPellet.setMaxWidth(Double.MAX_VALUE);
-        cmbTipoPellet.setPromptText("Select pellet type");
+        cmbTipoPellet.setPromptText("Selecionar tipo de pellet");
         carregarTiposPellet(cmbTipoPellet);
+        lblErroCriarTipoPellet = formValidationService.createErrorLabel();
+        formValidationService.attachComboAutoClear(cmbTipoPellet, lblErroCriarTipoPellet);
 
         txtVersao = new TextField();
+        lblErroCriarNome = formValidationService.createErrorLabel();
+        formValidationService.attachTextAutoClear(txtVersao, lblErroCriarNome);
 
         lblTotalKg = new Label("0.00 kg");
         lblTotalKg.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
 
-        lblWarning = new Label("Warning: Total should equal 1.00 kg");
+        lblWarning = new Label("Atenção: O total deve ser igual a 1.00 kg");
         lblWarning.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: 500;");
         lblWarning.setVisible(true);
 
@@ -367,7 +389,7 @@ public class FormulaController {
         // Add first ingredient row
         adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning);
 
-        Button btnAddIngredient = new Button("+ Add Ingredient");
+        Button btnAddIngredient = new Button("+ Adicionar Ingrediente");
         btnAddIngredient.getStyleClass().add("accent");
         btnAddIngredient.setOnAction(e -> adicionarIngrediente(
                 ingredientesContainer,
@@ -387,8 +409,8 @@ public class FormulaController {
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         VBox form = new VBox(20,
-                criarCampoFormulario("Pellet Type", cmbTipoPellet),
-                criarCampoFormulario("Formula Name", txtVersao),
+                criarCampoFormularioComErro("Tipo de Pellet", cmbTipoPellet, lblErroCriarTipoPellet),
+                criarCampoFormularioComErro("Nome da Fórmula", txtVersao, lblErroCriarNome),
                 criarSecaoIngredientes(ingredientesContainer, btnAddIngredient),
                 criarCampoTotal(lblTotalKg, lblWarning),
                 criarCampoStatus(chkAtiva)
@@ -401,7 +423,7 @@ public class FormulaController {
         footer.setPadding(new Insets(25));
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnS = new Button("Create Formula");
+        Button btnS = new Button("Criar Fórmula");
         btnS.getStyleClass().add("accent");
         btnS.setPrefHeight(44);
         btnS.setMaxWidth(Double.MAX_VALUE);
@@ -417,7 +439,7 @@ public class FormulaController {
 
         HBox headerRow = new HBox();
         headerRow.setAlignment(Pos.CENTER_LEFT);
-        Label label = new Label("Ingredients (quantities per kg of output)");
+        Label label = new Label("Ingredientes (quantidades por kg de saída)");
         label.getStyleClass().add("text-muted");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -433,7 +455,7 @@ public class FormulaController {
 
         HBox totalRow = new HBox();
         totalRow.setAlignment(Pos.CENTER_LEFT);
-        Label label = new Label("Total per kg:");
+        Label label = new Label("Total por kg:");
         label.setStyle("-fx-font-size: 14; -fx-text-fill: -color-fg-muted;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -446,21 +468,23 @@ public class FormulaController {
     private HBox criarCampoStatus(CheckBox checkbox) {
         HBox box = new HBox(12);
         box.setAlignment(Pos.CENTER_LEFT);
-        Label label = new Label("Active Formula");
+        Label label = new Label("Fórmula Ativa");
         label.getStyleClass().add("text-muted");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button activeBtn = new Button("Active");
+        Button activeBtn = new Button(checkbox.isSelected() ? "Ativa" : "Inativa");
         activeBtn.getStyleClass().add("accent");
-        activeBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 20;");
+        activeBtn.setStyle(checkbox.isSelected()
+                ? "-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 20;"
+                : "-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 8 20;");
 
         checkbox.selectedProperty().addListener((obs, old, val) -> {
             if (val) {
-                activeBtn.setText("Active");
+                activeBtn.setText("Ativa");
                 activeBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 20;");
             } else {
-                activeBtn.setText("Inactive");
+                activeBtn.setText("Inativa");
                 activeBtn.setStyle("-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 8 20;");
             }
         });
@@ -477,11 +501,11 @@ public class FormulaController {
         ingredienteBox.setStyle("-fx-background-color: -color-bg-subtle; -fx-padding: 20; -fx-border-radius: 8; -fx-background-radius: 8;");
 
         // Raw Material
-        Label lblMaterial = new Label("Raw Material");
+        Label lblMaterial = new Label("Matéria-Prima");
         lblMaterial.getStyleClass().add("text-muted");
         ComboBox<MateriaPrimaItem> cmbMaterial = new ComboBox<>();
         cmbMaterial.setMaxWidth(Double.MAX_VALUE);
-        cmbMaterial.setPromptText("Select raw material");
+        cmbMaterial.setPromptText("Selecionar matéria-prima");
         carregarMateriasPrimas(cmbMaterial);
         if (materialId != null) {
             cmbMaterial.getItems().stream()
@@ -491,12 +515,12 @@ public class FormulaController {
         }
 
         // Quantity
-        Label lblQuantidade = new Label("Quantity per kg output");
+        Label lblQuantidade = new Label("Quantidade por kg de saída");
         lblQuantidade.getStyleClass().add("text-muted");
         TextField txtQuantidade = new TextField(quantidade != null ? String.valueOf(quantidade) : "0");
 
         // Remove button
-        Button btnRemove = new Button("Remove Ingredient");
+        Button btnRemove = new Button("Remover Ingrediente");
         btnRemove.setStyle("-fx-text-fill: #ef4444; -fx-background-color: transparent; -fx-border-color: transparent;");
         btnRemove.setOnAction(e -> {
             container.getChildren().remove(ingredienteBox);
@@ -553,7 +577,7 @@ public class FormulaController {
 
     private void carregarMateriasPrimas(ComboBox<MateriaPrimaItem> combo) {
         try {
-            var page = stockService.listarMateriasPrimasComFiltros(1, 100, null, "kg", "nome", "ASC");
+            var page = stockService.listarMateriasPrimasComFiltros(1, 100, null, "kg", null, "nome", "ASC");
             List<MateriaPrimaItem> items = page.getContent().stream()
                     .map(dto -> new MateriaPrimaItem(dto.id(), dto.nome()))
                     .toList();
@@ -569,11 +593,18 @@ public class FormulaController {
         return new VBox(8, lbl, input);
     }
 
+    private VBox criarCampoFormularioComErro(String label, Control input, Label erroLabel) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(6, lbl, input, erroLabel);
+    }
+
     private void handleAdicionar() {
-        if (cmbTipoPellet.getValue() == null) {
-            mostrarErro("Selecione um tipo de pellet");
-            return;
-        }
+        boolean valido = true;
+        valido = formValidationService.validateRequiredCombo(cmbTipoPellet, lblErroCriarTipoPellet, "Tipo de pellet é obrigatório") && valido;
+        valido = formValidationService.validateRequiredText(txtVersao, lblErroCriarNome, "Nome da fórmula é obrigatório") && valido;
+
+        if (!valido) return;
 
         if (ingredienteRows.isEmpty()) {
             mostrarErro("Adicione pelo menos um ingrediente");
@@ -727,7 +758,7 @@ public class FormulaController {
         b.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;");
 
         String color = ativa ? "#10b981" : "#6b7280";
-        String text = ativa ? "Active" : "Inactive";
+        String text = ativa ? "Ativa" : "Inativa";
 
         b.setStyle(b.getStyle() + String.format("-fx-background-color: %s20; -fx-border-color: %s;",
                 color.replace("#", ""), color));
@@ -738,7 +769,7 @@ public class FormulaController {
     }
 
     private void configurarComboBoxes() {
-        cmbFiltroStatus.setItems(FXCollections.observableArrayList("Active", "Inactive"));
+        cmbFiltroStatus.setItems(FXCollections.observableArrayList("Ativa", "Inativa"));
     }
 
     private void limparFormulario() {
@@ -749,14 +780,16 @@ public class FormulaController {
         adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning);
         chkAtiva.setSelected(true);
         atualizarTotal(ingredienteRows, lblTotalKg, lblWarning);
+        formValidationService.clearError(cmbTipoPellet, lblErroCriarTipoPellet);
+        formValidationService.clearError(txtVersao, lblErroCriarNome);
     }
 
     private void mostrarSucesso(String m) {
-        toastService.showSuccess("Sucesso", m);
+        toastService.showSuccess(i18nService.translate("common.success"), m);
     }
 
     private void mostrarErro(String m) {
-        toastService.showError("Erro", m);
+        toastService.showError(i18nService.translate("common.error"), m);
     }
 
     @FXML
@@ -768,7 +801,6 @@ public class FormulaController {
     @FXML
     private void handleMostrarTodos() {
         txtFiltroNome.clear();
-        cmbFiltroStatus.setValue(null);
         handleFiltrar();
     }
 

@@ -16,9 +16,14 @@ import java.util.UUID;
 public interface MateriaPrimaRepository extends JpaRepository<MateriaPrima, UUID> {
     @Query("SELECT m FROM MateriaPrima m WHERE " +
             "(:nome IS NULL OR :nome = '' OR LOWER(m.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND " +
-            "(:unidade IS NULL OR :unidade = '' OR LOWER(m.unidade) LIKE LOWER(CONCAT('%', :unidade, '%')))")
+            "(:unidade IS NULL OR :unidade = '' OR LOWER(m.unidade) LIKE LOWER(CONCAT('%', :unidade, '%'))) AND " +
+            "(:status IS NULL OR :status = '' OR " +
+            " (:status = 'Normal' AND (m.stockMinimo IS NULL OR m.stockMinimo <= 0 OR m.stockAtual >= m.stockMinimo)) OR " +
+            " (:status = 'Low' AND m.stockMinimo IS NOT NULL AND m.stockMinimo > 0 AND m.stockAtual >= m.stockMinimo * 0.5 AND m.stockAtual < m.stockMinimo) OR " +
+            " (:status = 'Critical' AND m.stockMinimo IS NOT NULL AND m.stockMinimo > 0 AND m.stockAtual < m.stockMinimo * 0.5))")
     Page<MateriaPrima> findByFiltros(@Param("nome") String nome,
                                     @Param("unidade") String unidade,
+                                    @Param("status") String status,
                                     Pageable pageable);
 
     @Query("SELECT COUNT(m) FROM MateriaPrima m WHERE m.stockAtual < m.stockMinimo")
