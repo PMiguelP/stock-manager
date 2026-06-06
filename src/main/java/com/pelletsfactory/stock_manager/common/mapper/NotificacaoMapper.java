@@ -53,6 +53,7 @@ public class NotificacaoMapper {
         return new NotificacaoSimpleDTO(
                 entity.getId(),
                 entity.getTitulo(),
+                entity.getMensagem(),
                 entity.getTipoEvento(),
                 entity.getCargoAlvo(),
                 Boolean.TRUE.equals(lida),
@@ -60,6 +61,7 @@ public class NotificacaoMapper {
                 entity.getConcluida(),
                 entity.getConcluidaPor() != null ? entity.getConcluidaPor().getNome() : null,
                 entity.getConcluidaEm(),
+                entity.getLinkReferencia(),
                 entity.getCreatedAt()
         );
     }

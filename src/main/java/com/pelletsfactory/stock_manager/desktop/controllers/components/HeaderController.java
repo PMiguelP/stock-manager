@@ -11,6 +11,9 @@ import com.pelletsfactory.stock_manager.common.services.NotificacaoService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationEvent;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.SupportTicketSelectionService;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -61,11 +64,20 @@ public class HeaderController {
     @Autowired
     private I18nService i18nService;
 
+    @Autowired
+    private SupportTicketSelectionService supportTicketSelectionService;
+
+    private final Timeline notificationRefresh = new Timeline(
+            new KeyFrame(javafx.util.Duration.seconds(5), event -> atualizarContadorNotificacoes())
+    );
+
     @FXML
     public void initialize() {
         configurarBreadcrumbs(List.of("Home"));
         carregarFuncionarioLogado();
         atualizarContadorNotificacoes();
+        notificationRefresh.setCycleCount(Timeline.INDEFINITE);
+        notificationRefresh.play();
     }
 
     @FXML
@@ -134,17 +146,11 @@ public class HeaderController {
             scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;");
             VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-            Page<NotificacaoResponseDTO> page = notificacaoService.listarParaUtilizadorAtual(
-                    1, 10, null, null, null, "createdAt", "DESC"
-            );
+            Page<NotificacaoResponseDTO> page = notificacaoService.listarNotLidas(1, 10);
             List<NotificacaoResponseDTO> items = page.getContent();
 
             markRead.setOnAction(e -> {
-                for (NotificacaoResponseDTO item : items) {
-                    if (!Boolean.TRUE.equals(item.lida())) {
-                        notificacaoService.marcarComoLida(item.id());
-                    }
-                }
+                notificacaoService.marcarTodasComoLidas();
                 navigationService.hideModal();
                 atualizarContadorNotificacoes();
                 handleOpenNotifications();
@@ -173,9 +179,12 @@ public class HeaderController {
 
                 // Ícone com fundo circular suave
                 StackPane iconBox = new StackPane();
-                iconBox.setMinWidth(48); iconBox.setMinHeight(48);
+                iconBox.setMinSize(48, 48);
+                iconBox.setPrefSize(48, 48);
+                iconBox.setMaxSize(48, 48);
                 String color = colorFor(tipo);
-                iconBox.setStyle("-fx-background-color: " + color + "15; -fx-background-radius: 10;");
+                iconBox.setStyle("-fx-background-color: " + color + "22; -fx-background-radius: 999; "
+                        + "-fx-border-color: " + color + "88; -fx-border-radius: 999; -fx-border-width: 1;");
 
                 FontIcon icon = criarIcone(iconFor(tipo), color, 22);
                 iconBox.getChildren().add(icon);
@@ -213,6 +222,11 @@ public class HeaderController {
                     if (unread) {
                         notificacaoService.marcarComoLida(item.id());
                         atualizarContadorNotificacoes();
+                    }
+                    if (isTicketNotification(item.tipoEvento()) && item.linkReferencia() != null) {
+                        supportTicketSelectionService.select(item.linkReferencia());
+                        navigationService.hideModal();
+                        navigationService.navigateTo("/support");
                     }
                 });
 
@@ -334,6 +348,7 @@ public class HeaderController {
             case ORDEM_CONCLUIDA -> "mdi2c-check-circle-outline";
             case EXPEDICAO_REALIZADA -> "mdi2t-truck-delivery";
             case ERRO_PRODUCAO -> "mdi2a-alert-circle-outline";
+            case NOVO_TICKET, NOVA_MENSAGEM_TICKET -> "mdi2m-message-text-outline";
         };
     }
 
@@ -344,7 +359,13 @@ public class HeaderController {
             case NOVA_ENCOMENDA -> "#3b82f6";
             case NOVA_ORDEM_PRODUCAO -> "#8b5cf6";
             case ORDEM_CONCLUIDA, EXPEDICAO_REALIZADA -> "#22c55e";
+            case NOVO_TICKET, NOVA_MENSAGEM_TICKET -> "#3b82f6";
         };
+    }
+
+    private boolean isTicketNotification(TipoEventoNotificacao tipo) {
+        return tipo == TipoEventoNotificacao.NOVO_TICKET
+                || tipo == TipoEventoNotificacao.NOVA_MENSAGEM_TICKET;
     }
 
     private FontIcon criarIcone(String iconLiteral, String color, int size) {

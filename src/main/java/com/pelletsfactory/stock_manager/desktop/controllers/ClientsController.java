@@ -9,6 +9,7 @@ import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
 import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -16,6 +17,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -35,12 +37,13 @@ public class ClientsController {
     @FXML private TableColumn<ClienteSimpleDTO, String> colId, colNome, colNif, colContacto;
     @FXML private TableColumn<ClienteSimpleDTO, Void> colAcoes;
 
-    @FXML private TextField txtFiltroNome;
-    @FXML private TextField txtFiltroNif;
+    @FXML private TextField txtPesquisa;
     @FXML private VBox vboxContainer;
 
     private PaginationControls pagination;
     private final ObservableList<ClienteSimpleDTO> clientes = FXCollections.observableArrayList();
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
+    private boolean updatingSearch;
 
     public ClientsController(ClienteService clienteService, NavigationService navigationService,
                              ToastService toastService, I18nService i18nService,
@@ -56,6 +59,7 @@ public class ClientsController {
     public void initialize() {
         pagination = new PaginationControls(10, this::carregarDados, i18nService);
         configurarTabela();
+        configurarPesquisaDinamica();
         carregarDados();
     }
 
@@ -114,10 +118,9 @@ public class ClientsController {
 
     private void carregarDados() {
         try {
-            String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isEmpty()) ? txtFiltroNome.getText() : null;
-            String nif = (txtFiltroNif != null && !txtFiltroNif.getText().isEmpty()) ? txtFiltroNif.getText() : null;
-            Page<ClienteSimpleDTO> page = clienteService.listarClientesComFiltros(
-                    pagination.pageNumberForService(), pagination.pageSize(), nome, nif, "nome", "ASC");
+            String pesquisa = txtPesquisa != null ? txtPesquisa.getText() : null;
+            Page<ClienteSimpleDTO> page = clienteService.listarClientesComPesquisa(
+                    pagination.pageNumberForService(), pagination.pageSize(), pesquisa, "nome", "ASC");
             clientes.setAll(page.getContent());
             pagination.attachTo(vboxContainer);
             pagination.update(page);
@@ -128,8 +131,16 @@ public class ClientsController {
 
     // ── FXML handlers ─────────────────────────────────────────────────────────
 
-    @FXML private void handleFiltrar() { pagination.resetPage(); carregarDados(); }
-    @FXML private void handleLimpar() { txtFiltroNome.clear(); txtFiltroNif.clear(); handleFiltrar(); }
+    @FXML private void handleFiltrar() { aplicarPesquisaDinamica(); }
+
+    @FXML
+    private void handleLimpar() {
+        updatingSearch = true;
+        searchDebounce.stop();
+        txtPesquisa.clear();
+        updatingSearch = false;
+        aplicarPesquisaDinamica();
+    }
 
     @FXML
     private void handleNovoCliente() {
@@ -207,71 +218,26 @@ public class ClientsController {
         HBox header = UiFactory.drawerHeader(i18nService.translate("clients.detailsTitle"), navigationService::hideModal);
 
         TextField txtNome = new TextField(valorOuVazio(d.nome()));
-        TextField txtNif = new TextField(valorOuVazio(d.nif()));
-        TextField txtEmail = new TextField(valorOuVazio(d.email()));
-        TextField txtContacto = new TextField(valorOuVazio(d.contacto()));
-        txtNome.setEditable(false); txtNif.setEditable(false);
-        txtEmail.setEditable(false); txtContacto.setEditable(false);
-
-        int totalOrders = d.encomendas() != null ? d.encomendas().size() : 0;
-        Label lblOrders = new Label(i18nService.translate("orders.title") + ": " + totalOrders);
-        lblOrders.getStyleClass().add("text-muted");
-
-        VBox form = new VBox(20,
-                criarCampo(i18nService.translate("common.name"), txtNome),
-                criarCampo("NIF", txtNif),
-                criarCampo("Email", txtEmail),
-                criarCampo(i18nService.translate("clients.contact"), txtContacto),
-                lblOrders
-        );
-        form.setPadding(new Insets(30));
-        ScrollPane scrollPane = UiFactory.transparentScroll(form);
-
-        HBox footer = UiFactory.drawerFooter();
-        Button btnEditar = new Button(i18nService.translate("common.edit"));
-        btnEditar.getStyleClass().add("accent");
-        btnEditar.setPrefHeight(44);
-        btnEditar.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnEditar, Priority.ALWAYS);
-        btnEditar.setOnAction(e -> navigationService.showModal(criarDrawerEditar(d)));
-        footer.getChildren().add(btnEditar);
-
-        root.getChildren().addAll(header, scrollPane, footer);
-        return root;
-    }
-
-    // ── Edit drawer ───────────────────────────────────────────────────────────
-
-    private void handleAbrirEditar(UUID clienteId) {
-        try {
-            ClienteDetailsDTO d = clienteService.obterDetalhesCliente(clienteId);
-            navigationService.showModal(criarDrawerEditar(d));
-        } catch (Exception e) {
-            toastService.showError(i18nService.translate("common.error"), e.getMessage());
-        }
-    }
-
-    private VBox criarDrawerEditar(ClienteDetailsDTO d) {
-        VBox root = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader(i18nService.translate("clients.editTitle"), navigationService::hideModal);
-
-        TextField txtNome = new TextField(valorOuVazio(d.nome()));
         Label lblErroNome = formValidationService.createErrorLabel();
-        formValidationService.attachTextAutoClear(txtNome, lblErroNome);
-
         TextField txtNif = new TextField(valorOuVazio(d.nif()));
         Label lblErroNif = formValidationService.createErrorLabel();
-        formValidationService.attachTextAutoClear(txtNif, lblErroNif);
-
         TextField txtEmail = new TextField(valorOuVazio(d.email()));
         Label lblErroEmail = formValidationService.createErrorLabel();
-        formValidationService.attachTextAutoClear(txtEmail, lblErroEmail);
-
         TextField txtContacto = new TextField(valorOuVazio(d.contacto()));
         Label lblErroContacto = formValidationService.createErrorLabel();
+
+        formValidationService.attachTextAutoClear(txtNome, lblErroNome);
+        formValidationService.attachTextAutoClear(txtNif, lblErroNif);
+        formValidationService.attachTextAutoClear(txtEmail, lblErroEmail);
         formValidationService.attachTextAutoClear(txtContacto, lblErroContacto);
 
-        // Summary line: total orders
+        setCamposClienteEditaveis(false, txtNome, txtNif, txtEmail, txtContacto);
+
+        String[] nomeOriginal = {valorOuVazio(d.nome())};
+        String[] nifOriginal = {valorOuVazio(d.nif())};
+        String[] emailOriginal = {valorOuVazio(d.email())};
+        String[] contactoOriginal = {valorOuVazio(d.contacto())};
+
         int totalOrders = d.encomendas() != null ? d.encomendas().size() : 0;
         Label lblOrders = new Label(i18nService.translate("orders.title") + ": " + totalOrders);
         lblOrders.getStyleClass().add("text-muted");
@@ -289,39 +255,64 @@ public class ClientsController {
         form.setPadding(new Insets(30));
         ScrollPane scrollPane = UiFactory.transparentScroll(form);
 
-        HBox footer = UiFactory.drawerFooter();
+        Button btnEliminar = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
+        Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
+        Button btnEditar = UiFactory.drawerSecondaryAction(i18nService.translate("common.edit"), "mdi2p-pencil-outline");
+        Button btnGuardar = UiFactory.drawerPrimaryAction(i18nService.translate("clients.save"), "mdi2c-content-save-outline");
 
-        Button btnEliminar = new Button(i18nService.translate("common.delete"));
-        btnEliminar.getStyleClass().addAll("button-outlined", "danger");
-        btnEliminar.setPrefHeight(44);
-        btnEliminar.setOnAction(e -> handleEliminarCliente(d.id(), d.nome()));
+        btnCancelar.setVisible(false);
+        btnCancelar.setManaged(false);
+        btnGuardar.setDisable(true);
 
-        Button btnGuardar = new Button(i18nService.translate("clients.save"));
-        btnGuardar.getStyleClass().add("accent");
-        btnGuardar.setPrefHeight(44);
-        btnGuardar.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
+        HBox footer = UiFactory.drawerActionFooter(btnEliminar, btnCancelar, btnEditar, btnGuardar);
+
+        btnEditar.setOnAction(e -> {
+            setCamposClienteEditaveis(true, txtNome, txtNif, txtEmail, txtContacto);
+            btnGuardar.setDisable(false);
+            btnEditar.setVisible(false);
+            btnEditar.setManaged(false);
+            btnCancelar.setVisible(true);
+            btnCancelar.setManaged(true);
+            txtNome.requestFocus();
+        });
+
+        btnCancelar.setOnAction(e -> {
+            txtNome.setText(nomeOriginal[0]);
+            txtNif.setText(nifOriginal[0]);
+            txtEmail.setText(emailOriginal[0]);
+            txtContacto.setText(contactoOriginal[0]);
+            lblErroGeral.setVisible(false);
+            lblErroGeral.setManaged(false);
+            limparErrosCliente(txtNome, lblErroNome, txtNif, lblErroNif, txtEmail, lblErroEmail, txtContacto, lblErroContacto);
+            setModoVisualizacaoCliente(btnGuardar, btnEditar, btnCancelar, txtNome, txtNif, txtEmail, txtContacto);
+        });
+
         btnGuardar.setOnAction(e -> {
-            lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
-            boolean valido = formValidationService.validateRequiredText(txtNome, lblErroNome, i18nService.translate("common.nameRequired"));
-            valido = formValidationService.validateRequiredText(txtNif, lblErroNif, i18nService.translate("common.nifRequired")) && valido;
-            valido = formValidationService.validateRequiredText(txtEmail, lblErroEmail, i18nService.translate("clients.emailRequired")) && valido;
-            valido = formValidationService.validateRequiredText(txtContacto, lblErroContacto, i18nService.translate("clients.contactRequired")) && valido;
-            if (valido) valido = formValidationService.validateRegex(txtContacto, lblErroContacto, "2[0-9]{8}", i18nService.translate("clients.contactInvalid")) && valido;
-            if (!valido) return;
+            lblErroGeral.setVisible(false);
+            lblErroGeral.setManaged(false);
+            if (!validarCliente(txtNome, lblErroNome, txtNif, lblErroNif, txtEmail, lblErroEmail, txtContacto, lblErroContacto)) {
+                return;
+            }
+
             try {
-                clienteService.atualizarCliente(d.id(), txtNome.getText(), txtNif.getText(),
+                ClienteDetailsDTO atualizado = clienteService.atualizarCliente(d.id(), txtNome.getText(), txtNif.getText(),
                         txtContacto.getText(), txtEmail.getText());
-                toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("clients.updated"));
-                navigationService.hideModal();
+                nomeOriginal[0] = valorOuVazio(atualizado.nome());
+                nifOriginal[0] = valorOuVazio(atualizado.nif());
+                emailOriginal[0] = valorOuVazio(atualizado.email());
+                contactoOriginal[0] = valorOuVazio(atualizado.contacto());
                 carregarDados();
+                setModoVisualizacaoCliente(btnGuardar, btnEditar, btnCancelar, txtNome, txtNif, txtEmail, txtContacto);
+                toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("clients.updated"));
             } catch (Exception ex) {
                 lblErroGeral.setText(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("common.saveError"));
-                lblErroGeral.setVisible(true); lblErroGeral.setManaged(true);
+                lblErroGeral.setVisible(true);
+                lblErroGeral.setManaged(true);
             }
         });
 
-        footer.getChildren().addAll(btnEliminar, btnGuardar);
+        btnEliminar.setOnAction(e -> handleEliminarCliente(d.id(), d.nome()));
+
         root.getChildren().addAll(header, scrollPane, footer);
         return root;
     }
@@ -344,6 +335,61 @@ public class ClientsController {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void configurarPesquisaDinamica() {
+        searchDebounce.setOnFinished(e -> aplicarPesquisaDinamica());
+        txtPesquisa.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (!updatingSearch) {
+                searchDebounce.playFromStart();
+            }
+        });
+    }
+
+    private void aplicarPesquisaDinamica() {
+        pagination.resetPage();
+        carregarDados();
+    }
+
+    private boolean validarCliente(TextField nomeField, Label nomeErro,
+                                   TextField nifField, Label nifErro,
+                                   TextField emailField, Label emailErro,
+                                   TextField contactoField, Label contactoErro) {
+        boolean valido = true;
+        valido = formValidationService.validateRequiredText(nomeField, nomeErro, i18nService.translate("common.nameRequired")) && valido;
+        valido = formValidationService.validateRequiredText(nifField, nifErro, i18nService.translate("common.nifRequired")) && valido;
+        valido = formValidationService.validateRequiredText(emailField, emailErro, i18nService.translate("clients.emailRequired")) && valido;
+        valido = formValidationService.validateRequiredText(contactoField, contactoErro, i18nService.translate("clients.contactRequired")) && valido;
+        if (valido) {
+            valido = formValidationService.validateRegex(contactoField, contactoErro, "2[0-9]{8}", i18nService.translate("clients.contactInvalid"));
+        }
+        return valido;
+    }
+
+    private void setCamposClienteEditaveis(boolean editavel, TextField... campos) {
+        for (TextField campo : campos) {
+            campo.setEditable(editavel);
+            campo.setFocusTraversable(editavel);
+        }
+    }
+
+    private void setModoVisualizacaoCliente(Button btnGuardar, Button btnEditar, Button btnCancelar, TextField... campos) {
+        setCamposClienteEditaveis(false, campos);
+        btnGuardar.setDisable(true);
+        btnEditar.setVisible(true);
+        btnEditar.setManaged(true);
+        btnCancelar.setVisible(false);
+        btnCancelar.setManaged(false);
+    }
+
+    private void limparErrosCliente(TextField nomeField, Label nomeErro,
+                                    TextField nifField, Label nifErro,
+                                    TextField emailField, Label emailErro,
+                                    TextField contactoField, Label contactoErro) {
+        formValidationService.clearError(nomeField, nomeErro);
+        formValidationService.clearError(nifField, nifErro);
+        formValidationService.clearError(emailField, emailErro);
+        formValidationService.clearError(contactoField, contactoErro);
+    }
 
     private VBox criarCampo(String label, Control input) {
         Label lbl = new Label(label); lbl.getStyleClass().add("text-muted");

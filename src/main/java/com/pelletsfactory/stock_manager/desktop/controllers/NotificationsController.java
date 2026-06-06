@@ -4,6 +4,8 @@ import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoSimpleDTO
 import com.pelletsfactory.stock_manager.common.enums.TipoEventoNotificacao;
 import com.pelletsfactory.stock_manager.common.services.NotificacaoService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
+import com.pelletsfactory.stock_manager.desktop.services.SupportTicketSelectionService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -20,7 +22,10 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.Cursor;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +42,8 @@ import java.util.stream.Collectors;
 @Component
 public class NotificationsController {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationsController.class);
+
     @FXML private Label lblNotificationsSummary;
     @FXML private TextField txtSearch;
     @FXML private ComboBox<String> cmbType;
@@ -47,11 +54,18 @@ public class NotificationsController {
 
     private final NotificacaoService notificacaoService;
     private final ToastService toastService;
+    private final NavigationService navigationService;
+    private final SupportTicketSelectionService supportTicketSelectionService;
     private final ObservableList<NotificationItem> allNotifications = FXCollections.observableArrayList();
 
-    public NotificationsController(NotificacaoService notificacaoService, ToastService toastService) {
+    public NotificationsController(NotificacaoService notificacaoService,
+                                   ToastService toastService,
+                                   NavigationService navigationService,
+                                   SupportTicketSelectionService supportTicketSelectionService) {
         this.notificacaoService = notificacaoService;
         this.toastService = toastService;
+        this.navigationService = navigationService;
+        this.supportTicketSelectionService = supportTicketSelectionService;
     }
 
     @FXML
@@ -64,7 +78,7 @@ public class NotificationsController {
         txtSearch.textProperty().addListener((obs, oldValue, newValue) -> render());
         cmbType.valueProperty().addListener((obs, oldValue, newValue) -> loadNotifications());
         cmbStatus.valueProperty().addListener((obs, oldValue, newValue) -> loadNotifications());
-        btnMarkAllRead.setOnAction(event -> markVisibleAsRead());
+        btnMarkAllRead.setOnAction(event -> markAllAsRead());
 
         loadNotifications();
     }
@@ -84,7 +98,7 @@ public class NotificationsController {
             Boolean concluida = selectedDoneFilter();
 
             Page<NotificacaoSimpleDTO> page = notificacaoService.listarParaUtilizadorAtualSimples(
-                    1, 200, tipo, lida, concluida, "createdAt", "DESC"
+                    1, 100, tipo, lida, concluida, "createdAt", "DESC"
             );
 
             allNotifications.setAll(page.getContent().stream()
@@ -121,13 +135,9 @@ public class NotificationsController {
         return null;
     }
 
-    private void markVisibleAsRead() {
+    private void markAllAsRead() {
         try {
-            for (NotificationItem item : filterNotifications()) {
-                if (item.unread) {
-                    notificacaoService.marcarComoLida(item.id);
-                }
-            }
+            notificacaoService.marcarTodasComoLidas();
             loadNotifications();
         } catch (Exception e) {
             toastService.showError("Erro", "Erro ao marcar notificações como lidas: " + e.getMessage());
@@ -164,9 +174,13 @@ public class NotificationsController {
 
         return allNotifications.stream()
                 .filter(item -> search.isEmpty()
-                        || item.title.toLowerCase(Locale.ROOT).contains(search)
-                        || item.description.toLowerCase(Locale.ROOT).contains(search))
+                        || searchable(item.title).contains(search)
+                        || searchable(item.description).contains(search))
                 .collect(Collectors.toList());
+    }
+
+    private String searchable(String text) {
+        return text == null ? "" : text.toLowerCase(Locale.ROOT);
     }
 
     private HBox createNotificationCard(NotificationItem item) {
@@ -174,14 +188,35 @@ public class NotificationsController {
         card.setPadding(new Insets(20));
         card.setAlignment(Pos.TOP_LEFT);
         card.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 10; -fx-border-color: -color-border-muted; -fx-border-radius: 10;");
+        if (item.isTicketNotification()) {
+            card.setCursor(Cursor.HAND);
+            card.setOnMouseClicked(event -> {
+                if (item.unread) {
+                    notificacaoService.marcarComoLida(item.id);
+                }
+                supportTicketSelectionService.select(item.linkReferencia);
+                navigationService.navigateTo("/support");
+            });
+        }
 
         StackPane iconWrap = new StackPane();
         iconWrap.setMinSize(48, 48);
         iconWrap.setPrefSize(48, 48);
-        iconWrap.setStyle("-fx-background-color: -color-bg-default; -fx-background-radius: 999; -fx-border-color: -color-border-muted; -fx-border-radius: 999;");
+        iconWrap.setMaxSize(48, 48);
+        iconWrap.setStyle(String.format(
+                "-fx-background-color: %s22; -fx-background-radius: 999; -fx-border-color: %s88; "
+                        + "-fx-border-radius: 999; -fx-border-width: 1;",
+                item.iconColor,
+                item.iconColor
+        ));
 
         FontIcon icon = new FontIcon();
-        icon.setIconLiteral(item.iconLiteral);
+        try {
+            icon.setIconLiteral(item.iconLiteral);
+        } catch (IllegalArgumentException exception) {
+            log.warn("Ícone inválido na notificação {}: {}", item.id, item.iconLiteral, exception);
+            icon.setIconLiteral("mdi2b-bell-outline");
+        }
         icon.setIconSize(22);
         icon.setIconColor(Color.web(item.iconColor));
         iconWrap.getChildren().add(icon);
@@ -203,7 +238,7 @@ public class NotificationsController {
             titleLine.getChildren().add(dot);
         }
 
-        Label desc = new Label(item.description);
+        Label desc = new Label(item.description != null ? item.description : "");
         desc.getStyleClass().add("text-muted");
         desc.setWrapText(true);
         desc.setStyle("-fx-font-size: 15px;");
@@ -296,10 +331,11 @@ public class NotificationsController {
         private final boolean requerAcao;
         private final boolean done;
         private final String doneBy;
+        private final UUID linkReferencia;
 
         private NotificationItem(UUID id, String title, String description, String type, String timeAgo, String date,
                                  String iconLiteral, String iconColor, boolean unread, boolean requerAcao,
-                                 boolean done, String doneBy) {
+                                 boolean done, String doneBy, UUID linkReferencia) {
             this.id = id;
             this.title = title;
             this.description = description;
@@ -312,6 +348,7 @@ public class NotificationsController {
             this.requerAcao = requerAcao;
             this.done = done;
             this.doneBy = doneBy;
+            this.linkReferencia = linkReferencia;
         }
 
         private static NotificationItem from(NotificacaoSimpleDTO dto) {
@@ -319,7 +356,7 @@ public class NotificationsController {
             return new NotificationItem(
                     dto.id(),
                     dto.titulo(),
-                    tipo != null ? tipo.getDisplayName() : "Notificação",
+                    dto.mensagem(),
                     tipo != null ? tipo.getDisplayName() : "Geral",
                     formatTimeAgo(dto.createdAt()),
                     dto.createdAt() != null ? DATE_FORMATTER.format(dto.createdAt()) : "",
@@ -328,7 +365,8 @@ public class NotificationsController {
                     !Boolean.TRUE.equals(dto.lida()),
                     Boolean.TRUE.equals(dto.requerAcao()),
                     Boolean.TRUE.equals(dto.concluida()),
-                    dto.concluidaPorNome()
+                    dto.concluidaPorNome(),
+                    dto.linkReferencia()
             );
         }
 
@@ -352,6 +390,7 @@ public class NotificationsController {
                 case ORDEM_CONCLUIDA -> "mdi2c-check-circle-outline";
                 case EXPEDICAO_REALIZADA -> "mdi2t-truck-delivery";
                 case ERRO_PRODUCAO -> "mdi2a-alert-circle-outline";
+                case NOVO_TICKET, NOVA_MENSAGEM_TICKET -> "mdi2m-message-text-outline";
             };
         }
 
@@ -362,7 +401,14 @@ public class NotificationsController {
                 case NOVA_ENCOMENDA -> "#3b82f6";
                 case NOVA_ORDEM_PRODUCAO -> "#8b5cf6";
                 case ORDEM_CONCLUIDA, EXPEDICAO_REALIZADA -> "#22c55e";
+                case NOVO_TICKET, NOVA_MENSAGEM_TICKET -> "#3b82f6";
             };
+        }
+
+        private boolean isTicketNotification() {
+            return linkReferencia != null
+                    && (type.equals(TipoEventoNotificacao.NOVO_TICKET.getDisplayName())
+                    || type.equals(TipoEventoNotificacao.NOVA_MENSAGEM_TICKET.getDisplayName()));
         }
     }
 }

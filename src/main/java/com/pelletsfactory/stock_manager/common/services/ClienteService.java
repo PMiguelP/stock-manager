@@ -86,6 +86,20 @@ public class ClienteService {
                 .map(clienteMapper::toSimpleDTO);
     }
 
+    public Page<ClienteSimpleDTO> listarClientesComPesquisa(
+            int page,
+            int pageSize,
+            String pesquisa,
+            String sortBy,
+            String direction) {
+
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "nome");
+        String pesquisaNormalizada = pesquisa == null || pesquisa.isBlank() ? null : pesquisa.trim();
+
+        return clienteRepo.findByPesquisa(pesquisaNormalizada, pageable)
+                .map(clienteMapper::toSimpleDTO);
+    }
+
     public List<ClienteSimpleDTO> listarTodosClientesSimples() {
         return clienteRepo.findAll().stream()
                 .map(clienteMapper::toSimpleDTO)

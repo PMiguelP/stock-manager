@@ -7,6 +7,9 @@ import com.pelletsfactory.stock_manager.desktop.services.NavigationEvent;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ThemePreferencesService;
 import com.pelletsfactory.stock_manager.desktop.services.ViewId;
+import com.pelletsfactory.stock_manager.common.entities.Funcionario;
+import com.pelletsfactory.stock_manager.common.entities.SessaoFuncionario;
+import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -45,7 +48,7 @@ public class SidebarController {
     private final ConfigurableApplicationContext springContext;
 
     @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction, btnAllocations,
-            btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
+            btnStock, btnClients, btnSupport, btnSuppliers, btnPurchaseOrders,
             btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches, btnSettings;
     @FXML private Button btnSair;
     @FXML private ImageView sidebarLogoImage;
@@ -85,7 +88,7 @@ public class SidebarController {
 
         navButtons = List.of(
                 btnDashboard, btnFuncionarios, btnOrders, btnProduction, btnAllocations,
-                btnStock, btnClients, btnSuppliers, btnPurchaseOrders,
+                btnStock, btnClients, btnSupport, btnSuppliers, btnPurchaseOrders,
                 btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches,
                 btnSettings
         );
@@ -107,6 +110,7 @@ public class SidebarController {
         navByViewId.put(ViewId.ALLOCATIONS, btnAllocations);
         navByViewId.put(ViewId.STOCK, btnStock);
         navByViewId.put(ViewId.CLIENTS, btnClients);
+        navByViewId.put(ViewId.SUPPORT, btnSupport);
         navByViewId.put(ViewId.SUPPLIERS, btnSuppliers);
         navByViewId.put(ViewId.PURCHASE_ORDERS, btnPurchaseOrders);
         navByViewId.put(ViewId.RAW_MATERIALS, btnRawMaterials);
@@ -115,6 +119,7 @@ public class SidebarController {
         navByViewId.put(ViewId.BATCHES, btnBatches);
         navByViewId.put(ViewId.SETTINGS, btnSettings);
 
+        aplicarPermissoes();
         setActiveView(ViewId.DASHBOARD);
     }
 
@@ -134,6 +139,7 @@ public class SidebarController {
         btnAllocations.setText(i18nService.translate("nav.allocations"));
         btnStock.setText(i18nService.translate("stock.title"));
         btnClients.setText(i18nService.translate("nav.clients"));
+        btnSupport.setText(i18nService.translate("support.title"));
         btnSuppliers.setText(i18nService.translate("nav.suppliers"));
         btnPurchaseOrders.setText(i18nService.translate("purchaseOrders.title"));
         btnRawMaterials.setText(i18nService.translate("rawMaterials.title"));
@@ -215,6 +221,12 @@ public class SidebarController {
     }
 
     @FXML
+    private void handleSupport() {
+        switchView(btnSupport);
+        navigationService.navigateTo("/support");
+    }
+
+    @FXML
     private void handleSuppliers() {
         switchView(btnSuppliers);
         navigationService.navigateTo("/suppliers");
@@ -254,6 +266,15 @@ public class SidebarController {
     private void handleSettings() {
         switchView(btnSettings);
         navigationService.navigateTo("/settings");
+    }
+
+    private void aplicarPermissoes() {
+        Funcionario funcionario = SessaoFuncionario.getFuncionarioLogado();
+        boolean podeAcederSuporte = funcionario != null
+                && (funcionario.getCargo() == Cargo.ASSISTENTE_COMERCIAL
+                || funcionario.getCargo() == Cargo.ADMINISTRADOR);
+        btnSupport.setVisible(podeAcederSuporte);
+        btnSupport.setManaged(podeAcederSuporte);
     }
 
     @EventListener

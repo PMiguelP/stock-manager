@@ -110,6 +110,10 @@ public class NavigationService {
         addRoute("/notifications", "/fxml/views/notifications-view.fxml", "notifications.title",
                 "notifications.subtitle", ViewId.NOTIFICATIONS,
                 "nav.home", "notifications.title");
+
+        addRoute("/support", "/fxml/views/support-view.fxml", "support.title",
+                "support.subtitle", ViewId.SUPPORT,
+                "nav.home", "support.title");
     }
 
     private void addRoute(String route,
@@ -167,6 +171,9 @@ public class NavigationService {
             Parent view = loadView(routeInfo.fxmlPath);
             currentController = controllerByFxmlPath.get(routeInfo.fxmlPath);
             contentArea.setCenter(view);
+            if (currentController instanceof ViewReloadable reloadable) {
+                reloadable.onViewShown();
+            }
 
             eventPublisher.publishEvent(new NavigationEvent(
                     i18nService.translate(routeInfo.titulo),

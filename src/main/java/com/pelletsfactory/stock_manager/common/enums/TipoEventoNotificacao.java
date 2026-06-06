@@ -6,7 +6,9 @@ public enum TipoEventoNotificacao {
     NOVA_ORDEM_PRODUCAO("Nova Ordem de Produção"),
     ORDEM_CONCLUIDA("Ordem Concluída"),
     EXPEDICAO_REALIZADA("Expedição Realizada"),
-    ERRO_PRODUCAO("Erro na Produção");
+    ERRO_PRODUCAO("Erro na Produção"),
+    NOVO_TICKET("Novo Ticket"),
+    NOVA_MENSAGEM_TICKET("Nova Mensagem de Ticket");
 
 
     private final String displayName;

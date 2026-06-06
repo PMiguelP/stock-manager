@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="16.0" styleClass="content-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+<VBox spacing="18.0" styleClass="content-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.AllocationsController">
     <padding>
         <Insets bottom="24.0" left="26.0" right="26.0" top="24.0"/>
@@ -25,14 +25,14 @@
             <Label styleClass="text-muted" text="allocations.subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <ComboBox fx:id="cmbTipoPellet" minWidth="230.0" onAction="#handleFiltroAlterado" promptText="allocations.filter"/>
+        <ComboBox fx:id="cmbTipoPellet" minWidth="260.0" onAction="#handleFiltroAlterado" promptText="allocations.filter"/>
     </HBox>
 
-    <HBox spacing="16.0" VBox.vgrow="ALWAYS">
-        <VBox spacing="0.0" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 7; -fx-background-radius: 7;" HBox.hgrow="ALWAYS">
-            <VBox spacing="4.0" style="-fx-padding: 17 18 15 18; -fx-border-color: transparent transparent -color-border-default transparent;">
+    <HBox spacing="18.0" VBox.vgrow="ALWAYS">
+        <VBox spacing="0.0" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+            <VBox spacing="5.0" style="-fx-padding: 20 22 17 22; -fx-border-color: transparent transparent -color-border-default transparent;">
                 <HBox alignment="CENTER_LEFT" spacing="9.0">
-                    <FontIcon iconLiteral="mdi2p-package-variant" iconSize="17" style="-fx-icon-color: -color-accent-emphasis;"/>
+                    <FontIcon iconLiteral="mdi2c-cart" iconSize="17" style="-fx-icon-color: -color-accent-emphasis;"/>
                     <Label styleClass="section-title" text="allocations.pendingOrders"/>
                 </HBox>
                 <Label fx:id="lblPendingSummary" styleClass="text-muted"/>
@@ -44,8 +44,8 @@
             </ScrollPane>
         </VBox>
 
-        <VBox spacing="0.0" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 7; -fx-background-radius: 7;" HBox.hgrow="ALWAYS">
-            <VBox spacing="4.0" style="-fx-padding: 17 18 15 18; -fx-border-color: transparent transparent -color-border-default transparent;">
+        <VBox spacing="0.0" style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+            <VBox spacing="5.0" style="-fx-padding: 20 22 17 22; -fx-border-color: transparent transparent -color-border-default transparent;">
                 <HBox alignment="CENTER_LEFT" spacing="9.0">
                     <FontIcon iconLiteral="mdi2c-cube-outline" iconSize="17" style="-fx-icon-color: #22c55e;"/>
                     <Label styleClass="section-title" text="allocations.availableBatches"/>
@@ -60,7 +60,7 @@
         </VBox>
     </HBox>
 
-    <VBox fx:id="allocationPanel" managed="false" spacing="13.0" style="-fx-padding: 17; -fx-background-color: -color-bg-subtle; -fx-border-color: -color-accent-emphasis; -fx-border-width: 1.5; -fx-border-radius: 7; -fx-background-radius: 7;" visible="false">
+    <VBox fx:id="allocationPanel" managed="false" spacing="16.0" style="-fx-padding: 20; -fx-background-color: rgba(59, 130, 246, 0.08); -fx-border-color: -color-accent-emphasis; -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8;" visible="false">
         <HBox alignment="CENTER_LEFT">
             <Label styleClass="section-title" text="allocations.createTitle"/>
             <Region HBox.hgrow="ALWAYS"/>
@@ -73,14 +73,14 @@
                 </tooltip>
             </Button>
         </HBox>
-        <HBox alignment="CENTER" spacing="15.0">
-            <VBox fx:id="selectedOrderCard" minHeight="76.0" spacing="4.0" style="-fx-padding: 12; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-background-radius: 6;" HBox.hgrow="ALWAYS">
+        <HBox alignment="CENTER" spacing="18.0">
+            <VBox fx:id="selectedOrderCard" minHeight="88.0" spacing="5.0" style="-fx-padding: 15; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
                 <Label styleClass="text-muted" text="allocations.fromOrder"/>
                 <Label fx:id="lblSelectedOrder" styleClass="section-title"/>
                 <Label fx:id="lblSelectedOrderDetails" styleClass="text-muted"/>
             </VBox>
-            <FontIcon iconLiteral="mdi2a-arrow-right" iconSize="20" style="-fx-icon-color: -color-accent-emphasis;"/>
-            <VBox fx:id="selectedBatchCard" minHeight="76.0" spacing="4.0" style="-fx-padding: 12; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-radius: 6; -fx-background-radius: 6;" HBox.hgrow="ALWAYS">
+            <FontIcon iconLiteral="mdi2a-arrow-right" iconSize="26" style="-fx-icon-color: -color-accent-emphasis;"/>
+            <VBox fx:id="selectedBatchCard" minHeight="88.0" spacing="5.0" style="-fx-padding: 15; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
                 <Label styleClass="text-muted" text="allocations.toBatch"/>
                 <Label fx:id="lblSelectedBatch" styleClass="section-title"/>
                 <Label fx:id="lblSelectedBatchDetails" styleClass="text-muted"/>
@@ -96,7 +96,7 @@
                 <Spinner fx:id="spnQuantidade" editable="true" maxWidth="1.7976931348623157E308"/>
                 <Label fx:id="lblQuantityHint" styleClass="text-muted"/>
             </VBox>
-            <Button fx:id="btnCreateAllocation" maxWidth="250.0" minWidth="250.0" onAction="#handleCriarAlocacao" styleClass="primary-button" text="allocations.create"/>
+            <Button fx:id="btnCreateAllocation" maxWidth="300.0" minWidth="300.0" onAction="#handleCriarAlocacao" styleClass="primary-button" text="allocations.create"/>
         </HBox>
     </VBox>
 </VBox>

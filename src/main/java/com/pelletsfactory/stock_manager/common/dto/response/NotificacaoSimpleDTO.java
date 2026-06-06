@@ -8,6 +8,7 @@ import java.util.UUID;
 public record NotificacaoSimpleDTO(
         UUID id,
         String titulo,
+        String mensagem,
         TipoEventoNotificacao tipoEvento,
         Cargo cargoAlvo,
         Boolean lida,
@@ -15,6 +16,7 @@ public record NotificacaoSimpleDTO(
         Boolean concluida,
         String concluidaPorNome,
         Instant concluidaEm,
+        UUID linkReferencia,
         Instant createdAt
 ) {
 }

@@ -2,6 +2,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 
 import com.pelletsfactory.stock_manager.common.dto.request.OrdemProducaoRequestDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.*;
+import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.EstadoOrdemProducao;
 import com.pelletsfactory.stock_manager.common.services.FormulaProducaoService;
 import com.pelletsfactory.stock_manager.common.services.FuncionarioService;
@@ -12,6 +13,7 @@ import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
 import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -43,6 +45,7 @@ public class ProductionController {
 
     @FXML private VBox vboxContainer;
     @FXML private ComboBox<EstadoOrdemProducao> cmbEstadoFiltro;
+    @FXML private TextField txtPesquisa;
 
     @FXML private TableView<OrdemProducaoSimpleDTO> tblOrdens;
     @FXML private TableColumn<OrdemProducaoSimpleDTO, String> colTipoPellet;
@@ -70,6 +73,8 @@ public class ProductionController {
     private PaginationControls pagination;
 
     private final ObservableList<OrdemProducaoSimpleDTO> ordens = FXCollections.observableArrayList();
+    private final PauseTransition searchDebounce = new PauseTransition(javafx.util.Duration.millis(300));
+    private boolean updatingFilters;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public ProductionController(OrdemProducaoService ordemService,
@@ -92,6 +97,7 @@ public class ProductionController {
     public void initialize() {
         pagination = new PaginationControls(10, this::carregarOrdens, i18nService);
         configurarFiltroEstado();
+        configurarPesquisaDinamica();
         configurarTabela();
         configurarDrawerCriarOrdem();
         carregarOrdens();
@@ -206,8 +212,10 @@ public class ProductionController {
     private void carregarOrdens() {
         try {
             EstadoOrdemProducao estado = cmbEstadoFiltro.getValue();
-            Page<OrdemProducaoSimpleDTO> page = ordemService.listarOrdensComFiltros(
-                    pagination.pageNumberForService(), pagination.pageSize(), estado, null, null, "dataInicio", "DESC");
+            Page<OrdemProducaoSimpleDTO> page = ordemService.listarOrdensComPesquisa(
+                    pagination.pageNumberForService(), pagination.pageSize(), estado,
+                    txtPesquisa != null ? txtPesquisa.getText() : null,
+                    "dataInicio", "DESC");
 
             ordens.setAll(page.getContent());
             pagination.attachTo(vboxContainer);
@@ -348,19 +356,13 @@ public class ProductionController {
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         // ── Footer: Edit + Delete ─────────────────────────────────────────────
-        HBox footer = new HBox(10);
-        footer.setPadding(new Insets(20, 25, 20, 25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        Button btnDeletar = null;
 
         boolean podeEditar = d.estado() != EstadoOrdemProducao.CONCLUIDA && d.estado() != EstadoOrdemProducao.ANULADA;
         boolean podeDeletar = d.estado() == EstadoOrdemProducao.PENDENTE;
 
         if (podeDeletar) {
-            Button btnDeletar = new Button("Eliminar");
-            btnDeletar.getStyleClass().addAll("button-outlined", "danger");
-            btnDeletar.setGraphic(new FontIcon("mdi2t-trash-can-outline:16"));
-            btnDeletar.setPrefHeight(40);
+            btnDeletar = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
             btnDeletar.setOnAction(e -> {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                         "Eliminar a ordem de produção para \"" + d.tipoPelletNome() + "\"?",
@@ -380,21 +382,18 @@ public class ProductionController {
                     }
                 });
             });
-            footer.getChildren().add(btnDeletar);
         }
 
-        Region footerSp = new Region();
-        HBox.setHgrow(footerSp, Priority.ALWAYS);
-        footer.getChildren().add(footerSp);
-
+        Button btnEditar = UiFactory.drawerSecondaryAction(i18nService.translate("common.edit"), "mdi2p-pencil-outline");
+        btnEditar.setDisable(!podeEditar);
         if (podeEditar) {
-            Button btnEditar = new Button("Editar");
-            btnEditar.getStyleClass().add("accent");
-            btnEditar.setGraphic(new FontIcon("mdi2p-pencil-outline:16"));
-            btnEditar.setPrefHeight(40);
             btnEditar.setOnAction(e -> navigationService.showModal(criarDrawerEditar(d)));
-            footer.getChildren().add(btnEditar);
         }
+
+        Button btnFechar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
+        btnFechar.setOnAction(e -> navigationService.hideModal());
+
+        HBox footer = UiFactory.drawerActionFooter(btnDeletar, btnFechar, btnEditar);
 
         root.getChildren().addAll(header, scroll, footer);
         return root;
@@ -567,24 +566,14 @@ public class ProductionController {
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         // Footer
-        HBox footer = new HBox(10);
-        footer.setPadding(new Insets(20, 25, 20, 25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnCancelar = new Button("Voltar");
-        btnCancelar.getStyleClass().add("button-outlined");
-        btnCancelar.setPrefHeight(40);
+        Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
         btnCancelar.setOnAction(e -> {
             try {
                 OrdemProducaoDetailsDTO fresh = ordemService.obterDetalhes(d.id());
                 navigationService.showModal(criarDrawerDetalhes(fresh));
             } catch (Exception ex) { navigationService.hideModal(); }
         });
-        Button btnGuardar = new Button("Guardar");
-        btnGuardar.getStyleClass().add("accent");
-        btnGuardar.setPrefHeight(40);
-        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
-        btnGuardar.setMaxWidth(Double.MAX_VALUE);
+        Button btnGuardar = UiFactory.drawerPrimaryAction(i18nService.translate("common.save"), "mdi2c-content-save-outline");
         btnGuardar.setOnAction(e -> {
             boolean valido = true;
 
@@ -655,7 +644,7 @@ public class ProductionController {
                 toastService.showError("Erro", ex.getMessage());
             }
         });
-        footer.getChildren().addAll(btnCancelar, btnGuardar);
+        HBox footer = UiFactory.drawerActionFooter(null, btnCancelar, btnGuardar);
 
         root.getChildren().addAll(header, scroll, footer);
         return root;
@@ -664,26 +653,8 @@ public class ProductionController {
     // ── Create drawer ─────────────────────────────────────────────────────────
 
     private void configurarDrawerCriarOrdem() {
-        criarOrdemDrawer = new VBox(0);
-        criarOrdemDrawer.setMinWidth(560);
-        criarOrdemDrawer.setPrefWidth(560);
-        criarOrdemDrawer.setMaxWidth(560);
-        criarOrdemDrawer.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        // Header
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Nova Ordem de Produção");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        criarOrdemDrawer = UiFactory.drawerRoot(560);
+        HBox header = UiFactory.drawerHeader("Nova Ordem de Produção", navigationService::hideModal);
 
         // Form
         VBox form = new VBox(20);
@@ -753,21 +724,11 @@ public class ProductionController {
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         // Footer
-        HBox footer = new HBox(10);
-        footer.setPadding(new Insets(20, 25, 20, 25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnCancelar = new Button("Cancelar");
-        btnCancelar.getStyleClass().add("button-outlined");
-        btnCancelar.setPrefHeight(40);
+        Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
         btnCancelar.setOnAction(e -> navigationService.hideModal());
-        Button btnCriar = new Button("Criar Ordem");
-        btnCriar.getStyleClass().add("accent");
-        btnCriar.setPrefHeight(40);
-        HBox.setHgrow(btnCriar, Priority.ALWAYS);
-        btnCriar.setMaxWidth(Double.MAX_VALUE);
+        Button btnCriar = UiFactory.drawerPrimaryAction("Criar Ordem", "mdi2c-check-circle-outline");
         btnCriar.setOnAction(e -> handleCriarOrdem());
-        footer.getChildren().addAll(btnCancelar, btnCriar);
+        HBox footer = UiFactory.drawerActionFooter(null, btnCancelar, btnCriar);
 
         criarOrdemDrawer.getChildren().addAll(header, scroll, footer);
     }
@@ -848,21 +809,46 @@ public class ProductionController {
 
     // ── FXML handlers ─────────────────────────────────────────────────────────
 
-    @FXML private void handleFiltrar() { pagination.resetPage(); carregarOrdens(); }
-    @FXML private void handleLimpar() { cmbEstadoFiltro.setValue(null); pagination.resetPage(); carregarOrdens(); }
+    private void configurarPesquisaDinamica() {
+        searchDebounce.setOnFinished(event -> aplicarFiltrosDinamicos());
+        txtPesquisa.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (!updatingFilters) {
+                searchDebounce.playFromStart();
+            }
+        });
+        cmbEstadoFiltro.valueProperty().addListener((obs, oldValue, newValue) -> {
+            if (!updatingFilters) {
+                aplicarFiltrosDinamicos();
+            }
+        });
+    }
+
+    private void aplicarFiltrosDinamicos() {
+        pagination.resetPage();
+        carregarOrdens();
+    }
+
+    @FXML private void handleLimpar() {
+        updatingFilters = true;
+        searchDebounce.stop();
+        txtPesquisa.clear();
+        cmbEstadoFiltro.setValue(null);
+        updatingFilters = false;
+        aplicarFiltrosDinamicos();
+    }
 
     @FXML
     private void handleAbrirModal() {
         try {
             cmbTipoPellet.setItems(FXCollections.observableArrayList(
-                    stockService.listarTiposPelletComFiltros(1, 500, null, null, "nome", "ASC").getContent()));
+                    stockService.listarTiposPelletComFiltros(1, 100, null, null, "nome", "ASC").getContent()));
         } catch (Exception e) {
             cmbTipoPellet.setItems(FXCollections.emptyObservableList());
             toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
         try {
             cmbFuncionario.setItems(FXCollections.observableArrayList(
-                    funcionarioService.listarFuncionarios(1, 500, null, null, null, null, "nome", "ASC").getContent()));
+                    funcionarioService.listarFuncionarios(1, 100, null, null, Cargo.OPERADOR_PRODUCAO, null, "nome", "ASC").getContent()));
         } catch (Exception e) {
             cmbFuncionario.setItems(FXCollections.emptyObservableList());
             toastService.showError(i18nService.translate("common.error"), e.getMessage());
@@ -946,7 +932,7 @@ public class ProductionController {
     private List<TipoPelletSimpleDTO> carregarTiposPelletParaEdicao(ComboBox<TipoPelletSimpleDTO> combo, UUID selectedId) {
         try {
             List<TipoPelletSimpleDTO> tipos = stockService
-                    .listarTiposPelletComFiltros(1, 500, null, null, "nome", "ASC")
+                    .listarTiposPelletComFiltros(1, 100, null, null, "nome", "ASC")
                     .getContent();
             combo.setItems(FXCollections.observableArrayList(tipos));
             if (selectedId != null) {
@@ -965,7 +951,7 @@ public class ProductionController {
     private List<FuncionarioSimpleDTO> carregarFuncionariosParaEdicao(ComboBox<FuncionarioSimpleDTO> combo, UUID selectedId) {
         try {
             List<FuncionarioSimpleDTO> funcionarios = funcionarioService
-                    .listarFuncionarios(1, 500, null, null, null, null, "nome", "ASC")
+                    .listarFuncionarios(1, 100, null, null, Cargo.OPERADOR_PRODUCAO, null, "nome", "ASC")
                     .getContent();
             combo.setItems(FXCollections.observableArrayList(funcionarios));
             if (selectedId != null) {

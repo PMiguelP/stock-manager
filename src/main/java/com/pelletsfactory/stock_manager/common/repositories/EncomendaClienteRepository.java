@@ -37,4 +37,11 @@ public interface EncomendaClienteRepository extends JpaRepository<EncomendaClien
     Page<EncomendaCliente> findByFiltros(@Param("clienteId") UUID clienteId,
                                         @Param("estado") EstadoEncomendaCliente estado,
                                         Pageable pageable);
+
+    @Query("SELECT e FROM EncomendaCliente e WHERE " +
+            "LOWER(e.cliente.nome) LIKE LOWER(CONCAT('%', :clienteNome, '%')) AND " +
+            "(:estado IS NULL OR e.estado = :estado)")
+    Page<EncomendaCliente> findByFiltrosPesquisa(@Param("clienteNome") String clienteNome,
+                                                 @Param("estado") EstadoEncomendaCliente estado,
+                                                 Pageable pageable);
 }

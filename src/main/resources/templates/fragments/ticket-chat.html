@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section class="ticket-chat" id="ticket-chat-container" th:fragment="ticketChat" th:if="${selectedTicket != null}">
+    <div class="ticket-chat-header">
+        <div>
+            <span class="eyebrow">Support conversation</span>
+            <h3 th:text="${selectedTicket.assunto}">Question about the order</h3>
+        </div>
+        <span class="ticket-state" th:text="${selectedTicket.estado.displayName}">Aguarda equipa</span>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+        <article class="chat-message"
+                 th:each="message : ${selectedTicket.mensagens}"
+                 th:classappend="${message.autorTipo.name() == 'CLIENTE'} ? ' client-message' : ' staff-message'">
+            <div class="message-meta">
+                <strong th:text="${message.autorNome}">Client</strong>
+                <time th:text="${#temporals.format(message.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 12:00</time>
+            </div>
+            <p th:text="${message.mensagem}">Message</p>
+        </article>
+    </div>
+
+    <form class="chat-compose"
+          th:unless="${selectedTicket.estado.name() == 'RESOLVIDO'}"
+          th:action="@{|/tracking/${trackingCode}/tickets/${selectedTicket.id}/messages|}"
+          method="post">
+        <label>
+            <span class="sr-only">Your message</span>
+            <textarea name="mensagem" maxlength="2000" placeholder="Write your message" required></textarea>
+        </label>
+        <button type="submit">Send message</button>
+    </form>
+    <p class="resolved-note" th:if="${selectedTicket.estado.name() == 'RESOLVIDO'}">
+        This conversation was resolved. Open a new conversation if you still need help.
+    </p>
+</section>
+</body>
+</html>

@@ -43,4 +43,12 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, UUID> 
             @Param("funcionarioId") UUID funcionarioId
     );
 
+    @Query("SELECT n FROM Notificacao n WHERE " +
+            "(:cargoAlvo IS NULL OR n.cargoAlvo IS NULL OR n.cargoAlvo = :cargoAlvo) AND " +
+            "NOT EXISTS (SELECT nl.id FROM NotificacaoLeitura nl WHERE nl.notificacao = n AND nl.funcionario.id = :funcionarioId)")
+    List<Notificacao> findNotLidasParaFuncionario(
+            @Param("cargoAlvo") Cargo cargoAlvo,
+            @Param("funcionarioId") UUID funcionarioId
+    );
+
 }

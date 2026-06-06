@@ -23,13 +23,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
 public class VendaService {
+    private static final DateTimeFormatter TRACKING_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     private final ClienteService clienteService;
     private final EncomendaClienteRepository encomendaClienteRepo;
     private final ItemEncomendaClienteRepository itemEncomendaClienteRepo;
@@ -38,6 +42,7 @@ public class VendaService {
     private final FinanceiroService financeiroService;
     private final MoedaRepository moedaRepo;
     private final AlocacaoLoteEncomendaRepository alocacaoLoteRepo;
+    private final TicketRepository ticketRepo;
     private final EncomendaClienteMapper encomendaClienteMapper;
     private final ItemEncomendaClienteMapper itemEncomendaClienteMapper;
     private final AlocacaoLoteEncomendaService alocacaoLoteService;
@@ -51,6 +56,7 @@ public class VendaService {
             FinanceiroService financeiroService,
             MoedaRepository moedaRepo,
             AlocacaoLoteEncomendaRepository alocacaoLoteRepo,
+            TicketRepository ticketRepo,
             EncomendaClienteMapper encomendaClienteMapper,
             ItemEncomendaClienteMapper itemEncomendaClienteMapper,
             AlocacaoLoteEncomendaService alocacaoLoteService) {
@@ -62,6 +68,7 @@ public class VendaService {
         this.financeiroService = financeiroService;
         this.moedaRepo = moedaRepo;
         this.alocacaoLoteRepo = alocacaoLoteRepo;
+        this.ticketRepo = ticketRepo;
         this.encomendaClienteMapper = encomendaClienteMapper;
         this.itemEncomendaClienteMapper = itemEncomendaClienteMapper;
         this.alocacaoLoteService = alocacaoLoteService;
@@ -87,8 +94,80 @@ public class VendaService {
         encomenda.setTotalNet(0.0);
         encomenda.setTotalIva(0.0);
         encomenda.setTotalFinal(0.0);
+        encomenda.setCodigoTracking(gerarCodigoTracking());
 
         return encomendaClienteMapper.toResponseDTO(encomendaClienteRepo.save(encomenda));
+    }
+
+    @Transactional
+    public EncomendaClienteResponseDTO atualizarPedidoVenda(UUID encomendaId, UUID clienteId, UUID moedaId, List<ItemPedidoVendaInput> itens) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
+
+        if (itens == null || itens.isEmpty()) {
+            throw new IllegalArgumentException("A encomenda deve ter pelo menos um item");
+        }
+
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
+        if (!EstadoEncomendaCliente.PENDENTE.equals(encomenda.getEstado())) {
+            throw new RuntimeException("Apenas encomendas pendentes podem ser editadas");
+        }
+        if (!alocacaoLoteRepo.findByItemEncomendaEncomendaId(encomendaId).isEmpty()) {
+            throw new RuntimeException("Não é possível editar uma encomenda com produção alocada");
+        }
+
+        encomenda.setCliente(clienteService.buscarClientePorId(clienteId));
+        encomenda.setMoeda(moedaRepo.findById(moedaId)
+                .orElseThrow(() -> new EntityNotFoundException("Moeda não encontrada")));
+        encomendaClienteRepo.save(encomenda);
+
+        itemEncomendaClienteRepo.deleteAll(itemEncomendaClienteRepo.findByEncomendaId(encomendaId));
+        for (ItemPedidoVendaInput item : itens) {
+            adicionarItemEncomenda(encomendaId, item.tipoPelletId(), item.quantidadeKg(), item.precoUnitarioNet(), item.taxaIva());
+        }
+
+        return encomendaClienteMapper.toResponseDTO(buscarEncomendaOuFalhar(encomendaId));
+    }
+
+    public record ItemPedidoVendaInput(UUID tipoPelletId, Double quantidadeKg, Double precoUnitarioNet, Double taxaIva) {
+    }
+
+    @Transactional
+    public EncomendaClienteResponseDTO alterarEstadoEncomenda(UUID encomendaId, EstadoEncomendaCliente novoEstado) {
+        SecurityUtils.checkPermission(
+                Cargo.ADMINISTRADOR,
+                Cargo.ASSISTENTE_COMERCIAL,
+                Cargo.RESPONSAVEL_PRODUCAO,
+                Cargo.RESPONSAVEL_LOGISTICA
+        );
+        if (novoEstado == null) {
+            throw new IllegalArgumentException("Estado é obrigatório");
+        }
+
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
+        EstadoEncomendaCliente estadoAtual = encomenda.getEstado();
+        if (estadoAtual == novoEstado) {
+            return encomendaClienteMapper.toResponseDTO(encomenda);
+        }
+
+        if (novoEstado == EstadoEncomendaCliente.CANCELADA) {
+            return cancelarEncomenda(encomendaId);
+        }
+        if (novoEstado == EstadoEncomendaCliente.CONFIRMADA && estadoAtual == EstadoEncomendaCliente.PENDENTE) {
+            return confirmarEncomenda(encomendaId);
+        }
+        if (novoEstado == EstadoEncomendaCliente.EM_PRODUCAO && estadoAtual == EstadoEncomendaCliente.CONFIRMADA) {
+            encomenda.setEstado(EstadoEncomendaCliente.EM_PRODUCAO);
+            return encomendaClienteMapper.toResponseDTO(encomendaClienteRepo.save(encomenda));
+        }
+        if (novoEstado == EstadoEncomendaCliente.PRONTA && estadoAtual == EstadoEncomendaCliente.EM_PRODUCAO) {
+            encomenda.setEstado(EstadoEncomendaCliente.PRONTA);
+            return encomendaClienteMapper.toResponseDTO(encomendaClienteRepo.save(encomenda));
+        }
+        if (novoEstado == EstadoEncomendaCliente.EXPEDIDA && estadoAtual == EstadoEncomendaCliente.PRONTA) {
+            return expedir(encomendaId, encomenda.getCodigoTracking());
+        }
+
+        throw new RuntimeException("Transição de estado inválida: " + estadoAtual + " -> " + novoEstado);
     }
 
     /**
@@ -96,7 +175,7 @@ public class VendaService {
      */
     @Transactional
     public void adicionarItemEncomenda(UUID encomendaId, UUID tipoPelletId, Double quantidadeKg, Double precoUnitarioNet, Double taxaIva) {
-        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
 
         EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
 
@@ -171,6 +250,24 @@ public class VendaService {
     }
 
     /**
+     * Remove uma encomenda apenas quando ela já foi cancelada.
+     */
+    @Transactional
+    public void eliminarEncomendaCancelada(UUID encomendaId) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR, Cargo.ASSISTENTE_COMERCIAL);
+
+        EncomendaCliente encomenda = buscarEncomendaParaAtualizarOuFalhar(encomendaId);
+        if (!EstadoEncomendaCliente.CANCELADA.equals(encomenda.getEstado())) {
+            throw new RuntimeException("Apenas encomendas canceladas podem ser eliminadas");
+        }
+
+        alocacaoLoteRepo.deleteAll(alocacaoLoteRepo.findByItemEncomendaEncomendaId(encomendaId));
+        ticketRepo.deleteAll(ticketRepo.findByEncomendaId(encomendaId));
+        itemEncomendaClienteRepo.deleteAll(itemEncomendaClienteRepo.findByEncomendaId(encomendaId));
+        encomendaClienteRepo.delete(encomenda);
+    }
+
+    /**
      * Expede uma encomenda pronta: valida tracking, alocação e stock, desconta pellets
      * e regista a receita uma única vez.
      */
@@ -188,7 +285,9 @@ public class VendaService {
             throw new RuntimeException("Código de tracking é obrigatório");
         }
         String trackingNormalizado = codigoTracking.trim();
-        if (encomendaClienteRepo.existsByCodigoTrackingIgnoreCase(trackingNormalizado)) {
+        if (encomendaClienteRepo.findByCodigoTrackingIgnoreCase(trackingNormalizado)
+                .filter(existing -> !existing.getId().equals(encomendaId))
+                .isPresent()) {
             throw new RuntimeException("Código de tracking já está associado a outra encomenda");
         }
 
@@ -308,6 +407,15 @@ public class VendaService {
         encomendaClienteRepo.save(encomenda);
     }
 
+    private String gerarCodigoTracking() {
+        String codigo;
+        do {
+            int numero = ThreadLocalRandom.current().nextInt(100000, 1000000);
+            codigo = "TRK-" + LocalDate.now().format(TRACKING_DATE_FORMAT) + "-" + numero;
+        } while (encomendaClienteRepo.existsByCodigoTrackingIgnoreCase(codigo));
+        return codigo;
+    }
+
     private void validarAlocacaoCompleta(UUID encomendaId, List<ItemEncomendaCliente> itens) {
         if (itens.isEmpty()) {
             throw new IllegalStateException("Encomenda sem itens não pode ser expedida");
@@ -346,6 +454,26 @@ public class VendaService {
         Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "data");
 
         return encomendaClienteRepo.findByFiltros(clienteId, estado, pageable)
+                .map(encomendaClienteMapper::toSimpleDTO);
+    }
+
+    public Page<EncomendaClienteSimpleDTO> listarEncomendasComPesquisaSimples(
+            String clienteNome,
+            EstadoEncomendaCliente estado,
+            int page,
+            int pageSize,
+            String sortBy,
+            String direction) {
+
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "data");
+        String nomeNormalizado = clienteNome == null || clienteNome.isBlank() ? null : clienteNome.trim();
+
+        if (nomeNormalizado == null) {
+            return encomendaClienteRepo.findByFiltros(null, estado, pageable)
+                    .map(encomendaClienteMapper::toSimpleDTO);
+        }
+
+        return encomendaClienteRepo.findByFiltrosPesquisa(nomeNormalizado, estado, pageable)
                 .map(encomendaClienteMapper::toSimpleDTO);
     }
 

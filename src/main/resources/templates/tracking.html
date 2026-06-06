@@ -152,13 +152,54 @@
                 </dl>
             </section>
 
-            <section class="support-strip">
-                <div>
-                    <span class="eyebrow">Need help?</span>
-                    <h2>Questions about your order?</h2>
-                    <p>Our customer team is ready to help with your shipment.</p>
+            <section class="support-panel panel">
+                <div class="section-heading">
+                    <div>
+                        <span class="eyebrow">Need help?</span>
+                        <h2>Talk to our customer team</h2>
+                        <p>Open a conversation linked directly to this order.</p>
+                    </div>
                 </div>
-                <a href="mailto:support@pelletsfactory.com">support@pelletsfactory.com</a>
+
+                <p class="support-feedback success" th:if="${supportSuccess}" th:text="${supportSuccess}"></p>
+                <p class="support-feedback error" th:if="${supportError}" th:text="${supportError}"></p>
+
+                <div class="support-layout">
+                    <aside class="ticket-list">
+                        <h3>Conversations</h3>
+                        <a class="new-conversation-link" th:href="@{/tracking(code=${trackingCode})}">+ New conversation</a>
+                        <a class="ticket-link"
+                           th:each="ticket : ${tickets}"
+                           th:classappend="${selectedTicket != null && selectedTicket.id.equals(ticket.id)} ? ' selected'"
+                           th:href="@{|/tracking/${trackingCode}/tickets/${ticket.id}|}">
+                            <strong th:text="${ticket.assunto}">Question about delivery</strong>
+                            <span th:text="${ticket.estado.displayName}">Aguarda equipa</span>
+                            <em class="ticket-reply-indicator"
+                                th:if="${ticket.estado.name() == 'AGUARDA_CLIENTE'}">1 new reply</em>
+                        </a>
+                        <p class="empty-copy" th:if="${tickets.empty}">No conversations yet.</p>
+                    </aside>
+
+                    <div class="support-main">
+                        <div id="ticket-chat-container" th:if="${selectedTicket != null}"
+                             th:replace="~{fragments/ticket-chat :: ticketChat}"></div>
+                        <form class="new-ticket-form"
+                              th:unless="${selectedTicket != null}"
+                              th:action="@{|/tracking/${trackingCode}/tickets|}"
+                              method="post">
+                            <h3>Start a conversation</h3>
+                            <label>
+                                <span>Subject</span>
+                                <input name="assunto" maxlength="150" placeholder="How can we help?" required>
+                            </label>
+                            <label>
+                                <span>Message</span>
+                                <textarea name="mensagem" maxlength="2000" placeholder="Describe your question" required></textarea>
+                            </label>
+                            <button type="submit">Send request</button>
+                        </form>
+                    </div>
+                </div>
             </section>
 
             <div class="print-row">
@@ -167,5 +208,21 @@
         </div>
     </div>
 </main>
+<script th:if="${selectedTicket != null}" th:inline="javascript">
+    const chatUrl = /*[[@{|/tracking/${trackingCode}/tickets/${selectedTicket.id}/messages-fragment|}]]*/ "";
+    const refreshChat = async () => {
+        try {
+            const draft = document.querySelector("#ticket-chat-container textarea");
+            if (draft && (document.activeElement === draft || draft.value.trim() !== "")) return;
+            const response = await fetch(chatUrl, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+            if (!response.ok) return;
+            const container = document.getElementById("ticket-chat-container");
+            if (container) container.outerHTML = await response.text();
+        } catch (_) {
+            // The next interval retries silently if the portal is temporarily unavailable.
+        }
+    };
+    window.setInterval(refreshChat, 5000);
+</script>
 </body>
 </html>

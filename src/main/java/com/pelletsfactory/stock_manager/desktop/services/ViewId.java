@@ -15,5 +15,6 @@ public enum ViewId {
     PELLET_TYPES,
     FORMULAS,
     BATCHES,
+    SUPPORT,
     NOTIFICATIONS
 }

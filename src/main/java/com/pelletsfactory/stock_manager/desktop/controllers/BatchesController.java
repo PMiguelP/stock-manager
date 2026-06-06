@@ -370,7 +370,7 @@ public class BatchesController {
     private void handleAbrirModal() {
         // Refresh orders list on each open
         try {
-            var ordens = ordemProducaoService.listarOrdensComFiltros(1, 200, null, null, null, "dataInicio", "DESC")
+            var ordens = ordemProducaoService.listarOrdensComFiltros(1, 100, null, null, null, "dataInicio", "DESC")
                     .getContent();
             cmbOrdem.setItems(FXCollections.observableArrayList(ordens));
         } catch (Exception e) {

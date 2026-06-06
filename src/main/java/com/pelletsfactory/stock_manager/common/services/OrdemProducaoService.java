@@ -225,6 +225,24 @@ public class OrdemProducaoService {
         return ordensPage.map(mapper::toSimpleDTO);
     }
 
+    public Page<OrdemProducaoSimpleDTO> listarOrdensComPesquisa(
+            int page,
+            int pageSize,
+            EstadoOrdemProducao estado,
+            String pesquisa,
+            String sortBy,
+            String direction) {
+
+        Pageable pageable = PageableUtils.create(page, pageSize, sortBy, direction, "dataInicio");
+        String pesquisaNormalizada = pesquisa == null || pesquisa.isBlank() ? null : pesquisa.trim();
+
+        if (pesquisaNormalizada == null) {
+            return ordemRepo.findByFiltros(estado, null, null, pageable).map(mapper::toSimpleDTO);
+        }
+
+        return ordemRepo.findByPesquisa(estado, pesquisaNormalizada, pageable).map(mapper::toSimpleDTO);
+    }
+
     /**
      * Obter detalhes completos
      */

@@ -141,7 +141,8 @@ h1 {
 }
 
 input,
-button {
+button,
+textarea {
     min-height: 58px;
     border-radius: 6px;
     font: inherit;
@@ -155,6 +156,24 @@ input {
     padding: 0 20px 0 58px;
     font-size: 17px;
     outline: none;
+}
+
+textarea {
+    width: 100%;
+    min-height: 118px;
+    resize: vertical;
+    border: 1px solid #47556b;
+    border-radius: 6px;
+    background: rgb(13 19 29 / 92%);
+    color: var(--text);
+    padding: 14px 16px;
+    font: inherit;
+    outline: none;
+}
+
+textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgb(91 141 239 / 20%);
 }
 
 input:focus {
@@ -242,8 +261,171 @@ button:hover,
 }
 
 .shipment,
-.order-details {
+.order-details,
+.support-panel {
     padding: 28px 30px;
+}
+
+.support-panel .section-heading p {
+    margin-top: 8px;
+    color: var(--muted);
+}
+
+.support-layout {
+    display: grid;
+    grid-template-columns: minmax(210px, 280px) 1fr;
+    gap: 20px;
+    margin-top: 24px;
+}
+
+.ticket-list {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+}
+
+.ticket-link {
+    display: grid;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-raised);
+    color: var(--text);
+    padding: 12px;
+    text-decoration: none;
+}
+
+.new-conversation-link {
+    color: #a9c5ff;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.new-conversation-link:hover {
+    color: white;
+}
+
+.ticket-link span,
+.empty-copy,
+.message-meta,
+.resolved-note {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.ticket-reply-indicator {
+    color: #86efac;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 700;
+}
+
+.ticket-link.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.new-ticket-form,
+.chat-compose {
+    display: grid;
+    gap: 12px;
+}
+
+.new-ticket-form label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.new-ticket-form input {
+    min-height: 48px;
+    padding: 0 14px;
+}
+
+.new-ticket-form button,
+.chat-compose button {
+    justify-self: start;
+    min-height: 46px;
+}
+
+.ticket-chat {
+    display: grid;
+    gap: 16px;
+}
+
+.ticket-chat-header,
+.message-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.ticket-chat-header h3 {
+    margin-top: 5px;
+}
+
+.ticket-state {
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: #a9c5ff;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.chat-messages {
+    display: grid;
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.chat-message {
+    display: grid;
+    gap: 7px;
+    width: min(78%, 680px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-raised);
+    padding: 12px 14px;
+}
+
+.chat-message p {
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.client-message {
+    justify-self: end;
+    border-color: #3d67a8;
+    background: #20365d;
+}
+
+.staff-message {
+    justify-self: start;
+}
+
+.support-feedback {
+    margin-top: 16px;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.support-feedback.success {
+    background: rgb(87 200 121 / 14%);
+    color: var(--green);
+}
+
+.support-feedback.error {
+    background: rgb(240 113 120 / 14%);
+    color: var(--red);
+}
+
+.resolved-note {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
 }
 
 .section-heading h2,
@@ -505,6 +687,14 @@ td {
 }
 
 @media (max-width: 760px) {
+    .support-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-message {
+        width: min(92%, 680px);
+    }
+
     .header-inner,
     .page-shell {
         width: min(100% - 24px, 1180px);

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="16.0" styleClass="content-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.pelletsfactory.stock_manager.desktop.controllers.SupportController">
+    <padding><Insets bottom="24.0" left="26.0" right="26.0" top="24.0"/></padding>
+
+    <VBox spacing="3.0">
+        <Label styleClass="page-title" text="support.title"/>
+        <Label styleClass="text-muted" text="support.subtitle"/>
+    </VBox>
+
+    <HBox spacing="14.0" VBox.vgrow="ALWAYS">
+        <VBox minWidth="260.0" prefWidth="300.0" spacing="0.0"
+              style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 7; -fx-background-radius: 7;">
+            <VBox spacing="4.0" style="-fx-padding: 15; -fx-border-color: transparent transparent -color-border-default transparent;">
+                <Label styleClass="section-title" text="support.inbox"/>
+                <Label styleClass="text-muted" text="support.inboxHint"/>
+                <ComboBox fx:id="cmbFilter" maxWidth="1.7976931348623157E308" onAction="#handleFilterChanged"/>
+            </VBox>
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
+                <content><VBox fx:id="ticketsContainer" spacing="9.0" style="-fx-padding: 11;"/></content>
+            </ScrollPane>
+        </VBox>
+
+        <VBox spacing="0.0" HBox.hgrow="ALWAYS"
+              style="-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 7; -fx-background-radius: 7;">
+            <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 15; -fx-border-color: transparent transparent -color-border-default transparent;">
+                <VBox spacing="3.0">
+                    <Label fx:id="lblTicketTitle" styleClass="section-title" text="support.selectConversation"/>
+                    <Label fx:id="lblTicketState" styleClass="text-muted" text="-"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnAssign" onAction="#handleAssign" text="support.assign"/>
+                <Button fx:id="btnResolve" onAction="#handleResolve" text="support.resolve"/>
+            </HBox>
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
+                <content>
+                    <VBox fx:id="messagesContainer" spacing="9.0" style="-fx-padding: 14;">
+                        <Label fx:id="lblEmptyConversation" styleClass="text-muted" text="support.selectConversation"/>
+                    </VBox>
+                </content>
+            </ScrollPane>
+            <HBox alignment="BOTTOM_LEFT" spacing="10.0" style="-fx-padding: 12; -fx-border-color: -color-border-default transparent transparent transparent;">
+                <TextArea fx:id="txtReply" maxHeight="84.0" minHeight="84.0" promptText="support.replyPlaceholder" wrapText="true" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnReply" minWidth="120.0" onAction="#handleReply" styleClass="primary-button" text="support.send"/>
+            </HBox>
+        </VBox>
+
+        <VBox minWidth="230.0" prefWidth="260.0" spacing="12.0"
+              style="-fx-padding: 15; -fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-default; -fx-border-radius: 7; -fx-background-radius: 7;">
+            <Label styleClass="section-title" text="support.orderSummary"/>
+            <Label styleClass="text-muted" text="support.client"/>
+            <Label fx:id="lblClient" text="-"/>
+            <Label styleClass="text-muted" text="support.tracking"/>
+            <Label fx:id="lblTracking" text="-"/>
+            <Label styleClass="text-muted" text="support.orderDate"/>
+            <Label fx:id="lblOrderDate" text="-"/>
+            <Label styleClass="text-muted" text="support.orderState"/>
+            <Label fx:id="lblOrderState" text="-"/>
+            <Label styleClass="text-muted" text="support.orderQuantity"/>
+            <Label fx:id="lblOrderQuantity" text="-"/>
+            <Label styleClass="text-muted" text="support.orderTotal"/>
+            <Label fx:id="lblOrderTotal" text="-"/>
+            <Label styleClass="text-muted" text="support.responsible"/>
+            <Label fx:id="lblResponsible" text="-"/>
+            <Label styleClass="text-muted" text="support.items"/>
+            <VBox fx:id="orderItemsContainer" spacing="4.0"/>
+        </VBox>
+    </HBox>
+</VBox>

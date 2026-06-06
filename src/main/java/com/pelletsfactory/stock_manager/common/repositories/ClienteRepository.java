@@ -18,4 +18,10 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
     Page<Cliente> findByFiltros(@Param("nome") String nome,
                                @Param("nif") String nif,
                                Pageable pageable);
+
+    @Query("SELECT c FROM Cliente c WHERE " +
+            "(:pesquisa IS NULL OR :pesquisa = '' " +
+            "OR LOWER(c.nome) LIKE LOWER(CONCAT('%', :pesquisa, '%')) " +
+            "OR LOWER(c.nif) LIKE LOWER(CONCAT('%', :pesquisa, '%')))")
+    Page<Cliente> findByPesquisa(@Param("pesquisa") String pesquisa, Pageable pageable);
 }

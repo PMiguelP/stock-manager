@@ -15,7 +15,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.stereotype.Component;
@@ -33,14 +36,14 @@ import java.util.UUID;
 public class AllocationsController {
 
     private static final String CARD_STYLE =
-            "-fx-padding: 15; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; "
-                    + "-fx-border-radius: 6; -fx-background-radius: 6;";
+            "-fx-padding: 17; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; "
+                    + "-fx-border-radius: 8; -fx-background-radius: 8;";
     private static final String SELECTED_CARD_STYLE =
-            "-fx-padding: 15; -fx-background-color: rgba(59, 130, 246, 0.10); -fx-border-color: -color-accent-emphasis; "
-                    + "-fx-border-width: 1.5; -fx-border-radius: 6; -fx-background-radius: 6;";
+            "-fx-padding: 17; -fx-background-color: rgba(59, 130, 246, 0.13); -fx-border-color: -color-accent-emphasis; "
+                    + "-fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8;";
     private static final String UNAVAILABLE_CARD_STYLE =
-            "-fx-padding: 15; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; "
-                    + "-fx-border-radius: 6; -fx-background-radius: 6; -fx-opacity: 0.48;";
+            "-fx-padding: 17; -fx-background-color: -color-bg-default; -fx-border-color: -color-border-default; "
+                    + "-fx-border-radius: 8; -fx-background-radius: 8; -fx-opacity: 0.48;";
     private static final String GREEN = "#22c55e";
     private static final String YELLOW = "#eab308";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
@@ -200,17 +203,26 @@ public class AllocationsController {
             renderizar();
         });
 
-        HBox title = new HBox(8, titulo("#" + item.encomendaId()), spacer(), badge(i18n.translate("allocations.incomplete"), YELLOW));
-        Label cliente = texto(item.clienteNome());
-        Label pellet = texto(item.tipoPelletNome());
+        HBox title = new HBox(10,
+                iconCircle("mdi2c-cart", "-color-accent-emphasis", "rgba(59, 130, 246, 0.14)"),
+                titulo(codigoEncomenda(item.encomendaId())),
+                spacer(),
+                badge(i18n.translate("allocations.incomplete"), YELLOW, "rgba(234, 179, 8, 0.12)")
+        );
+        title.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label cliente = subtitulo(item.clienteNome());
+        Label pellet = tituloPequeno(item.tipoPelletNome());
         ProgressBar progresso = progresso(item.quantidadeAlocada(), item.quantidadePedida());
         card.getChildren().addAll(
                 title,
                 cliente,
                 pellet,
-                detalhe(i18n.translate("allocations.requested"), kg(item.quantidadePedida())),
-                detalhe(i18n.translate("allocations.allocated"), kgCor(item.quantidadeAlocada(), GREEN)),
-                detalhe(i18n.translate("allocations.missing"), kgCor(item.quantidadeEmFalta(), YELLOW)),
+                metricas(
+                        metrica(i18n.translate("allocations.requested"), kg(item.quantidadePedida()), null),
+                        metrica(i18n.translate("allocations.allocated"), kg(item.quantidadeAlocada()), GREEN),
+                        metrica(i18n.translate("allocations.missing"), kg(item.quantidadeEmFalta()), YELLOW)
+                ),
                 progresso
         );
         if (!item.alocacoes().isEmpty()) {
@@ -234,16 +246,25 @@ public class AllocationsController {
             renderizar();
         });
 
-        HBox title = new HBox(8, titulo(batch.codigoLote()), spacer(), badge(batch.localizacaoArmazem(), "#64748b"));
-        Label pellet = texto(batch.tipoPelletNome());
+        HBox title = new HBox(10,
+                iconCircle("mdi2c-cube-outline", "#22c55e", "rgba(34, 197, 94, 0.13)"),
+                titulo(batch.codigoLote()),
+                spacer(),
+                badge(batch.localizacaoArmazem(), "#93a4b8", "rgba(100, 116, 139, 0.20)")
+        );
+        title.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label pellet = subtitulo(batch.tipoPelletNome());
         ProgressBar progresso = progresso(batch.quantidadeReservada(), batch.quantidadeTotal());
         card.getChildren().addAll(
                 title,
                 pellet,
-                detalhe(i18n.translate("allocations.produced"), DATE_FORMAT.format(batch.dataProducao())),
-                detalhe(i18n.translate("allocations.total"), kg(batch.quantidadeTotal())),
-                detalhe(i18n.translate("allocations.reserved"), kgCor(batch.quantidadeReservada(), YELLOW)),
-                detalhe(i18n.translate("allocations.available"), kgCor(batch.quantidadeDisponivel(), GREEN)),
+                tituloPequeno(i18n.translate("allocations.produced") + " " + DATE_FORMAT.format(batch.dataProducao())),
+                metricas(
+                        metrica(i18n.translate("allocations.total"), kg(batch.quantidadeTotal()), null),
+                        metrica(i18n.translate("allocations.reserved"), kg(batch.quantidadeReservada()), YELLOW),
+                        metrica(i18n.translate("allocations.available"), kg(batch.quantidadeDisponivel()), GREEN)
+                ),
                 progresso
         );
         return card;
@@ -266,7 +287,11 @@ public class AllocationsController {
             mostrarSucesso(i18n.translate("allocations.deleted"));
             carregarDados();
         });
-        return new HBox(8, texto(alocacao.codigoLote()), spacer(), texto(kg(alocacao.quantidadeReservada())), apagar);
+        HBox linha = new HBox(8, tituloPequeno(alocacao.codigoLote()), spacer(), texto(kg(alocacao.quantidadeReservada())), apagar);
+        linha.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        linha.setStyle("-fx-padding: 7 9 7 9; -fx-background-color: rgba(148, 163, 184, 0.08); "
+                + "-fx-background-radius: 6; -fx-border-radius: 6;");
+        return linha;
     }
 
     private void atualizarPainelAcao() {
@@ -277,7 +302,7 @@ public class AllocationsController {
             return;
         }
 
-        lblSelectedOrder.setText(selectedOrder == null ? i18n.translate("allocations.orderPlaceholder") : "#" + selectedOrder.encomendaId());
+        lblSelectedOrder.setText(selectedOrder == null ? i18n.translate("allocations.orderPlaceholder") : codigoEncomenda(selectedOrder.encomendaId()));
         lblSelectedOrderDetails.setText(selectedOrder == null ? "" : traduzir("allocations.orderNeed", kg(selectedOrder.quantidadeEmFalta())));
         lblSelectedBatch.setText(selectedBatch == null ? i18n.translate("allocations.batchPlaceholder") : selectedBatch.codigoLote());
         lblSelectedBatchDetails.setText(selectedBatch == null ? "" : traduzir("allocations.batchBalance", kg(selectedBatch.quantidadeDisponivel())));
@@ -330,37 +355,65 @@ public class AllocationsController {
         return box;
     }
 
-    private HBox detalhe(String nome, String valor) {
-        return new HBox(8, texto(nome), spacer(), texto(valor));
+    private HBox metricas(VBox... metricas) {
+        HBox box = new HBox(9, metricas);
+        for (VBox metrica : metricas) {
+            HBox.setHgrow(metrica, Priority.ALWAYS);
+        }
+        return box;
     }
 
-    private HBox detalhe(String nome, Label valor) {
-        return new HBox(8, texto(nome), spacer(), valor);
+    private VBox metrica(String nome, String valor, String corValor) {
+        Label label = texto(nome);
+        label.getStyleClass().add("text-muted");
+        Label numero = texto(valor);
+        numero.setStyle("-fx-font-weight: 700; -fx-font-size: 13px;"
+                + (corValor == null ? "" : " -fx-text-fill: " + corValor + ";"));
+        VBox box = new VBox(4, label, numero);
+        box.setMinWidth(0);
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.setStyle("-fx-padding: 10; -fx-background-color: rgba(148, 163, 184, 0.07); "
+                + "-fx-background-radius: 7; -fx-border-radius: 7;");
+        return box;
     }
 
-    private Label kgCor(Double valor, String cor) {
-        Label label = texto(kg(valor));
-        label.setStyle("-fx-text-fill: " + cor + ";");
-        return label;
-    }
-
-    private Label badge(String valor, String cor) {
+    private Label badge(String valor, String cor, String fundo) {
         Label label = texto(valor);
-        label.setStyle("-fx-padding: 2 7 2 7; -fx-text-fill: " + cor + "; -fx-border-color: " + cor
-                + "; -fx-border-radius: 4; -fx-background-radius: 4;");
+        label.setStyle("-fx-padding: 4 9 4 9; -fx-font-weight: 700; -fx-text-fill: " + cor
+                + "; -fx-background-color: " + fundo + "; -fx-border-color: " + cor
+                + "; -fx-border-radius: 999; -fx-background-radius: 999;");
         return label;
     }
 
     private ProgressBar progresso(Double atual, Double total) {
         ProgressBar bar = new ProgressBar(total == null || total <= 0 ? 0 : atual / total);
         bar.setMaxWidth(Double.MAX_VALUE);
-        bar.setPrefHeight(4);
+        bar.setPrefHeight(5);
         return bar;
+    }
+
+    private StackPane iconCircle(String icon, String cor, String fundo) {
+        FontIcon glyph = new FontIcon(icon);
+        glyph.setIconSize(17);
+        glyph.setStyle("-fx-icon-color: " + cor + ";");
+        StackPane circle = new StackPane(glyph);
+        circle.setMinSize(34, 34);
+        circle.setPrefSize(34, 34);
+        circle.setMaxSize(34, 34);
+        circle.setStyle("-fx-background-color: " + fundo + "; -fx-background-radius: 999;");
+        return circle;
     }
 
     private Label titulo(String valor) {
         Label label = texto(valor);
         label.getStyleClass().add("section-title");
+        return label;
+    }
+
+    private Label subtitulo(String valor) {
+        Label label = texto(valor);
+        label.setWrapText(true);
+        label.setStyle("-fx-font-size: 14px; -fx-font-weight: 600;");
         return label;
     }
 
@@ -375,10 +428,17 @@ public class AllocationsController {
         return new Label(valor == null ? "" : valor);
     }
 
-    private javafx.scene.layout.Region spacer() {
-        javafx.scene.layout.Region region = new javafx.scene.layout.Region();
-        HBox.setHgrow(region, javafx.scene.layout.Priority.ALWAYS);
+    private Region spacer() {
+        Region region = new Region();
+        HBox.setHgrow(region, Priority.ALWAYS);
         return region;
+    }
+
+    private String codigoEncomenda(UUID id) {
+        if (id == null) {
+            return "ORD";
+        }
+        return "ORD-" + id.toString().substring(0, 8).toUpperCase(Locale.ROOT);
     }
 
     private String kg(Double valor) {

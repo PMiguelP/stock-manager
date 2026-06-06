@@ -22,13 +22,12 @@
 
         <!-- Filters -->
         <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="txtPesquisa" promptText="production.search" prefWidth="260"/>
             <Label text="common.statusColon" style="-fx-text-fill: -color-fg-muted;"/>
-            <ComboBox fx:id="cmbEstadoFiltro" prefWidth="180" onAction="#handleFiltrar"/>
-            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2f-filter-outline" iconSize="16"/></graphic>
-            </Button>
-            <Button text="common.clear" onAction="#handleLimpar">
-                <graphic><FontIcon iconLiteral="mdi2c-close" iconSize="16"/></graphic>
+            <ComboBox fx:id="cmbEstadoFiltro" prefWidth="180"/>
+            <Button onAction="#handleLimpar" styleClass="flat">
+                <tooltip><Tooltip text="common.clear"/></tooltip>
+                <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
         </HBox>
 

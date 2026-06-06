@@ -27,7 +27,7 @@ public class Notificacao {
     private String mensagem;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 50, columnDefinition = "varchar(50)")
     private TipoEventoNotificacao tipoEvento;
 
     @Enumerated(EnumType.STRING)

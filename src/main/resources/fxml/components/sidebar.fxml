@@ -62,6 +62,12 @@
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
+    <ToggleButton fx:id="btnSupport" text="support.title" onAction="#handleSupport" focusTraversable="false"
+            maxWidth="Infinity" alignment="CENTER_LEFT">
+        <graphic><FontIcon iconLiteral="mdi2m-message-text-outline" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </ToggleButton>
+
     <Label fx:id="lblProcurementSection" text="sidebar.procurement" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: -color-fg-muted; -fx-padding: 15 0 5 10;"/>
 
     <ToggleButton fx:id="btnSuppliers" text="nav.suppliers" onAction="#handleSuppliers" focusTraversable="false"

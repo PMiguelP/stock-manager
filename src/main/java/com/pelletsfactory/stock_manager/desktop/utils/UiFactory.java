@@ -62,6 +62,57 @@ public final class UiFactory {
         return footer;
     }
 
+    public static HBox drawerActionFooter(Button destructiveAction, Button... trailingActions) {
+        HBox footer = new HBox(12);
+        footer.setPadding(new Insets(18, 25, 18, 25));
+        footer.setAlignment(Pos.CENTER_LEFT);
+        footer.setStyle("-fx-background-color: -color-bg-subtle; -fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        if (destructiveAction != null) {
+            footer.getChildren().add(destructiveAction);
+        }
+        footer.getChildren().add(spacer);
+        footer.getChildren().addAll(trailingActions);
+        return footer;
+    }
+
+    public static Button drawerPrimaryAction(String text, String iconLiteral) {
+        return drawerActionButton(text, iconLiteral, "#ffffff",
+                "-fx-background-color: -color-accent-emphasis; -fx-text-fill: white; -fx-border-color: transparent;");
+    }
+
+    public static Button drawerSecondaryAction(String text, String iconLiteral) {
+        return drawerActionButton(text, iconLiteral, "#93c5fd",
+                "-fx-background-color: rgba(59, 130, 246, 0.12); -fx-text-fill: #93c5fd; -fx-border-color: rgba(59, 130, 246, 0.65);");
+    }
+
+    public static Button drawerNeutralAction(String text, String iconLiteral) {
+        return drawerActionButton(text, iconLiteral, "#d1d5db",
+                "-fx-background-color: rgba(148, 163, 184, 0.10); -fx-text-fill: #d1d5db; -fx-border-color: rgba(148, 163, 184, 0.55);");
+    }
+
+    public static Button drawerDangerAction(String text, String iconLiteral) {
+        return drawerActionButton(text, iconLiteral, "#fca5a5",
+                "-fx-background-color: rgba(239, 68, 68, 0.10); -fx-text-fill: #fca5a5; -fx-border-color: rgba(239, 68, 68, 0.70);");
+    }
+
+    private static Button drawerActionButton(String text, String iconLiteral, String iconColor, String colorStyle) {
+        Button button = new Button(text);
+        button.setPrefHeight(44);
+        button.setMinWidth(128);
+        button.setFocusTraversable(false);
+        button.setStyle(colorStyle +
+                "-fx-font-weight: 700; -fx-background-radius: 7; -fx-border-radius: 7; -fx-border-width: 1.2; -fx-padding: 0 18;");
+
+        FontIcon icon = new FontIcon(iconLiteral + ":16");
+        icon.setIconColor(Color.web(iconColor));
+        button.setGraphic(icon);
+        return button;
+    }
+
     public static Button iconButton(String iconLiteral, int iconSize) {
         Button button = new Button();
         button.getStyleClass().add("button-icon");

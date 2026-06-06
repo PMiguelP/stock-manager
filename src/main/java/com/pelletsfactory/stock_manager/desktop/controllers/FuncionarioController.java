@@ -9,6 +9,8 @@ import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -20,8 +22,9 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import javafx.util.Duration;
 
 @Component
 public class FuncionarioController {
@@ -58,6 +61,8 @@ public class FuncionarioController {
     private int totalPaginas = 0;
 
     private final ObservableList<FuncionarioSimpleDTO> funcionarios = FXCollections.observableArrayList();
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
+    private boolean updatingFilters;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public FuncionarioController(FuncionarioService funcionarioService,
@@ -77,6 +82,7 @@ public class FuncionarioController {
         resetPaginationControls();
         configurarTabela();
         configurarComboBoxes();
+        configurarPesquisaDinamica();
         configurarDrawerAdicionar(); // Configura o drawer de criação com 550px
         carregarFuncionarios();
     }
@@ -237,6 +243,11 @@ public class FuncionarioController {
 
         setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
 
+        String[] nomeOriginal = {valorOuVazio(d.nome())};
+        Cargo[] cargoOriginal = {d.cargo()};
+        String[] nifOriginal = {valorOuVazio(d.nif())};
+        String[] contactoOriginal = {valorOuVazio(d.contacto())};
+
         VBox form = new VBox(20,
                 criarCampoFormulario("Nome Completo", txtNomeDetalhes, lblErroNomeDetalhes),
                 criarCampoFormulario("Cargo", cmbCargoDetalhes, lblErroCargoDetalhes),
@@ -252,37 +263,56 @@ public class FuncionarioController {
         scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        HBox footer = new HBox(12);
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        Button btnGuardar = new Button(i18nService.translate("employees.save"));
-        btnGuardar.getStyleClass().add("accent");
-        btnGuardar.setPrefHeight(44);
-        btnGuardar.setMaxWidth(Double.MAX_VALUE);
+        Button btnGuardar = UiFactory.drawerPrimaryAction(
+                i18nService.translate("employees.save"),
+                "mdi2c-content-save-outline"
+        );
         btnGuardar.setDisable(true);
 
-        Button btnEditar = new Button(i18nService.translate("common.edit"));
-        btnEditar.getStyleClass().add("button-outlined");
-        btnEditar.setPrefHeight(44);
-        btnEditar.setMaxWidth(Double.MAX_VALUE);
+        Button btnEditar = UiFactory.drawerSecondaryAction(
+                i18nService.translate("common.edit"),
+                "mdi2p-pencil-outline"
+        );
 
-        Button btnEliminar = new Button(i18nService.translate("common.delete"));
-        btnEliminar.setPrefHeight(44);
-        btnEliminar.setMaxWidth(Double.MAX_VALUE);
-        btnEliminar.getStyleClass().addAll("button-outlined", "danger");
+        Button btnCancelar = UiFactory.drawerNeutralAction(
+                i18nService.translate("common.cancel"),
+                "mdi2c-close"
+        );
+        btnCancelar.setVisible(false);
+        btnCancelar.setManaged(false);
 
-        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
-        HBox.setHgrow(btnEditar, Priority.ALWAYS);
-        HBox.setHgrow(btnEliminar, Priority.ALWAYS);
-        footer.getChildren().addAll(btnGuardar, btnEditar, btnEliminar);
+        Button btnEliminar = UiFactory.drawerDangerAction(
+                i18nService.translate("common.delete"),
+                "mdi2d-delete-outline"
+        );
+
+        HBox footer = UiFactory.drawerActionFooter(btnEliminar, btnCancelar, btnEditar, btnGuardar);
 
         btnEditar.setOnAction(e -> {
             setCamposDetalhesEditaveis(true, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
             btnGuardar.setDisable(false);
-            btnEditar.setDisable(true);
+            btnEditar.setVisible(false);
+            btnEditar.setManaged(false);
+            btnCancelar.setVisible(true);
+            btnCancelar.setManaged(true);
             txtNomeDetalhes.requestFocus();
+        });
+
+        btnCancelar.setOnAction(e -> {
+            txtNomeDetalhes.setText(nomeOriginal[0]);
+            cmbCargoDetalhes.setValue(cargoOriginal[0]);
+            txtNifDetalhes.setText(nifOriginal[0]);
+            txtContactoDetalhes.setText(contactoOriginal[0]);
+            limparErrosDetalhes(
+                    txtNomeDetalhes, lblErroNomeDetalhes,
+                    cmbCargoDetalhes, lblErroCargoDetalhes,
+                    txtNifDetalhes, lblErroNifDetalhes,
+                    txtContactoDetalhes, lblErroContactoDetalhes
+            );
+            setModoVisualizacaoDetalhes(
+                    btnGuardar, btnEditar, btnCancelar,
+                    txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes
+            );
         });
 
         btnGuardar.setOnAction(e -> {
@@ -305,9 +335,14 @@ public class FuncionarioController {
                         null
                 ));
                 carregarFuncionarios();
-                setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
-                btnGuardar.setDisable(true);
-                btnEditar.setDisable(false);
+                nomeOriginal[0] = txtNomeDetalhes.getText().trim();
+                cargoOriginal[0] = cmbCargoDetalhes.getValue();
+                nifOriginal[0] = txtNifDetalhes.getText().trim();
+                contactoOriginal[0] = txtContactoDetalhes.getText().trim();
+                setModoVisualizacaoDetalhes(
+                        btnGuardar, btnEditar, btnCancelar,
+                        txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes
+                );
                 mostrarSucesso(i18nService.translate("employees.updated"));
             } catch (Exception ex) {
                 mostrarErro(ex.getMessage());
@@ -359,6 +394,27 @@ public class FuncionarioController {
 
         cmbCargoDetalhes.setMouseTransparent(!editavel);
         cmbCargoDetalhes.setFocusTraversable(editavel);
+    }
+
+    private void setModoVisualizacaoDetalhes(Button btnGuardar, Button btnEditar, Button btnCancelar,
+                                             TextField txtNomeDetalhes, ComboBox<Cargo> cmbCargoDetalhes,
+                                             TextField txtNifDetalhes, TextField txtContactoDetalhes) {
+        setCamposDetalhesEditaveis(false, txtNomeDetalhes, cmbCargoDetalhes, txtNifDetalhes, txtContactoDetalhes);
+        btnGuardar.setDisable(true);
+        btnEditar.setVisible(true);
+        btnEditar.setManaged(true);
+        btnCancelar.setVisible(false);
+        btnCancelar.setManaged(false);
+    }
+
+    private void limparErrosDetalhes(TextField nomeField, Label nomeErro,
+                                     ComboBox<Cargo> cargoField, Label cargoErro,
+                                     TextField nifField, Label nifErro,
+                                     TextField contactoField, Label contactoErro) {
+        formValidationService.clearError(nomeField, nomeErro);
+        formValidationService.clearError(cargoField, cargoErro);
+        formValidationService.clearError(nifField, nifErro);
+        formValidationService.clearError(contactoField, contactoErro);
     }
 
     private String valorOuVazio(String value) {
@@ -563,7 +619,29 @@ public class FuncionarioController {
         return b;
     }
 
-    private void configurarComboBoxes() { cmbFiltroCargo.setItems(FXCollections.observableArrayList(Cargo.values())); }
+    private void configurarComboBoxes() {
+        cmbFiltroCargo.setItems(FXCollections.observableArrayList(Cargo.values()));
+    }
+
+    private void configurarPesquisaDinamica() {
+        searchDebounce.setOnFinished(event -> aplicarFiltrosDinamicos());
+        txtFiltroNome.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (!updatingFilters) {
+                searchDebounce.playFromStart();
+            }
+        });
+        cmbFiltroCargo.valueProperty().addListener((obs, oldValue, newValue) -> {
+            if (!updatingFilters) {
+                aplicarFiltrosDinamicos();
+            }
+        });
+    }
+
+    private void aplicarFiltrosDinamicos() {
+        paginaAtual = 0;
+        carregarFuncionarios();
+    }
+
     private void limparFormulario() {
         txtNome.clear();
         txtNif.clear();
@@ -577,6 +655,12 @@ public class FuncionarioController {
     }
     private void mostrarSucesso(String m) { toastService.showSuccess(i18nService.translate("common.success"), m); }
     private void mostrarErro(String m) { toastService.showError(i18nService.translate("common.error"), m); }
-    @FXML private void handleFiltrar() { paginaAtual = 0; carregarFuncionarios(); }
-    @FXML private void handleMostrarTodos() { txtFiltroNome.clear(); cmbFiltroCargo.setValue(null); handleFiltrar(); }
+    @FXML private void handleMostrarTodos() {
+        updatingFilters = true;
+        searchDebounce.stop();
+        txtFiltroNome.clear();
+        cmbFiltroCargo.setValue(null);
+        updatingFilters = false;
+        aplicarFiltrosDinamicos();
+    }
 }

@@ -23,6 +23,7 @@ import com.pelletsfactory.stock_manager.common.utils.SecurityUtils;
 import com.pelletsfactory.stock_manager.common.utils.PageableUtils;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -43,6 +44,17 @@ public class NotificacaoService {
     @Transactional
     public NotificacaoResponseDTO criarNotificacao(NotificacaoRequestDTO dto) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
+        return guardarNotificacao(dto);
+    }
+
+    /**
+     * Regista avisos gerados por regras internas, sem depender de uma sessão desktop.
+     */
+    public NotificacaoResponseDTO criarNotificacaoAutomatica(NotificacaoRequestDTO dto) {
+        return guardarNotificacao(dto);
+    }
+
+    private NotificacaoResponseDTO guardarNotificacao(NotificacaoRequestDTO dto) {
         Notificacao notificacao = mapper.toEntity(dto);
         Notificacao saved = notificacaoRepo.save(notificacao);
         return mapper.toResponseDTO(saved);
@@ -142,6 +154,17 @@ public class NotificacaoService {
             return 0;
         }
         return notificacaoRepo.countNotLidasParaFuncionario(funcionario.getCargo(), funcionario.getId());
+    }
+
+    @Transactional
+    public void marcarTodasComoLidas() {
+        Funcionario funcionario = obterFuncionarioAutenticado();
+        List<NotificacaoLeitura> leituras = notificacaoRepo
+                .findNotLidasParaFuncionario(funcionario.getCargo(), funcionario.getId())
+                .stream()
+                .map(notificacao -> new NotificacaoLeitura(notificacao, funcionario))
+                .toList();
+        leituraRepo.saveAll(leituras);
     }
 
     public Page<NotificacaoSimpleDTO> listarNotLidasSimples(int page, int pageSize) {

@@ -41,6 +41,16 @@ public interface OrdemProducaoRepository extends JpaRepository<OrdemProducao, UU
             Pageable pageable
     );
 
+    @Query("SELECT op FROM OrdemProducao op WHERE " +
+            "(:estado IS NULL OR op.estado = :estado) AND " +
+            "(:pesquisa IS NULL OR LOWER(op.tipoPellet.nome) LIKE LOWER(CONCAT('%', :pesquisa, '%')) " +
+            "OR LOWER(op.funcionario.nome) LIKE LOWER(CONCAT('%', :pesquisa, '%')))")
+    Page<OrdemProducao> findByPesquisa(
+            @Param("estado") EstadoOrdemProducao estado,
+            @Param("pesquisa") String pesquisa,
+            Pageable pageable
+    );
+
     @Query("SELECT COUNT(op) FROM OrdemProducao op WHERE op.estado = :estado")
     Long countByEstado(@Param("estado") EstadoOrdemProducao estado);
 
