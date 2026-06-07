@@ -18,11 +18,9 @@
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtSearch" promptText="suppliers.search" prefWidth="480"/>
-            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
-            </Button>
-            <Button text="common.clear" onAction="#handleLimpar" styleClass="flat">
+            <TextField fx:id="txtSearch" promptText="suppliers.search" prefWidth="380"/>
+            <Button onAction="#handleLimpar" styleClass="flat">
+                <tooltip><Tooltip text="common.clear"/></tooltip>
                 <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>

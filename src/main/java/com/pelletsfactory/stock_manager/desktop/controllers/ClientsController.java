@@ -131,8 +131,6 @@ public class ClientsController {
 
     // ── FXML handlers ─────────────────────────────────────────────────────────
 
-    @FXML private void handleFiltrar() { aplicarPesquisaDinamica(); }
-
     @FXML
     private void handleLimpar() {
         updatingSearch = true;

@@ -4,7 +4,10 @@ import com.pelletsfactory.stock_manager.common.dto.request.ResponderTicketReques
 import com.pelletsfactory.stock_manager.common.dto.response.TicketDetailsDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TicketMensagemDTO;
 import com.pelletsfactory.stock_manager.common.dto.response.TicketSimpleDTO;
+import com.pelletsfactory.stock_manager.common.entities.Funcionario;
+import com.pelletsfactory.stock_manager.common.entities.SessaoFuncionario;
 import com.pelletsfactory.stock_manager.common.enums.AutorMensagemTicket;
+import com.pelletsfactory.stock_manager.common.enums.Cargo;
 import com.pelletsfactory.stock_manager.common.enums.EstadoTicket;
 import com.pelletsfactory.stock_manager.common.services.TicketService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
@@ -157,6 +160,10 @@ public class SupportController implements ViewReloadable {
     }
 
     private void refresh() {
+        Funcionario f = SessaoFuncionario.getFuncionarioLogado();
+        if (f == null || (f.getCargo() != Cargo.ASSISTENTE_COMERCIAL && f.getCargo() != Cargo.ADMINISTRADOR)) {
+            return;
+        }
         try {
             tickets = ticketService.listarInboxComercial();
             if (selectedTicketId != null && tickets.stream().noneMatch(ticket -> ticket.id().equals(selectedTicketId))) {

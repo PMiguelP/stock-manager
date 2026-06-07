@@ -22,6 +22,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TreeItem;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -73,11 +74,35 @@ public class HeaderController {
 
     @FXML
     public void initialize() {
+        configurarBreadcrumbsFactory();
         configurarBreadcrumbs(List.of("Home"));
         carregarFuncionarioLogado();
         atualizarContadorNotificacoes();
         notificationRefresh.setCycleCount(Timeline.INDEFINITE);
         notificationRefresh.play();
+    }
+
+    private void configurarBreadcrumbsFactory() {
+        breadcrumbs.setCrumbFactory(crumb -> {
+            var btn = new Button(crumb.getValue());
+            btn.getStyleClass().add(Styles.FLAT);
+            btn.setFocusTraversable(false);
+            return btn;
+        });
+        breadcrumbs.setDividerFactory(item ->
+                (item == null) ? new FontIcon(MaterialDesignH.HOME)
+                        : (!item.isLast() ? new FontIcon(MaterialDesignC.CHEVRON_RIGHT) : null));
+        breadcrumbs.setOnCrumbAction(event -> {
+            BreadCrumbItem<String> crumb = event.getSelectedCrumb();
+            if (crumb == null) return;
+            TreeItem<String> ancestor = crumb;
+            while (ancestor.getParent() != null) {
+                ancestor = ancestor.getParent();
+            }
+            if (crumb == ancestor) {
+                navigationService.navigateTo("/dashboard");
+            }
+        });
     }
 
     @FXML
@@ -223,10 +248,12 @@ public class HeaderController {
                         notificacaoService.marcarComoLida(item.id());
                         atualizarContadorNotificacoes();
                     }
+                    navigationService.hideModal();
                     if (isTicketNotification(item.tipoEvento()) && item.linkReferencia() != null) {
                         supportTicketSelectionService.select(item.linkReferencia());
-                        navigationService.hideModal();
                         navigationService.navigateTo("/support");
+                    } else {
+                        navigationService.navigateTo("/notifications");
                     }
                 });
 
@@ -272,20 +299,12 @@ public class HeaderController {
     }
 
     private void configurarBreadcrumbs(List<String> items) {
-        BreadCrumbItem<String> root = Breadcrumbs.buildTreeModel(items.toArray(String[]::new));
-        breadcrumbs.setCrumbFactory(crumb -> {
-            var btn = new Button(crumb.getValue());
-            btn.getStyleClass().add(Styles.FLAT);
-            btn.setFocusTraversable(false);
-            return btn;
-        });
-        breadcrumbs.setDividerFactory(item -> (item == null) ? new FontIcon(MaterialDesignH.HOME) : (!item.isLast() ? new FontIcon(MaterialDesignC.CHEVRON_RIGHT) : null));
-
-        BreadCrumbItem<String> lastItem = root;
-        while (lastItem.getChildren() != null && !lastItem.getChildren().isEmpty()) {
-            lastItem = (BreadCrumbItem<String>) lastItem.getChildren().get(0);
+        BreadCrumbItem<String> node = Breadcrumbs.buildTreeModel(items.toArray(String[]::new));
+        // buildTreeModel returns the last item; walk to the leaf in case it returns the root
+        while (node.getChildren() != null && !node.getChildren().isEmpty()) {
+            node = (BreadCrumbItem<String>) node.getChildren().get(0);
         }
-        breadcrumbs.setSelectedCrumb(lastItem);
+        breadcrumbs.setSelectedCrumb(node);
         atualizarContadorNotificacoes();
     }
 

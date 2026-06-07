@@ -12,6 +12,7 @@ import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
 import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import java.math.BigDecimal;
+import javafx.animation.PauseTransition;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -21,6 +22,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -39,13 +41,12 @@ public class PelletTypesController {
     private final I18nService i18nService;
     private final FormValidationService formValidationService;
 
-    // Create drawer fields
     private VBox drawerCriar;
     private TextField txtNomeCriar, txtDiametroCriar, txtCalorificoCriar, txtStockAtualCriar, txtStockMinimoCriar, txtCustoCriar;
     private Label lblErroNomeCriar, lblErroDiametroCriar, lblErroCalorificoCriar, lblErroStockAtualCriar, lblErroStockMinimoCriar, lblErroCustoCriar;
 
     @FXML private VBox vboxContainer;
-    @FXML private TextField txtFiltroNome;
+    @FXML private TextField txtSearch;
     @FXML private TableView<TipoPelletRow> tblPelletTypes;
     @FXML private TableColumn<TipoPelletRow, String> colCodigo;
     @FXML private TableColumn<TipoPelletRow, String> colNome;
@@ -58,8 +59,9 @@ public class PelletTypesController {
     @FXML private TableColumn<TipoPelletRow, Void> colAcoes;
 
     private PaginationControls pagination;
-
     private final ObservableList<TipoPelletRow> data = FXCollections.observableArrayList();
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
+    private boolean updatingSearch;
 
     public PelletTypesController(StockService stockService,
                                  FormulaProducaoService formulaService,
@@ -79,6 +81,7 @@ public class PelletTypesController {
     public void initialize() {
         pagination = new PaginationControls(10, this::carregarPelletTypes, i18nService);
         configurarTabela();
+        configurarPesquisaDinamica();
         configurarDrawerCriar();
         carregarPelletTypes();
     }
@@ -90,15 +93,22 @@ public class PelletTypesController {
     }
 
     @FXML
-    private void handleFiltrar() {
+    private void handleLimpar() {
+        searchDebounce.stop();
+        updatingSearch = true;
+        txtSearch.clear();
+        updatingSearch = false;
         pagination.resetPage();
         carregarPelletTypes();
     }
 
-    @FXML
-    private void handleMostrarTodos() {
-        txtFiltroNome.clear();
-        handleFiltrar();
+    private void configurarPesquisaDinamica() {
+        searchDebounce.setOnFinished(e -> carregarPelletTypes());
+        txtSearch.textProperty().addListener((obs, old, val) -> {
+            if (updatingSearch) return;
+            pagination.resetPage();
+            searchDebounce.playFromStart();
+        });
     }
 
     private void configurarTabela() {
@@ -135,16 +145,16 @@ public class PelletTypesController {
         });
 
         colAcoes.setCellFactory(param -> new TableCell<>() {
-            private final Button btnDetails = new Button();
+            private final Button btn = new Button();
             {
-                btnDetails.getStyleClass().addAll("button-icon", "flat");
-                btnDetails.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
-                btnDetails.setOnAction(event -> handleAbrirDetalhes(getTableView().getItems().get(getIndex())));
+                btn.getStyleClass().addAll("button-icon", "flat");
+                btn.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
+                btn.setOnAction(ev -> handleAbrirDetalhes(getTableView().getItems().get(getIndex())));
             }
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btnDetails);
+                setGraphic(empty ? null : btn);
                 setAlignment(Pos.CENTER);
             }
         });
@@ -167,23 +177,21 @@ public class PelletTypesController {
 
     private void carregarPelletTypes() {
         try {
-            String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isBlank()) ? txtFiltroNome.getText() : null;
+            String nome = (txtSearch != null && !txtSearch.getText().isBlank()) ? txtSearch.getText() : null;
             Page<TipoPelletSimpleDTO> page = stockService.listarTiposPelletComFiltros(
                     pagination.pageNumberForService(), pagination.pageSize(), nome, null, "nome", "ASC"
             );
-
             List<TipoPelletRow> rows = new ArrayList<>();
             for (TipoPelletSimpleDTO item : page.getContent()) {
                 TipoPelletDetailsDTO details = stockService.obterDetalhesTipoPellet(item.id());
                 boolean formulaDefinida = formulaService.listarFormulasPorTipoPellet(item.id(), 1, 1).getTotalElements() > 0;
                 rows.add(TipoPelletRow.from(item, details, formulaDefinida));
             }
-
             data.setAll(rows);
             pagination.attachTo(vboxContainer);
             pagination.update(page);
         } catch (Exception e) {
-            mostrarErro("Erro ao carregar tipos de pellet: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), "Erro ao carregar tipos de pellet: " + e.getMessage());
         }
     }
 
@@ -191,14 +199,11 @@ public class PelletTypesController {
         HBox b = new HBox(8);
         b.setAlignment(Pos.CENTER_LEFT);
         b.setPadding(new Insets(4, 10, 4, 10));
-        b.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;");
-
         String color = definida ? "#22c55e" : "#f59e0b";
-        String text = definida ? "Defined" : "Missing";
-        b.setStyle(b.getStyle() + String.format("-fx-background-color: %s20; -fx-border-color: %s;",
+        b.setStyle(String.format("-fx-background-radius:6;-fx-border-radius:6;-fx-border-width:1.5;-fx-background-color:%s20;-fx-border-color:%s;",
                 color.replace("#", ""), color));
-        Label l = new Label(text);
-        l.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
+        Label l = new Label(definida ? "Defined" : "Missing");
+        l.setStyle("-fx-text-fill:" + color + ";-fx-font-weight:500;");
         b.getChildren().add(l);
         return b;
     }
@@ -206,43 +211,47 @@ public class PelletTypesController {
     private void handleAbrirDetalhes(TipoPelletRow row) {
         try {
             TipoPelletDetailsDTO d = stockService.obterDetalhesTipoPellet(row.id());
-            VBox drawer = criarDrawerEdicao(d, row.formulaDefinida());
-            navigationService.showModal(drawer);
+            navigationService.showModal(criarDrawerEdicao(d));
         } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), "Erro ao obter detalhes: " + e.getMessage());
         }
     }
 
-    private VBox criarDrawerEdicao(TipoPelletDetailsDTO d, boolean formulaDefinida) {
+    private VBox criarDrawerEdicao(TipoPelletDetailsDTO d) {
         VBox root = UiFactory.drawerRoot(550);
         HBox header = UiFactory.drawerHeader(i18nService.translate("pelletTypes.editTitle"), navigationService::hideModal);
 
         TextField txtNome = new TextField(d.nome() != null ? d.nome() : "");
+        txtNome.setDisable(true);
         Label lblErroNome = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtNome, lblErroNome);
 
         TextField txtDiametro = new TextField(d.diametroMm() != null ? String.valueOf(d.diametroMm()) : "");
+        txtDiametro.setDisable(true);
         Label lblErroDiametro = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtDiametro, lblErroDiametro);
 
         TextField txtCalorifico = new TextField(d.poderCalorifico() != null ? String.valueOf(d.poderCalorifico()) : "");
+        txtCalorifico.setDisable(true);
         Label lblErroCalorifico = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCalorifico, lblErroCalorifico);
 
         TextField txtStockAtual = new TextField(d.stockAtual() != null ? String.format("%.2f", d.stockAtual()) : "");
+        txtStockAtual.setDisable(true);
         Label lblErroStockAtual = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtStockAtual, lblErroStockAtual);
 
         TextField txtStockMinimo = new TextField(d.stockMinimo() != null ? String.format("%.2f", d.stockMinimo()) : "");
+        txtStockMinimo.setDisable(true);
         Label lblErroStockMinimo = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtStockMinimo, lblErroStockMinimo);
 
         TextField txtCusto = new TextField(d.custoAtualPorKg() != null ? d.custoAtualPorKg().toPlainString() : "");
+        txtCusto.setDisable(true);
         Label lblErroCusto = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCusto, lblErroCusto);
 
         Label lblErroGeral = criarErroGeral();
-
         String numRegex = "[0-9]+(\\.[0-9]+)?";
 
         VBox form = new VBox(20,
@@ -255,23 +264,40 @@ public class PelletTypesController {
                 lblErroGeral
         );
         form.setPadding(new Insets(30));
-
         ScrollPane scrollPane = UiFactory.transparentScroll(form);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        HBox footer = UiFactory.drawerFooter();
+        Button btnEliminar = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
+        Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
+        Button btnEditar   = UiFactory.drawerSecondaryAction(i18nService.translate("common.edit"), "mdi2p-pencil-outline");
+        Button btnGuardar  = UiFactory.drawerPrimaryAction(i18nService.translate("common.save"), "mdi2c-content-save-outline");
 
-        Button btnEliminar = new Button(i18nService.translate("common.delete"));
-        btnEliminar.getStyleClass().addAll("button-outlined", "danger");
-        btnEliminar.setPrefHeight(44);
+        btnCancelar.setVisible(false); btnCancelar.setManaged(false);
+        btnGuardar.setDisable(true);
+        HBox footer = UiFactory.drawerActionFooter(btnEliminar, btnCancelar, btnEditar, btnGuardar);
 
-        Button btnGuardar = new Button(i18nService.translate("common.save"));
-        btnGuardar.getStyleClass().add("accent");
-        btnGuardar.setPrefHeight(44);
-        btnGuardar.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
+        TextField[] campos = {txtNome, txtDiametro, txtCalorifico, txtStockAtual, txtStockMinimo, txtCusto};
 
-        footer.getChildren().addAll(btnEliminar, btnGuardar);
+        btnEditar.setOnAction(e -> {
+            for (TextField c : campos) c.setDisable(false);
+            btnGuardar.setDisable(false);
+            btnEditar.setVisible(false); btnEditar.setManaged(false);
+            btnCancelar.setVisible(true); btnCancelar.setManaged(true);
+        });
+
+        btnCancelar.setOnAction(e -> {
+            for (TextField c : campos) c.setDisable(true);
+            txtNome.setText(d.nome() != null ? d.nome() : "");
+            txtDiametro.setText(d.diametroMm() != null ? String.valueOf(d.diametroMm()) : "");
+            txtCalorifico.setText(d.poderCalorifico() != null ? String.valueOf(d.poderCalorifico()) : "");
+            txtStockAtual.setText(d.stockAtual() != null ? String.format("%.2f", d.stockAtual()) : "");
+            txtStockMinimo.setText(d.stockMinimo() != null ? String.format("%.2f", d.stockMinimo()) : "");
+            txtCusto.setText(d.custoAtualPorKg() != null ? d.custoAtualPorKg().toPlainString() : "");
+            lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
+            btnGuardar.setDisable(true);
+            btnCancelar.setVisible(false); btnCancelar.setManaged(false);
+            btnEditar.setVisible(true); btnEditar.setManaged(true);
+        });
 
         btnGuardar.setOnAction(e -> {
             lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
@@ -313,7 +339,7 @@ public class PelletTypesController {
             }
             if (!valido) return;
             try {
-                TipoPelletRequestDTO dto = new TipoPelletRequestDTO(
+                stockService.atualizarTipoPellet(d.id(), new TipoPelletRequestDTO(
                         txtNome.getText().trim(),
                         parseDoubleOuNull(txtDiametro.getText()),
                         parseDoubleOuNull(txtCalorifico.getText()),
@@ -321,8 +347,7 @@ public class PelletTypesController {
                         parseDoubleOuNull(txtStockMinimo.getText()),
                         parseBigDecimalOuNull(txtCusto.getText()),
                         null
-                );
-                stockService.atualizarTipoPellet(d.id(), dto);
+                ));
                 carregarPelletTypes();
                 navigationService.hideModal();
                 toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("pelletTypes.updated"));
@@ -355,7 +380,7 @@ public class PelletTypesController {
 
     private Label criarErroGeral() {
         Label lbl = new Label();
-        lbl.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 8 12; -fx-background-color: #ef444420; -fx-background-radius: 6; -fx-border-color: #ef4444; -fx-border-radius: 6; -fx-border-width: 1;");
+        lbl.setStyle("-fx-text-fill:#ef4444;-fx-font-size:12px;-fx-padding:8 12;-fx-background-color:#ef444420;-fx-background-radius:6;-fx-border-color:#ef4444;-fx-border-radius:6;-fx-border-width:1;");
         lbl.setWrapText(true);
         lbl.setMaxWidth(Double.MAX_VALUE);
         lbl.setVisible(false);
@@ -403,18 +428,16 @@ public class PelletTypesController {
                 lblErroGeral
         );
         form.setPadding(new Insets(30));
-
         ScrollPane scrollPane = UiFactory.transparentScroll(form);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
-        HBox footer = UiFactory.drawerFooter();
-        Button btnCriar = new Button(i18nService.translate("pelletTypes.save"));
-        btnCriar.getStyleClass().add("accent");
-        btnCriar.setPrefHeight(44);
+
+        Button btnCriar = UiFactory.drawerPrimaryAction(i18nService.translate("pelletTypes.save"), "mdi2c-content-save-outline");
         btnCriar.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(btnCriar, Priority.ALWAYS);
         btnCriar.setOnAction(e -> handleCriarTipoPellet(lblErroGeral));
-        footer.getChildren().add(btnCriar);
 
+        HBox footer = UiFactory.drawerFooter();
+        footer.getChildren().add(btnCriar);
         drawerCriar.getChildren().addAll(header, scrollPane, footer);
     }
 
@@ -422,37 +445,31 @@ public class PelletTypesController {
         lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
         String numRegex = "[0-9]+(\\.[0-9]+)?";
         boolean valido = formValidationService.validateRequiredText(txtNomeCriar, lblErroNomeCriar, i18nService.translate("common.nameRequired"));
-        // Diâmetro: obrigatório, número, > 0
         valido = formValidationService.validateRequiredText(txtDiametroCriar, lblErroDiametroCriar, i18nService.translate("pelletTypes.diameterRequired")) && valido;
         if (!txtDiametroCriar.getText().isBlank()) {
             valido = formValidationService.validateRegex(txtDiametroCriar, lblErroDiametroCriar, numRegex, i18nService.translate("common.invalidNumber")) && valido;
             valido = validarPositivo(txtDiametroCriar, lblErroDiametroCriar, i18nService.translate("pelletTypes.mustBePositive")) && valido;
         }
-        // Poder calorífico: obrigatório, número, > 0
         valido = formValidationService.validateRequiredText(txtCalorificoCriar, lblErroCalorificoCriar, i18nService.translate("pelletTypes.calorificRequired")) && valido;
         if (!txtCalorificoCriar.getText().isBlank()) {
             valido = formValidationService.validateRegex(txtCalorificoCriar, lblErroCalorificoCriar, numRegex, i18nService.translate("common.invalidNumber")) && valido;
             valido = validarPositivo(txtCalorificoCriar, lblErroCalorificoCriar, i18nService.translate("pelletTypes.mustBePositive")) && valido;
         }
-        // Stock atual: obrigatório, número, >= 0
         valido = formValidationService.validateRequiredText(txtStockAtualCriar, lblErroStockAtualCriar, i18nService.translate("pelletTypes.stockRequired")) && valido;
         if (!txtStockAtualCriar.getText().isBlank()) {
             valido = formValidationService.validateRegex(txtStockAtualCriar, lblErroStockAtualCriar, numRegex, i18nService.translate("common.invalidNumber")) && valido;
             valido = validarNaoNegativo(txtStockAtualCriar, lblErroStockAtualCriar, i18nService.translate("pelletTypes.mustBeNonNegative")) && valido;
         }
-        // Stock mínimo: obrigatório, número, >= 0
         valido = formValidationService.validateRequiredText(txtStockMinimoCriar, lblErroStockMinimoCriar, i18nService.translate("pelletTypes.stockMinRequired")) && valido;
         if (!txtStockMinimoCriar.getText().isBlank()) {
             valido = formValidationService.validateRegex(txtStockMinimoCriar, lblErroStockMinimoCriar, numRegex, i18nService.translate("common.invalidNumber")) && valido;
             valido = validarNaoNegativo(txtStockMinimoCriar, lblErroStockMinimoCriar, i18nService.translate("pelletTypes.mustBeNonNegative")) && valido;
         }
-        // Custo: obrigatório, número, > 0
         valido = formValidationService.validateRequiredText(txtCustoCriar, lblErroCustoCriar, i18nService.translate("pelletTypes.costRequired")) && valido;
         if (!txtCustoCriar.getText().isBlank()) {
             valido = formValidationService.validateRegex(txtCustoCriar, lblErroCustoCriar, numRegex, i18nService.translate("common.invalidNumber")) && valido;
             valido = validarPositivo(txtCustoCriar, lblErroCustoCriar, i18nService.translate("pelletTypes.mustBePositive")) && valido;
         }
-        // Stock mínimo <= Stock atual
         if (valido) {
             Double sa = parseDoubleOuNull(txtStockAtualCriar.getText());
             Double sm = parseDoubleOuNull(txtStockMinimoCriar.getText());
@@ -465,7 +482,7 @@ public class PelletTypesController {
         }
         if (!valido) return;
         try {
-            TipoPelletRequestDTO dto = new TipoPelletRequestDTO(
+            stockService.criarTipoPellet(new TipoPelletRequestDTO(
                     txtNomeCriar.getText().trim(),
                     parseDoubleOuNull(txtDiametroCriar.getText()),
                     parseDoubleOuNull(txtCalorificoCriar.getText()),
@@ -473,8 +490,7 @@ public class PelletTypesController {
                     parseDoubleOuNull(txtStockMinimoCriar.getText()),
                     parseBigDecimalOuNull(txtCustoCriar.getText()),
                     null
-            );
-            stockService.criarTipoPellet(dto);
+            ));
             pagination.resetPage();
             carregarPelletTypes();
             navigationService.hideModal();
@@ -510,35 +526,28 @@ public class PelletTypesController {
 
     private boolean validarPositivo(TextField campo, Label erro, String mensagem) {
         String t = campo.getText();
-        if (t == null || t.isBlank()) return true; // required already checked
+        if (t == null || t.isBlank()) return true;
         try {
-            double v = Double.parseDouble(t.replace(",", "."));
-            if (v <= 0) {
-                formValidationService.validateRequiredText(campo, erro, mensagem); // triggers red border
+            if (Double.parseDouble(t.replace(",", ".")) <= 0) {
                 erro.setText(mensagem); erro.setVisible(true); erro.setManaged(true);
                 campo.setStyle("-fx-border-color: #ef4444;");
                 return false;
             }
             return true;
-        } catch (NumberFormatException e) {
-            return false; // format already caught by regex
-        }
+        } catch (NumberFormatException e) { return false; }
     }
 
     private boolean validarNaoNegativo(TextField campo, Label erro, String mensagem) {
         String t = campo.getText();
         if (t == null || t.isBlank()) return true;
         try {
-            double v = Double.parseDouble(t.replace(",", "."));
-            if (v < 0) {
+            if (Double.parseDouble(t.replace(",", ".")) < 0) {
                 erro.setText(mensagem); erro.setVisible(true); erro.setManaged(true);
                 campo.setStyle("-fx-border-color: #ef4444;");
                 return false;
             }
             return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+        } catch (NumberFormatException e) { return false; }
     }
 
     private Double parseDoubleOuNull(String text) {
@@ -553,31 +562,19 @@ public class PelletTypesController {
         catch (NumberFormatException e) { return null; }
     }
 
-    private void mostrarErro(String m) {
-        toastService.showError(i18nService.translate("common.error"), m);
-    }
-
-    private record TipoPelletRow(
-            UUID id,
-            String codigo,
-            String nome,
-            String diametro,
-            String calorifico,
-            String stockAtual,
-            String stockMinimo,
-            String custoKg,
-            Boolean formulaDefinida
-    ) {
-        static TipoPelletRow from(TipoPelletSimpleDTO simple, TipoPelletDetailsDTO details, boolean formulaDefinida) {
-            String codigo = simple.id() != null ? "PLT-" + simple.id().toString().substring(0, 6).toUpperCase() : "N/A";
-            String diametro = simple.diametroMm() != null ? simple.diametroMm() + " mm" : "-";
-            String calorifico = details.poderCalorifico() != null ? details.poderCalorifico() + " kWh/ton" : "-";
-            String stockAtual = simple.stockAtual() != null ? simple.stockAtual() + " tons" : "-";
-            String stockMinimo = simple.stockMinimo() != null ? simple.stockMinimo() + " tons" : "-";
-            String custoKg = details.custoAtualPorKg() != null
-                    ? (details.moedaCodigo() != null ? details.moedaCodigo() + " " : "") + String.format("%.2f", details.custoAtualPorKg())
+    private record TipoPelletRow(UUID id, String codigo, String nome, String diametro,
+                                  String calorifico, String stockAtual, String stockMinimo,
+                                  String custoKg, Boolean formulaDefinida) {
+        static TipoPelletRow from(TipoPelletSimpleDTO s, TipoPelletDetailsDTO d, boolean formulaDefinida) {
+            String codigo = s.id() != null ? "PLT-" + s.id().toString().substring(0, 6).toUpperCase() : "N/A";
+            String diametro = s.diametroMm() != null ? s.diametroMm() + " mm" : "-";
+            String calorifico = d.poderCalorifico() != null ? d.poderCalorifico() + " kWh/ton" : "-";
+            String stockAtual = s.stockAtual() != null ? s.stockAtual() + " tons" : "-";
+            String stockMinimo = s.stockMinimo() != null ? s.stockMinimo() + " tons" : "-";
+            String custoKg = d.custoAtualPorKg() != null
+                    ? (d.moedaCodigo() != null ? d.moedaCodigo() + " " : "") + String.format("%.2f", d.custoAtualPorKg())
                     : "-";
-            return new TipoPelletRow(simple.id(), codigo, simple.nome(), diametro, calorifico, stockAtual, stockMinimo, custoKg, formulaDefinida);
+            return new TipoPelletRow(s.id(), codigo, s.nome(), diametro, calorifico, stockAtual, stockMinimo, custoKg, formulaDefinida);
         }
     }
 }

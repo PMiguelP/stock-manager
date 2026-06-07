@@ -16,9 +16,11 @@
         </HBox>
 
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtFiltroNome" promptText="pelletTypes.search" prefWidth="320" onAction="#handleFiltrar"/>
-            <Button text="common.filter" styleClass="button-outlined" onAction="#handleFiltrar"/>
-            <Button text="common.clear" styleClass="button-outlined" onAction="#handleMostrarTodos"/>
+            <TextField fx:id="txtSearch" promptText="pelletTypes.search" prefWidth="320"/>
+            <Button onAction="#handleLimpar" styleClass="flat">
+                <tooltip><Tooltip text="common.clear"/></tooltip>
+                <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
+            </Button>
             <Region HBox.hgrow="ALWAYS"/>
         </HBox>
 

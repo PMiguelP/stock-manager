@@ -22,12 +22,10 @@
 
         <!-- Filters -->
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtFiltroCodigo" promptText="batches.search" prefWidth="280"/>
-            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2f-filter-outline" iconSize="16"/></graphic>
-            </Button>
-            <Button text="common.clear" onAction="#handleMostrarTodos">
-                <graphic><FontIcon iconLiteral="mdi2c-close" iconSize="16"/></graphic>
+            <TextField fx:id="txtSearch" promptText="batches.search" prefWidth="280"/>
+            <Button onAction="#handleLimpar" styleClass="flat">
+                <tooltip><Tooltip text="common.clear"/></tooltip>
+                <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>
         </HBox>

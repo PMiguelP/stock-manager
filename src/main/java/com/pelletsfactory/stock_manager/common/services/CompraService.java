@@ -63,7 +63,7 @@ public class CompraService {
      */
     @Transactional
     public EncomendaFornecedorResponseDTO gerarEncomendaRascunho(UUID fornecedorId, UUID moedaId) {
-        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
 
         Fornecedor fornecedor = fornecedorService.buscarFornecedorPorId(fornecedorId);
 
@@ -87,7 +87,7 @@ public class CompraService {
      */
     @Transactional
     public void adicionarItemEncomenda(UUID encomendaId, UUID materiaPrimaId, Double quantidade, Double precoUnitarioNet, Double taxaIva) {
-        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
 
         EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
@@ -165,11 +165,11 @@ public class CompraService {
     }
 
     /**
-     * Atualizar encomenda (apenas se RASCUNHO)
+     * Atualizar encomenda (apenas se RASCUNHO) — suporta fornecedor e data.
      */
     @Transactional
-    public EncomendaFornecedorResponseDTO atualizarEncomenda(UUID encomendaId, UUID fornecedorId) {
-        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL);
+    public EncomendaFornecedorResponseDTO atualizarEncomenda(UUID encomendaId, UUID fornecedorId, LocalDate data) {
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
 
         EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
 
@@ -178,8 +178,8 @@ public class CompraService {
         }
 
         Fornecedor fornecedor = fornecedorService.buscarFornecedorPorId(fornecedorId);
-
         encomenda.setFornecedor(fornecedor);
+        if (data != null) encomenda.setData(data);
         return encomendaFornecedorMapper.toResponseDTO(encomendaFornecedorRepo.save(encomenda));
     }
 
@@ -190,6 +190,12 @@ public class CompraService {
         if (!EstadoEncomendaFornecedor.RASCUNHO.equals(encomenda.getEstado())) {
             throw new IllegalStateException("Só é possível eliminar encomendas em rascunho");
         }
+        encomendaFornecedorRepo.deleteById(encomendaId);
+    }
+
+    @Transactional
+    public void apagarEncomenda(UUID encomendaId) {
+        SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
         encomendaFornecedorRepo.deleteById(encomendaId);
     }
 

@@ -8,8 +8,11 @@ import com.pelletsfactory.stock_manager.common.services.MoedaService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
+import com.pelletsfactory.stock_manager.desktop.services.PurchaseOrderPdfService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -17,12 +20,17 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +45,7 @@ public class PurchaseOrdersController {
     private final NavigationService navigationService;
     private final ToastService toastService;
     private final I18nService i18nService;
+    private final PurchaseOrderPdfService pdfService;
 
     @FXML private VBox vboxContainer;
     @FXML private TextField txtSearch;
@@ -55,15 +64,16 @@ public class PurchaseOrdersController {
     private VBox drawerCriar;
 
     private PaginationControls pagination;
-
     private VBox itemsContainerRef;
-    private Label lblCriarSubtotal;
-    private Label lblCriarVat;
-    private Label lblCriarGrandTotal;
+    private Label lblCriarSubtotal, lblCriarVat, lblCriarGrandTotal;
     private ComboBox<FornecedorSimpleDTO> cmbFornecedorCriar;
     private final List<ItemRow> itemRows = new ArrayList<>();
-
     private final ObservableList<EncomendaFornecedorSimpleDTO> encomendas = FXCollections.observableArrayList();
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
+    private boolean updatingSearch;
 
     public PurchaseOrdersController(CompraService compraService,
                                     FornecedorService fornecedorService,
@@ -71,7 +81,8 @@ public class PurchaseOrdersController {
                                     MoedaService moedaService,
                                     NavigationService navigationService,
                                     ToastService toastService,
-                                    I18nService i18nService) {
+                                    I18nService i18nService,
+                                    PurchaseOrderPdfService pdfService) {
         this.compraService = compraService;
         this.fornecedorService = fornecedorService;
         this.stockService = stockService;
@@ -79,23 +90,26 @@ public class PurchaseOrdersController {
         this.navigationService = navigationService;
         this.toastService = toastService;
         this.i18nService = i18nService;
+        this.pdfService = pdfService;
     }
 
     @FXML
     public void initialize() {
         pagination = new PaginationControls(10, this::carregarEncomendas, i18nService);
         configurarFiltroStatus();
+        configurarPesquisaDinamica();
         carregarDadosAuxiliares();
         configurarTabela();
         configurarDrawerCriar();
         carregarEncomendas();
     }
 
+    // ── Filters & search ─────────────────────────────────────────────────────
+
     private void configurarFiltroStatus() {
         cmbFiltroStatus.setItems(FXCollections.observableArrayList(EstadoEncomendaFornecedor.values()));
         cmbFiltroStatus.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(EstadoEncomendaFornecedor e) {
+            @Override public String toString(EstadoEncomendaFornecedor e) {
                 if (e == null) return "";
                 return switch (e) {
                     case RASCUNHO -> "Draft";
@@ -104,10 +118,36 @@ public class PurchaseOrdersController {
                     case ANULADA  -> "Cancelled";
                 };
             }
-            @Override
-            public EstadoEncomendaFornecedor fromString(String s) { return null; }
+            @Override public EstadoEncomendaFornecedor fromString(String s) { return null; }
         });
     }
+
+    private void configurarPesquisaDinamica() {
+        searchDebounce.setOnFinished(e -> aplicarPesquisa());
+        txtSearch.textProperty().addListener((obs, o, n) -> {
+            if (!updatingSearch) searchDebounce.playFromStart();
+        });
+        cmbFiltroStatus.valueProperty().addListener((obs, o, n) -> {
+            if (!updatingSearch) aplicarPesquisa();
+        });
+    }
+
+    private void aplicarPesquisa() {
+        pagination.resetPage();
+        carregarEncomendas();
+    }
+
+    @FXML
+    private void handleLimpar() {
+        updatingSearch = true;
+        searchDebounce.stop();
+        txtSearch.clear();
+        cmbFiltroStatus.setValue(null);
+        updatingSearch = false;
+        aplicarPesquisa();
+    }
+
+    // ── Data ─────────────────────────────────────────────────────────────────
 
     private void carregarDadosAuxiliares() {
         try {
@@ -128,10 +168,31 @@ public class PurchaseOrdersController {
         }
     }
 
+    private void carregarEncomendas() {
+        try {
+            EstadoEncomendaFornecedor estado = cmbFiltroStatus.getValue();
+            Page<EncomendaFornecedorSimpleDTO> page = compraService.listarEncomendasComFiltrosSimples(
+                    null, estado, pagination.pageNumberForService(), pagination.pageSize(), "data", "DESC");
+
+            String search = txtSearch.getText() != null ? txtSearch.getText().trim().toLowerCase() : "";
+            List<EncomendaFornecedorSimpleDTO> content = new ArrayList<>(page.getContent());
+            if (!search.isEmpty()) {
+                content.removeIf(dto -> dto.fornecedorNome() == null
+                        || !dto.fornecedorNome().toLowerCase().contains(search));
+            }
+            encomendas.setAll(content);
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
+        } catch (Exception e) {
+            toastService.showError(i18nService.translate("common.error"), e.getMessage());
+        }
+    }
+
+    // ── Table ────────────────────────────────────────────────────────────────
+
     private void configurarTabela() {
         colPoNumber.setCellFactory(param -> new TableCell<>() {
-            @Override
-            protected void updateItem(Void item, boolean empty) {
+            @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) { setGraphic(null); return; }
                 int seq = pagination.currentPage() * pagination.pageSize() + getIndex() + 1;
@@ -162,8 +223,7 @@ public class PurchaseOrdersController {
         configurarColunaTexto(colGrandTotal);
 
         colStatus.setCellFactory(param -> new TableCell<>() {
-            @Override
-            protected void updateItem(Void item, boolean empty) {
+            @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) { setGraphic(null); return; }
                 EncomendaFornecedorSimpleDTO dto = getTableView().getItems().get(getIndex());
@@ -178,7 +238,7 @@ public class PurchaseOrdersController {
             {
                 btnDetails.getStyleClass().addAll("button-icon", "flat");
                 btnDetails.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
-                btnDetails.setTooltip(new Tooltip("View Details"));
+                btnDetails.setTooltip(new Tooltip(i18nService.translate("common.view")));
                 btnDetails.setOnAction(event -> {
                     int idx = getIndex();
                     if (idx >= 0 && idx < getTableView().getItems().size()) {
@@ -187,8 +247,7 @@ public class PurchaseOrdersController {
                     }
                 });
             }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
+            @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty ? null : btnDetails);
                 setAlignment(Pos.CENTER);
@@ -200,9 +259,8 @@ public class PurchaseOrdersController {
     }
 
     private <T> void configurarColunaTexto(TableColumn<EncomendaFornecedorSimpleDTO, T> coluna) {
-        coluna.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(T item, boolean empty) {
+        coluna.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(T item, boolean empty) {
                 super.updateItem(item, empty);
                 setText((empty || item == null) ? null : item.toString());
                 setPadding(new Insets(8, 10, 8, 10));
@@ -211,50 +269,7 @@ public class PurchaseOrdersController {
         });
     }
 
-    private HBox criarBadgeEstado(EstadoEncomendaFornecedor estado) {
-        if (estado == null) return new HBox();
-        String color, icon, label;
-        switch (estado) {
-            case RASCUNHO -> { color = "#6b7280"; icon = "mdi2c-circle-outline";       label = "DRAFT";      }
-            case EFETIVA  -> { color = "#3b82f6"; icon = "mdi2c-check-circle-outline"; label = "CONFIRMED";  }
-            case RECEBIDA -> { color = "#22c55e"; icon = "mdi2c-check-circle";         label = "RECEIVED";   }
-            case ANULADA  -> { color = "#ef4444"; icon = "mdi2c-close-circle";         label = "CANCELLED";  }
-            default       -> { color = "#6b7280"; icon = "mdi2c-circle-outline";       label = estado.getDisplayName().toUpperCase(); }
-        }
-        HBox b = new HBox(6);
-        b.setAlignment(Pos.CENTER_LEFT);
-        b.setPadding(new Insets(4, 10, 4, 10));
-        b.setStyle(String.format(
-                "-fx-background-color: %s22; -fx-border-color: %s; -fx-border-radius: 6; -fx-background-radius: 6; -fx-border-width: 1.5;",
-                color.replace("#", ""), color));
-        FontIcon ic = new FontIcon(icon + ":14");
-        ic.setIconColor(javafx.scene.paint.Color.web(color));
-        Label lbl = new Label(label);
-        lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 600; -fx-font-size: 12px;");
-        b.getChildren().addAll(ic, lbl);
-        return b;
-    }
-
-    private void carregarEncomendas() {
-        try {
-            EstadoEncomendaFornecedor estado = cmbFiltroStatus.getValue();
-            Page<EncomendaFornecedorSimpleDTO> page = compraService.listarEncomendasComFiltrosSimples(
-                    null, estado, pagination.pageNumberForService(), pagination.pageSize(), "data", "DESC");
-
-            List<EncomendaFornecedorSimpleDTO> content = new ArrayList<>(page.getContent());
-            String search = txtSearch.getText() != null ? txtSearch.getText().trim().toLowerCase() : "";
-            if (!search.isEmpty()) {
-                content.removeIf(dto -> dto.fornecedorNome() == null
-                        || !dto.fornecedorNome().toLowerCase().contains(search));
-            }
-
-            encomendas.setAll(content);
-            pagination.attachTo(vboxContainer);
-            pagination.update(page);
-        } catch (Exception e) {
-            toastService.showError(i18nService.translate("common.error"), e.getMessage());
-        }
-    }
+    // ── Details drawer ────────────────────────────────────────────────────────
 
     @FXML
     private void handleAbrirModal() {
@@ -277,32 +292,80 @@ public class PurchaseOrdersController {
     }
 
     private VBox criarDrawerDetalhes(EncomendaFornecedorDetailsDTO d, int poSeq) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550); root.setPrefWidth(550); root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader(
+                i18nService.translate("purchaseOrders.detailsTitle"), navigationService::hideModal);
 
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Purchase Order Details");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button(); btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
-
-        VBox content = new VBox(20);
-        content.setPadding(new Insets(30));
-
-        VBox secInfo = criarSecao("Order Information");
-        secInfo.getChildren().addAll(
-                criarLinhaDetalhe("PO Number",   String.format("PO-%03d", poSeq), true),
-                criarLinhaDetalhe("Supplier",    d.fornecedorNome() != null ? d.fornecedorNome() : "—", false),
-                criarLinhaDetalhe("Order Date",  d.data() != null ? d.data().toString() : "—", false),
+        // ── Secção view (read-only) ───────────────────────────────────────────
+        VBox secInfoView = criarSecao("Order Information");
+        secInfoView.getChildren().addAll(
+                criarLinhaDetalhe("PO Number",  String.format("PO-%03d", poSeq), true),
+                criarLinhaDetalhe("Supplier",   valorOuTraco(d.fornecedorNome()), false),
+                criarLinhaDetalhe("Order Date", d.data() != null ? d.data().format(DATE_FMT) : "—", false),
                 criarLinhaDetalheComBadge("Status", criarBadgeEstado(d.estado()))
         );
+
+        // ── Secção edit (editável, RASCUNHO) ─────────────────────────────────
+        ComboBox<FornecedorSimpleDTO> cmbFornecedorEdit = new ComboBox<>(FXCollections.observableArrayList(fornecedores));
+        cmbFornecedorEdit.setMaxWidth(Double.MAX_VALUE);
+        cmbFornecedorEdit.setConverter(new StringConverter<>() {
+            @Override public String toString(FornecedorSimpleDTO f) { return f != null ? f.nome() : ""; }
+            @Override public FornecedorSimpleDTO fromString(String s) { return null; }
+        });
+        fornecedores.stream().filter(f -> f.id().equals(d.fornecedorId())).findFirst()
+                .ifPresent(cmbFornecedorEdit::setValue);
+
+        TextField txtDataEdit = new TextField(d.data() != null ? d.data().format(DATE_FMT) : "");
+        txtDataEdit.setPromptText("dd/MM/yyyy");
+        txtDataEdit.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<EstadoEncomendaFornecedor> cmbStatusEdit = new ComboBox<>(FXCollections.observableArrayList(
+                EstadoEncomendaFornecedor.RASCUNHO, EstadoEncomendaFornecedor.EFETIVA, EstadoEncomendaFornecedor.ANULADA));
+        cmbStatusEdit.setConverter(new StringConverter<>() {
+            @Override public String toString(EstadoEncomendaFornecedor e) {
+                if (e == null) return "";
+                return switch (e) {
+                    case RASCUNHO -> "Draft"; case EFETIVA -> "Confirmed";
+                    case RECEBIDA -> "Received"; case ANULADA -> "Cancelled";
+                };
+            }
+            @Override public EstadoEncomendaFornecedor fromString(String s) { return null; }
+        });
+        cmbStatusEdit.setValue(d.estado());
+        cmbStatusEdit.setMaxWidth(Double.MAX_VALUE);
+
+        Label lblErroEdit = new Label();
+        lblErroEdit.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 6 10; -fx-background-color: #ef444418; -fx-background-radius: 6;");
+        lblErroEdit.setWrapText(true);
+        lblErroEdit.setMaxWidth(Double.MAX_VALUE);
+        lblErroEdit.setVisible(false); lblErroEdit.setManaged(false);
+
+        VBox secInfoEdit = criarSecao("Order Information");
+        secInfoEdit.getChildren().addAll(
+                criarLinhaDetalhe("PO Number", String.format("PO-%03d", poSeq), true),
+                criarCampoFormulario("Supplier", cmbFornecedorEdit),
+                criarCampoFormulario("Order Date (dd/MM/yyyy)", txtDataEdit),
+                criarCampoFormulario("Status", cmbStatusEdit),
+                lblErroEdit
+        );
+        secInfoEdit.setVisible(false);
+        secInfoEdit.setManaged(false);
+
+        // ── Itens (sempre read-only) ──────────────────────────────────────────
+        VBox secItems = criarSecao("Order Items");
+        if (d.itens() != null && !d.itens().isEmpty()) {
+            for (ItemEncomendaFornecedorResponseDTO item : d.itens()) {
+                double qty   = item.quantidade()       != null ? item.quantidade()       : 0;
+                double price = item.precoUnitarioNet() != null ? item.precoUnitarioNet() : 0;
+                Label lbl = new Label(String.format("%s  ×  %.2f %s  @  €%.2f",
+                        valorOuTraco(item.materiaPrimaNome()), qty, valorOuTraco(item.unidade()), price));
+                lbl.setStyle("-fx-font-size: 12px;");
+                secItems.getChildren().add(lbl);
+            }
+        } else {
+            Label no = new Label("—"); no.setStyle("-fx-font-size: 12px; -fx-text-fill: -color-fg-muted;");
+            secItems.getChildren().add(no);
+        }
 
         VBox secTotal = criarSecao("Order Total");
         secTotal.getChildren().addAll(
@@ -311,82 +374,92 @@ public class PurchaseOrdersController {
                 criarLinhaDetalhe("Grand Total", d.totalFinal()   != null ? String.format("€%.2f", d.totalFinal())   : "—", true)
         );
 
-        content.getChildren().addAll(secInfo, secTotal);
+        VBox content = new VBox(20, secInfoView, secInfoEdit, secItems, secTotal);
+        content.setPadding(new Insets(30));
+        ScrollPane scroll = UiFactory.transparentScroll(content);
 
-        ScrollPane scroll = new ScrollPane(content);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
-
-        HBox footer = new HBox(12);
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
+        // ── Footer por estado ─────────────────────────────────────────────────
         EstadoEncomendaFornecedor estado = d.estado();
+        HBox footer;
+
         if (estado == EstadoEncomendaFornecedor.RASCUNHO) {
-            Button btnEliminar = new Button(i18nService.translate("common.delete"));
-            btnEliminar.getStyleClass().addAll("button-outlined", "danger");
-            btnEliminar.setPrefHeight(44);
-            btnEliminar.setOnAction(e -> {
-                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                confirm.setTitle(i18nService.translate("common.delete"));
-                confirm.setHeaderText(i18nService.translate("common.confirmDelete"));
-                confirm.setContentText(String.format("PO-%03d", poSeq));
-                confirm.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
-                try {
-                    compraService.apagarEncomendaRascunho(d.id());
-                    toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.deleted"));
-                    navigationService.hideModal();
-                    carregarEncomendas();
-                } catch (Exception ex) {
-                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
-                }
+            Button btnApagar   = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
+            Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
+            Button btnEditar   = UiFactory.drawerSecondaryAction(i18nService.translate("common.edit"), "mdi2p-pencil-outline");
+            Button btnGuardar  = UiFactory.drawerPrimaryAction(i18nService.translate("common.save"), "mdi2c-content-save-outline");
+
+            btnCancelar.setVisible(false); btnCancelar.setManaged(false);
+            btnGuardar.setDisable(true);
+            footer = UiFactory.drawerActionFooter(btnApagar, btnCancelar, btnEditar, btnGuardar);
+
+            btnEditar.setOnAction(e -> {
+                secInfoView.setVisible(false); secInfoView.setManaged(false);
+                secInfoEdit.setVisible(true);  secInfoEdit.setManaged(true);
+                btnGuardar.setDisable(false);
+                btnEditar.setVisible(false);   btnEditar.setManaged(false);
+                btnCancelar.setVisible(true);  btnCancelar.setManaged(true);
             });
 
-            Button btnConfirmar = new Button("Confirmar Encomenda");
-            btnConfirmar.getStyleClass().add("accent");
-            btnConfirmar.setPrefHeight(44);
-            btnConfirmar.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(btnConfirmar, Priority.ALWAYS);
-            btnConfirmar.setOnAction(e -> {
+            btnCancelar.setOnAction(e -> {
+                secInfoEdit.setVisible(false); secInfoEdit.setManaged(false);
+                secInfoView.setVisible(true);  secInfoView.setManaged(true);
+                lblErroEdit.setVisible(false); lblErroEdit.setManaged(false);
+                btnGuardar.setDisable(true);
+                btnCancelar.setVisible(false); btnCancelar.setManaged(false);
+                btnEditar.setVisible(true);    btnEditar.setManaged(true);
+                // reset edit fields to original values
+                fornecedores.stream().filter(f -> f.id().equals(d.fornecedorId())).findFirst()
+                        .ifPresent(cmbFornecedorEdit::setValue);
+                txtDataEdit.setText(d.data() != null ? d.data().format(DATE_FMT) : "");
+                cmbStatusEdit.setValue(d.estado());
+            });
+
+            btnGuardar.setOnAction(e -> {
+                lblErroEdit.setVisible(false); lblErroEdit.setManaged(false);
+                FornecedorSimpleDTO selectedF = cmbFornecedorEdit.getValue();
+                EstadoEncomendaFornecedor selectedStatus = cmbStatusEdit.getValue();
+                if (selectedF == null) {
+                    lblErroEdit.setText("Selecione um fornecedor.");
+                    lblErroEdit.setVisible(true); lblErroEdit.setManaged(true); return;
+                }
+                LocalDate selectedDate = null;
+                try { selectedDate = LocalDate.parse(txtDataEdit.getText(), DATE_FMT); }
+                catch (Exception ignored) {}
                 try {
-                    compraService.confirmarEncomenda(d.id());
+                    compraService.atualizarEncomenda(d.id(), selectedF.id(), selectedDate);
+                    if (selectedStatus != null && selectedStatus != EstadoEncomendaFornecedor.RASCUNHO) {
+                        if (selectedStatus == EstadoEncomendaFornecedor.EFETIVA) {
+                            compraService.confirmarEncomenda(d.id());
+                        } else if (selectedStatus == EstadoEncomendaFornecedor.ANULADA) {
+                            compraService.anumarEncomenda(d.id());
+                        }
+                    }
                     toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.statusUpdated"));
                     navigationService.hideModal();
                     carregarEncomendas();
                 } catch (Exception ex) {
-                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+                    lblErroEdit.setText(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("common.saveError"));
+                    lblErroEdit.setVisible(true); lblErroEdit.setManaged(true);
                 }
             });
-            footer.getChildren().addAll(btnEliminar, btnConfirmar);
+
+            btnApagar.setOnAction(e -> handleConfirmarApagar(d.id(), String.format("PO-%03d", poSeq),
+                    () -> compraService.apagarEncomendaRascunho(d.id()),
+                    i18nService.translate("purchaseOrders.deleted")));
 
         } else if (estado == EstadoEncomendaFornecedor.EFETIVA) {
-            Button btnAnular = new Button("Anular");
-            btnAnular.getStyleClass().addAll("button-outlined", "danger");
-            btnAnular.setPrefHeight(44);
-            btnAnular.setOnAction(e -> {
-                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                confirm.setTitle("Anular Encomenda");
-                confirm.setHeaderText(i18nService.translate("common.confirmDelete"));
-                confirm.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
-                try {
-                    compraService.anumarEncomenda(d.id());
-                    toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.statusUpdated"));
-                    navigationService.hideModal();
-                    carregarEncomendas();
-                } catch (Exception ex) {
-                    toastService.showError(i18nService.translate("common.error"), ex.getMessage());
-                }
-            });
+            Button btnAnular   = UiFactory.drawerDangerAction("Anular", "mdi2c-close-circle-outline");
+            Button btnGerarPDF = UiFactory.drawerSecondaryAction("Gerar PDF", "mdi2f-file-pdf-box");
+            Button btnReceber  = UiFactory.drawerPrimaryAction("Marcar como Recebida", "mdi2c-check-circle-outline");
 
-            Button btnReceber = new Button("Marcar como Recebida");
-            btnReceber.getStyleClass().add("accent");
-            btnReceber.setPrefHeight(44);
-            btnReceber.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(btnReceber, Priority.ALWAYS);
+            footer = UiFactory.drawerActionFooter(btnAnular, btnGerarPDF, btnReceber);
+
+            btnAnular.setOnAction(e -> handleConfirmarApagar(d.id(), String.format("PO-%03d", poSeq),
+                    () -> compraService.anumarEncomenda(d.id()),
+                    i18nService.translate("purchaseOrders.statusUpdated")));
+
+            btnGerarPDF.setOnAction(e -> handleGerarPDF(d, poSeq));
+
             btnReceber.setOnAction(e -> {
                 try {
                     compraService.confirmarRecebimento(d.id());
@@ -397,67 +470,62 @@ public class PurchaseOrdersController {
                     toastService.showError(i18nService.translate("common.error"), ex.getMessage());
                 }
             });
-            footer.getChildren().addAll(btnAnular, btnReceber);
+
+        } else if (estado == EstadoEncomendaFornecedor.RECEBIDA) {
+            Button btnApagar = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
+            footer = UiFactory.drawerActionFooter(btnApagar);
+            btnApagar.setOnAction(e -> handleConfirmarApagar(d.id(), String.format("PO-%03d", poSeq),
+                    () -> compraService.apagarEncomenda(d.id()),
+                    i18nService.translate("purchaseOrders.deleted")));
 
         } else {
-            Button btnFechar = new Button(i18nService.translate("common.cancel"));
-            btnFechar.getStyleClass().add("button-outlined");
-            btnFechar.setPrefHeight(44);
-            btnFechar.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(btnFechar, Priority.ALWAYS);
-            btnFechar.setOnAction(e -> navigationService.hideModal());
-            footer.getChildren().add(btnFechar);
+            footer = UiFactory.drawerFooter();
         }
 
         root.getChildren().addAll(header, scroll, footer);
         return root;
     }
 
-    private VBox criarSecao(String titulo) {
-        VBox sec = new VBox(12);
-        sec.setPadding(new Insets(16));
-        sec.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-radius: 8;");
-        Label lbl = new Label(titulo);
-        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
-        lbl.getStyleClass().add("text-muted");
-        sec.getChildren().add(lbl);
-        return sec;
+    private void handleConfirmarApagar(UUID id, String label, Runnable action, String successMsg) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle(i18nService.translate("common.delete"));
+        confirm.setHeaderText(i18nService.translate("common.confirmDelete"));
+        confirm.setContentText(label);
+        confirm.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+        if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
+        try {
+            action.run();
+            toastService.showSuccess(i18nService.translate("common.success"), successMsg);
+            navigationService.hideModal();
+            carregarEncomendas();
+        } catch (Exception ex) {
+            toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+        }
     }
 
-    private HBox criarLinhaDetalhe(String key, String value, boolean bold) {
-        Label k = new Label(key + ":");
-        k.setStyle("-fx-text-fill: -color-fg-muted; -fx-min-width: 120; -fx-font-size: 13px;");
-        Label v = new Label(value);
-        v.setStyle("-fx-font-size: 13px;" + (bold ? " -fx-font-weight: 700;" : ""));
-        HBox row = new HBox(10, k, v);
-        row.setAlignment(Pos.CENTER_LEFT);
-        return row;
+    private void handleGerarPDF(EncomendaFornecedorDetailsDTO d, int poSeq) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Guardar PDF");
+        chooser.setInitialFileName(String.format("PO-%03d.pdf", poSeq));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+        File file = chooser.showSaveDialog(null);
+        if (file == null) return;
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            pdfService.generate(d, poSeq, fos);
+            toastService.showSuccess(i18nService.translate("common.success"), "PDF gerado: " + file.getName());
+            if (java.awt.Desktop.isDesktopSupported()) {
+                java.awt.Desktop.getDesktop().open(file);
+            }
+        } catch (Exception ex) {
+            toastService.showError(i18nService.translate("common.error"), ex.getMessage());
+        }
     }
 
-    private HBox criarLinhaDetalheComBadge(String key, HBox badge) {
-        Label k = new Label(key + ":");
-        k.setStyle("-fx-text-fill: -color-fg-muted; -fx-min-width: 120; -fx-font-size: 13px;");
-        HBox row = new HBox(10, k, badge);
-        row.setAlignment(Pos.CENTER_LEFT);
-        return row;
-    }
+    // ── Create drawer ─────────────────────────────────────────────────────────
 
     private void configurarDrawerCriar() {
-        drawerCriar = new VBox(0);
-        drawerCriar.setMinWidth(550); drawerCriar.setPrefWidth(550); drawerCriar.setMaxWidth(550);
-        drawerCriar.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Create Purchase Order");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button(); btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        drawerCriar = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Create Purchase Order", navigationService::hideModal);
 
         VBox form = new VBox(20);
         form.setPadding(new Insets(30));
@@ -488,16 +556,9 @@ public class PurchaseOrdersController {
         summary.setPadding(new Insets(16));
         summary.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8;");
 
-        form.getChildren().addAll(
-                criarCampoFormulario("Supplier",   cmbFornecedorCriar),
-                itemsSection,
-                summary
-        );
+        form.getChildren().addAll(criarCampoFormulario("Supplier", cmbFornecedorCriar), itemsSection, summary);
 
-        ScrollPane scroll = new ScrollPane(form);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
+        ScrollPane scroll = UiFactory.transparentScroll(form);
 
         HBox footer = new HBox(12);
         footer.setPadding(new Insets(25));
@@ -602,20 +663,70 @@ public class PurchaseOrdersController {
         return draft.id();
     }
 
+    // ── UI helpers ────────────────────────────────────────────────────────────
+
+    private HBox criarBadgeEstado(EstadoEncomendaFornecedor estado) {
+        if (estado == null) return new HBox();
+        String color, icon, label;
+        switch (estado) {
+            case RASCUNHO -> { color = "#6b7280"; icon = "mdi2c-circle-outline";       label = "DRAFT";     }
+            case EFETIVA  -> { color = "#3b82f6"; icon = "mdi2c-check-circle-outline"; label = "CONFIRMED"; }
+            case RECEBIDA -> { color = "#22c55e"; icon = "mdi2c-check-circle";         label = "RECEIVED";  }
+            case ANULADA  -> { color = "#ef4444"; icon = "mdi2c-close-circle";         label = "CANCELLED"; }
+            default       -> { color = "#6b7280"; icon = "mdi2c-circle-outline";       label = estado.getDisplayName().toUpperCase(); }
+        }
+        HBox b = new HBox(6);
+        b.setAlignment(Pos.CENTER_LEFT);
+        b.setPadding(new Insets(4, 10, 4, 10));
+        b.setStyle(String.format(
+                "-fx-background-color: %s22; -fx-border-color: %s; -fx-border-radius: 6; -fx-background-radius: 6; -fx-border-width: 1.5;",
+                color.replace("#", ""), color));
+        FontIcon ic = new FontIcon(icon + ":14");
+        ic.setIconColor(javafx.scene.paint.Color.web(color));
+        Label lbl = new Label(label);
+        lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 600; -fx-font-size: 12px;");
+        b.getChildren().addAll(ic, lbl);
+        return b;
+    }
+
+    private VBox criarSecao(String titulo) {
+        VBox sec = new VBox(12);
+        sec.setPadding(new Insets(16));
+        sec.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-border-radius: 8;");
+        Label lbl = new Label(titulo);
+        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
+        lbl.getStyleClass().add("text-muted");
+        sec.getChildren().add(lbl);
+        return sec;
+    }
+
+    private HBox criarLinhaDetalhe(String key, String value, boolean bold) {
+        Label k = new Label(key + ":");
+        k.setStyle("-fx-text-fill: -color-fg-muted; -fx-min-width: 120; -fx-font-size: 13px;");
+        Label v = new Label(value);
+        v.setStyle("-fx-font-size: 13px;" + (bold ? " -fx-font-weight: 700;" : ""));
+        HBox row = new HBox(10, k, v);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
+    }
+
+    private HBox criarLinhaDetalheComBadge(String key, HBox badge) {
+        Label k = new Label(key + ":");
+        k.setStyle("-fx-text-fill: -color-fg-muted; -fx-min-width: 120; -fx-font-size: 13px;");
+        HBox row = new HBox(10, k, badge);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
+    }
+
     private VBox criarCampoFormulario(String label, Control input) {
         Label lbl = new Label(label);
         lbl.getStyleClass().add("text-muted");
         return new VBox(8, lbl, input);
     }
 
-    @FXML private void handleFiltrar() { pagination.resetPage(); carregarEncomendas(); }
+    private String valorOuTraco(String s) { return s != null && !s.isBlank() ? s : "—"; }
 
-    @FXML
-    private void handleLimpar() {
-        txtSearch.clear();
-        cmbFiltroStatus.setValue(null);
-        handleFiltrar();
-    }
+    // ── ItemRow ───────────────────────────────────────────────────────────────
 
     private static class ItemRow {
         private final ComboBox<MateriaPrimaSimpleDTO> cmbMaterial;
@@ -632,19 +743,15 @@ public class PurchaseOrdersController {
                 @Override public String toString(MateriaPrimaSimpleDTO m) { return m != null ? m.nome() : ""; }
                 @Override public MateriaPrimaSimpleDTO fromString(String s) { return null; }
             });
-
             txtQty   = new TextField("0");
             txtPrice = new TextField("0.00");
             lblTotal = new Label("Total: €0.00");
             lblTotal.setStyle("-fx-font-weight: 600;");
-
             txtQty.textProperty().addListener((obs, o, n)   -> { recalc(); onTotalChanged.run(); });
             txtPrice.textProperty().addListener((obs, o, n) -> { recalc(); onTotalChanged.run(); });
         }
 
-        private void recalc() {
-            lblTotal.setText(String.format("Total: €%.2f", getTotal()));
-        }
+        private void recalc() { lblTotal.setText(String.format("Total: €%.2f", getTotal())); }
 
         VBox buildCard(Runnable onRemove) {
             Label matLabel   = new Label("Raw Material");   matLabel.getStyleClass().add("text-muted");
@@ -653,7 +760,7 @@ public class PurchaseOrdersController {
 
             VBox qtyField   = new VBox(6, qtyLabel,   txtQty);
             VBox priceField = new VBox(6, priceLabel, txtPrice);
-            HBox.setHgrow(qtyField,   Priority.ALWAYS);
+            HBox.setHgrow(qtyField, Priority.ALWAYS);
             HBox.setHgrow(priceField, Priority.ALWAYS);
             HBox qtyPriceRow = new HBox(12, qtyField, priceField);
 
@@ -673,17 +780,10 @@ public class PurchaseOrdersController {
             return card;
         }
 
-        VBox getCard()               { return card; }
+        VBox getCard()                     { return card; }
         MateriaPrimaSimpleDTO getMaterial() { return cmbMaterial.getValue(); }
-        double getParsedQty() {
-            try { return Double.parseDouble(txtQty.getText().replace(",", ".")); } catch (Exception e) { return 0; }
-        }
-        double getParsedPrice() {
-            try { return Double.parseDouble(txtPrice.getText().replace(",", ".")); } catch (Exception e) { return 0; }
-        }
-        double getTotal() {
-            double total = getParsedQty() * getParsedPrice();
-            return Double.isFinite(total) ? total : 0;
-        }
+        double getParsedQty()   { try { return Double.parseDouble(txtQty.getText().replace(",", ".")); }   catch (Exception e) { return 0; } }
+        double getParsedPrice() { try { return Double.parseDouble(txtPrice.getText().replace(",", ".")); } catch (Exception e) { return 0; } }
+        double getTotal()       { double t = getParsedQty() * getParsedPrice(); return Double.isFinite(t) ? t : 0; }
     }
 }

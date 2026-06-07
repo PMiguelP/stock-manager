@@ -9,6 +9,8 @@ import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -16,6 +18,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -35,11 +38,10 @@ public class FormulaController {
     private final FormValidationService formValidationService;
     private final I18nService i18nService;
 
-    @FXML private TextField txtFiltroNome;
+    @FXML private TextField txtSearch;
     @FXML private ComboBox<String> cmbFiltroStatus;
     @FXML private TableView<FormulaSimpleDTO> tblFormulas;
     @FXML private VBox vboxContainer;
-
     @FXML private TableColumn<FormulaSimpleDTO, String> colCodigo;
     @FXML private TableColumn<FormulaSimpleDTO, String> colNome;
     @FXML private TableColumn<FormulaSimpleDTO, String> colTipoPellet;
@@ -65,13 +67,15 @@ public class FormulaController {
     private int totalPaginas = 0;
 
     private final ObservableList<FormulaSimpleDTO> formulas = FXCollections.observableArrayList();
+    private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
+    private boolean updatingSearch;
 
     public FormulaController(FormulaProducaoService formulaService,
-                                     StockService stockService,
-                                     NavigationService navigationService,
-                                     ToastService toastService,
-                                     FormValidationService formValidationService,
-                                     I18nService i18nService) {
+                             StockService stockService,
+                             NavigationService navigationService,
+                             ToastService toastService,
+                             FormValidationService formValidationService,
+                             I18nService i18nService) {
         this.formulaService = formulaService;
         this.stockService = stockService;
         this.navigationService = navigationService;
@@ -85,6 +89,7 @@ public class FormulaController {
         resetPaginationControls();
         configurarTabela();
         configurarComboBoxes();
+        configurarPesquisaDinamica();
         configurarDrawerAdicionar();
         carregarFormulas();
     }
@@ -94,6 +99,34 @@ public class FormulaController {
         cmbItemsPerPage = null;
         paginationButtons = null;
     }
+
+    // ── Search ────────────────────────────────────────────────────────────────
+
+    private void configurarPesquisaDinamica() {
+        searchDebounce.setOnFinished(e -> { paginaAtual = 0; carregarFormulas(); });
+        txtSearch.textProperty().addListener((obs, old, val) -> {
+            if (updatingSearch) return;
+            searchDebounce.playFromStart();
+        });
+        cmbFiltroStatus.valueProperty().addListener((obs, old, val) -> {
+            if (updatingSearch) return;
+            paginaAtual = 0;
+            carregarFormulas();
+        });
+    }
+
+    @FXML
+    private void handleLimpar() {
+        searchDebounce.stop();
+        updatingSearch = true;
+        txtSearch.clear();
+        cmbFiltroStatus.setValue(null);
+        updatingSearch = false;
+        paginaAtual = 0;
+        carregarFormulas();
+    }
+
+    // ── Table ─────────────────────────────────────────────────────────────────
 
     private void configurarTabela() {
         colCodigo.setCellValueFactory(cd -> new javafx.beans.property.SimpleStringProperty(
@@ -112,36 +145,28 @@ public class FormulaController {
         colAtiva.setCellValueFactory(cd -> new javafx.beans.property.SimpleBooleanProperty(
                 cd.getValue().ativa() != null ? cd.getValue().ativa() : false
         ));
-
         colAtiva.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(Boolean ativa, boolean empty) {
                 super.updateItem(ativa, empty);
-                if (empty || ativa == null) {
-                    setGraphic(null);
-                } else {
-                    setGraphic(criarBadgeStatus(ativa));
-                }
+                setGraphic(empty || ativa == null ? null : criarBadgeStatus(ativa));
                 setPadding(new Insets(8, 10, 8, 10));
                 setAlignment(Pos.CENTER_LEFT);
             }
         });
 
         colAcoes.setCellFactory(param -> new TableCell<>() {
-            private final Button btnDetails = new Button();
+            private final Button btn = new Button();
             {
-                btnDetails.getStyleClass().addAll("button-icon", "flat");
-                btnDetails.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
-                btnDetails.setTooltip(new Tooltip("Ver detalhes"));
-                btnDetails.setOnAction(event -> {
-                    FormulaSimpleDTO formula = getTableView().getItems().get(getIndex());
-                    handleAbrirDetalhes(formula);
-                });
+                btn.getStyleClass().addAll("button-icon", "flat");
+                btn.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
+                btn.setTooltip(new Tooltip("Ver detalhes"));
+                btn.setOnAction(ev -> handleAbrirDetalhes(getTableView().getItems().get(getIndex())));
             }
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btnDetails);
+                setGraphic(empty ? null : btn);
                 setAlignment(Pos.CENTER);
             }
         });
@@ -162,16 +187,16 @@ public class FormulaController {
         });
     }
 
+    // ── Data ──────────────────────────────────────────────────────────────────
+
     private void carregarFormulas() {
         try {
-            String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isEmpty()) ? txtFiltroNome.getText() : null;
+            String nome = (txtSearch != null && !txtSearch.getText().isEmpty()) ? txtSearch.getText() : null;
             Boolean ativa = (cmbFiltroStatus != null && cmbFiltroStatus.getValue() != null)
                     ? "Ativa".equals(cmbFiltroStatus.getValue()) : null;
-
             Page<FormulaSimpleDTO> page = formulaService.listarFormulasComFiltros(
                     paginaAtual + 1, itemsPerPage, nome, ativa, null, "nome", "ASC"
             );
-
             formulas.setAll(page.getContent());
             totalPaginas = page.getTotalPages();
             if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
@@ -182,6 +207,8 @@ public class FormulaController {
         }
     }
 
+    // ── Open drawers ──────────────────────────────────────────────────────────
+
     @FXML
     private void handleAbrirModal() {
         limparFormulario();
@@ -191,38 +218,22 @@ public class FormulaController {
     private void handleAbrirDetalhes(FormulaSimpleDTO formula) {
         try {
             FormulaProducaoResponseDTO d = formulaService.buscarPorId(formula.id());
-            VBox detalhesDrawer = criarDrawerEdicao(d);
-            navigationService.showModal(detalhesDrawer);
+            navigationService.showModal(criarDrawerEdicao(d));
         } catch (Exception e) {
             mostrarErro("Erro ao obter detalhes: " + e.getMessage());
         }
     }
 
+    // ── Edit drawer ───────────────────────────────────────────────────────────
+
     private VBox criarDrawerEdicao(FormulaProducaoResponseDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Editar Fórmula de Produção", navigationService::hideModal);
 
-        // Header
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Editar Fórmula de Produção");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
-
-        // Form
+        // Edit controls
         ComboBox<TipoPelletItem> cmbTipoPelletEdit = new ComboBox<>();
         cmbTipoPelletEdit.setMaxWidth(Double.MAX_VALUE);
+        cmbTipoPelletEdit.setDisable(true);
         carregarTiposPellet(cmbTipoPelletEdit);
         Label lblErroTipoPelletEdit = formValidationService.createErrorLabel();
         formValidationService.attachComboAutoClear(cmbTipoPelletEdit, lblErroTipoPelletEdit);
@@ -234,100 +245,82 @@ public class FormulaController {
         }
 
         TextField txtVersaoEdit = new TextField(d.nome());
+        txtVersaoEdit.setDisable(true);
         Label lblErroNomeEdit = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtVersaoEdit, lblErroNomeEdit);
 
         Label lblTotalKgEdit = new Label("0.00 kg");
-        lblTotalKgEdit.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+        lblTotalKgEdit.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#10b981;");
         Label lblWarningEdit = new Label("Atenção: O total deve ser igual a 1.00 kg");
-        lblWarningEdit.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: 500;");
+        lblWarningEdit.setStyle("-fx-text-fill:#f59e0b;-fx-font-weight:500;");
         lblWarningEdit.setVisible(true);
 
         VBox ingredientesContainerEdit = new VBox(12);
         List<IngredienteRow> ingredienteRowsEdit = new ArrayList<>();
 
-        // Add existing ingredients from DTO
         if (d.composicoes() != null && !d.composicoes().isEmpty()) {
             d.composicoes().forEach(c -> adicionarIngrediente(
-                    ingredientesContainerEdit,
-                    ingredienteRowsEdit,
-                    c.materiaPrimaId(),
-                    c.quantidadePorKg(),
-                    lblTotalKgEdit,
-                    lblWarningEdit
-            ));
+                    ingredientesContainerEdit, ingredienteRowsEdit, c.materiaPrimaId(), c.quantidadePorKg(),
+                    lblTotalKgEdit, lblWarningEdit, true));
             atualizarTotal(ingredienteRowsEdit, lblTotalKgEdit, lblWarningEdit);
         } else {
-            adicionarIngrediente(ingredientesContainerEdit, ingredienteRowsEdit, null, null, lblTotalKgEdit, lblWarningEdit);
+            adicionarIngrediente(ingredientesContainerEdit, ingredienteRowsEdit, null, null, lblTotalKgEdit, lblWarningEdit, true);
         }
 
         Button btnAddIngredient = new Button("+ Adicionar Ingrediente");
         btnAddIngredient.getStyleClass().add("accent");
+        btnAddIngredient.setVisible(false); btnAddIngredient.setManaged(false);
         btnAddIngredient.setOnAction(e -> adicionarIngrediente(
-                ingredientesContainerEdit,
-                ingredienteRowsEdit,
-                null,
-                null,
-                lblTotalKgEdit,
-                lblWarningEdit
-        ));
+                ingredientesContainerEdit, ingredienteRowsEdit, null, null, lblTotalKgEdit, lblWarningEdit, false));
 
         CheckBox chkAtivaEdit = new CheckBox();
         chkAtivaEdit.setSelected(d.ativa() != null ? d.ativa() : true);
+        chkAtivaEdit.setDisable(true);
 
-        ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        VBox form = new VBox(20,
+        ScrollPane scrollPane = UiFactory.transparentScroll(new VBox(20,
                 criarCampoFormularioComErro("Tipo de Pellet", cmbTipoPelletEdit, lblErroTipoPelletEdit),
                 criarCampoFormularioComErro("Nome da Fórmula", txtVersaoEdit, lblErroNomeEdit),
                 criarSecaoIngredientes(ingredientesContainerEdit, btnAddIngredient),
                 criarCampoTotal(lblTotalKgEdit, lblWarningEdit),
                 criarCampoStatus(chkAtivaEdit)
-        );
-        form.setPadding(new Insets(30));
-        scrollPane.setContent(form);
+        ) {{ setPadding(new Insets(30)); }});
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        // Footer
-        HBox footer = new HBox(12);
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        Button btnEliminar = UiFactory.drawerDangerAction("Eliminar", "mdi2d-delete-outline");
+        Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
+        Button btnEditar   = UiFactory.drawerSecondaryAction(i18nService.translate("common.edit"), "mdi2p-pencil-outline");
+        Button btnGuardar  = UiFactory.drawerPrimaryAction("Guardar Fórmula", "mdi2c-content-save-outline");
 
-        Button btnGuardar = new Button("Atualizar Fórmula");
-        btnGuardar.getStyleClass().add("accent");
-        btnGuardar.setPrefHeight(44);
-        btnGuardar.setMaxWidth(Double.MAX_VALUE);
+        btnCancelar.setVisible(false); btnCancelar.setManaged(false);
+        btnGuardar.setDisable(true);
+        HBox footer = UiFactory.drawerActionFooter(btnEliminar, btnCancelar, btnEditar, btnGuardar);
 
-        Button btnEliminar = new Button("Eliminar");
-        btnEliminar.setPrefHeight(44);
-        btnEliminar.setMaxWidth(Double.MAX_VALUE);
-        btnEliminar.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+        btnEditar.setOnAction(e -> {
+            cmbTipoPelletEdit.setDisable(false);
+            txtVersaoEdit.setDisable(false);
+            chkAtivaEdit.setDisable(false);
+            btnAddIngredient.setVisible(true); btnAddIngredient.setManaged(true);
+            setIngredienteRowsDisabled(ingredienteRowsEdit, false);
+            btnGuardar.setDisable(false);
+            btnEditar.setVisible(false); btnEditar.setManaged(false);
+            btnCancelar.setVisible(true); btnCancelar.setManaged(true);
+        });
 
-        HBox.setHgrow(btnGuardar, Priority.ALWAYS);
-        HBox.setHgrow(btnEliminar, Priority.ALWAYS);
-        footer.getChildren().addAll(btnGuardar, btnEliminar);
+        btnCancelar.setOnAction(e -> navigationService.hideModal());
 
         btnGuardar.setOnAction(e -> {
-            boolean valido = true;
-            valido = formValidationService.validateRequiredCombo(cmbTipoPelletEdit, lblErroTipoPelletEdit, "Tipo de pellet é obrigatório") && valido;
+            boolean valido = formValidationService.validateRequiredCombo(cmbTipoPelletEdit, lblErroTipoPelletEdit, "Tipo de pellet é obrigatório");
             valido = formValidationService.validateRequiredText(txtVersaoEdit, lblErroNomeEdit, "Nome da fórmula é obrigatório") && valido;
             if (!valido) return;
             handleAtualizarFormula(d.id(), cmbTipoPelletEdit, txtVersaoEdit, ingredienteRowsEdit, chkAtivaEdit);
         });
 
         btnEliminar.setOnAction(e -> {
-            Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION);
-            confirmacao.setTitle("Eliminar Fórmula");
-            confirmacao.setHeaderText("Tem a certeza?");
-            confirmacao.setContentText("Esta ação é irreversível e vai eliminar a fórmula selecionada.");
-
-            if (confirmacao.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
-                return;
-            }
-
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Eliminar Fórmula");
+            confirm.setHeaderText("Tem a certeza?");
+            confirm.setContentText("Esta ação é irreversível e vai eliminar a fórmula selecionada.");
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
             try {
                 formulaService.apagarFormula(d.id());
                 carregarFormulas();
@@ -342,29 +335,12 @@ public class FormulaController {
         return root;
     }
 
+    // ── Create drawer ─────────────────────────────────────────────────────────
+
     private void configurarDrawerAdicionar() {
-        drawerRoot = new VBox(0);
-        drawerRoot.setMinWidth(550);
-        drawerRoot.setPrefWidth(550);
-        drawerRoot.setMaxWidth(550);
-        drawerRoot.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
+        drawerRoot = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader("Nova Fórmula de Produção", navigationService::hideModal);
 
-        // Header
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label("Nova Fórmula de Produção");
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnF = new Button();
-        btnF.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnF.getStyleClass().addAll("button-icon", "flat");
-        btnF.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnF);
-
-        // Form
         cmbTipoPellet = new ComboBox<>();
         cmbTipoPellet.setMaxWidth(Double.MAX_VALUE);
         cmbTipoPellet.setPromptText("Selecionar tipo de pellet");
@@ -377,90 +353,76 @@ public class FormulaController {
         formValidationService.attachTextAutoClear(txtVersao, lblErroCriarNome);
 
         lblTotalKg = new Label("0.00 kg");
-        lblTotalKg.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+        lblTotalKg.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#10b981;");
 
         lblWarning = new Label("Atenção: O total deve ser igual a 1.00 kg");
-        lblWarning.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: 500;");
+        lblWarning.setStyle("-fx-text-fill:#f59e0b;-fx-font-weight:500;");
         lblWarning.setVisible(true);
 
         ingredientesContainer = new VBox(12);
         ingredienteRows = new ArrayList<>();
-
-        // Add first ingredient row
-        adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning);
+        adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning, false);
 
         Button btnAddIngredient = new Button("+ Adicionar Ingrediente");
         btnAddIngredient.getStyleClass().add("accent");
         btnAddIngredient.setOnAction(e -> adicionarIngrediente(
-                ingredientesContainer,
-                ingredienteRows,
-                null,
-                null,
-                lblTotalKg,
-                lblWarning
-        ));
+                ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning, false));
 
         chkAtiva = new CheckBox();
         chkAtiva.setSelected(true);
 
-        ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        VBox form = new VBox(20,
+        ScrollPane scrollPane = UiFactory.transparentScroll(new VBox(20,
                 criarCampoFormularioComErro("Tipo de Pellet", cmbTipoPellet, lblErroCriarTipoPellet),
                 criarCampoFormularioComErro("Nome da Fórmula", txtVersao, lblErroCriarNome),
                 criarSecaoIngredientes(ingredientesContainer, btnAddIngredient),
                 criarCampoTotal(lblTotalKg, lblWarning),
                 criarCampoStatus(chkAtiva)
-        );
-        form.setPadding(new Insets(30));
-        scrollPane.setContent(form);
+        ) {{ setPadding(new Insets(30)); }});
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        // Footer
-        HBox footer = new HBox();
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnS = new Button("Criar Fórmula");
-        btnS.getStyleClass().add("accent");
-        btnS.setPrefHeight(44);
-        btnS.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnS, Priority.ALWAYS);
-        btnS.setOnAction(e -> handleAdicionar());
-        footer.getChildren().add(btnS);
+        Button btnCriar = UiFactory.drawerPrimaryAction("Criar Fórmula", "mdi2c-content-save-outline");
+        btnCriar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnCriar, Priority.ALWAYS);
+        btnCriar.setOnAction(e -> handleAdicionar());
 
+        HBox footer = UiFactory.drawerFooter();
+        footer.getChildren().add(btnCriar);
         drawerRoot.getChildren().addAll(header, scrollPane, footer);
+    }
+
+    // ── Ingredient helpers ────────────────────────────────────────────────────
+
+    private void setIngredienteRowsDisabled(List<IngredienteRow> rows, boolean disabled) {
+        for (IngredienteRow row : rows) {
+            row.cmbMaterial().setDisable(disabled);
+            row.txtQuantidade().setDisable(disabled);
+            row.btnRemover().setDisable(disabled);
+        }
     }
 
     private VBox criarSecaoIngredientes(VBox container, Button btnAdd) {
         VBox secao = new VBox(12);
-
         HBox headerRow = new HBox();
         headerRow.setAlignment(Pos.CENTER_LEFT);
         Label label = new Label("Ingredientes (quantidades por kg de saída)");
         label.getStyleClass().add("text-muted");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        headerRow.getChildren().addAll(label, btnAdd);
-
+        headerRow.getChildren().addAll(label, spacer, btnAdd);
         secao.getChildren().addAll(headerRow, container);
         return secao;
     }
 
     private VBox criarCampoTotal(Label lblTotal, Label lblWarn) {
         VBox box = new VBox(8);
-        box.setStyle("-fx-background-color: -color-bg-subtle; -fx-padding: 20; -fx-border-radius: 8; -fx-background-radius: 8;");
-
+        box.setStyle("-fx-background-color:-color-bg-subtle;-fx-padding:20;-fx-border-radius:8;-fx-background-radius:8;");
         HBox totalRow = new HBox();
         totalRow.setAlignment(Pos.CENTER_LEFT);
         Label label = new Label("Total por kg:");
-        label.setStyle("-fx-font-size: 14; -fx-text-fill: -color-fg-muted;");
+        label.setStyle("-fx-font-size:14;-fx-text-fill:-color-fg-muted;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        totalRow.getChildren().addAll(label, lblTotal);
-
+        totalRow.getChildren().addAll(label, spacer, lblTotal);
         box.getChildren().addAll(totalRow, lblWarn);
         return box;
     }
@@ -474,54 +436,45 @@ public class FormulaController {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button activeBtn = new Button(checkbox.isSelected() ? "Ativa" : "Inativa");
-        activeBtn.getStyleClass().add("accent");
         activeBtn.setStyle(checkbox.isSelected()
-                ? "-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 20;"
-                : "-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 8 20;");
-
+                ? "-fx-background-color:#10b981;-fx-text-fill:white;-fx-padding:8 20;"
+                : "-fx-background-color:#6b7280;-fx-text-fill:white;-fx-padding:8 20;");
         checkbox.selectedProperty().addListener((obs, old, val) -> {
-            if (val) {
-                activeBtn.setText("Ativa");
-                activeBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 20;");
-            } else {
-                activeBtn.setText("Inativa");
-                activeBtn.setStyle("-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 8 20;");
-            }
+            activeBtn.setText(val ? "Ativa" : "Inativa");
+            activeBtn.setStyle(val
+                    ? "-fx-background-color:#10b981;-fx-text-fill:white;-fx-padding:8 20;"
+                    : "-fx-background-color:#6b7280;-fx-text-fill:white;-fx-padding:8 20;");
         });
-
         activeBtn.setOnAction(e -> checkbox.setSelected(!checkbox.isSelected()));
-
         box.getChildren().addAll(label, spacer, activeBtn);
         return box;
     }
 
-    private void adicionarIngrediente(VBox container, List<IngredienteRow> rows, UUID materialId, Double quantidade,
-                                      Label lblTotal, Label lblWarn) {
+    private void adicionarIngrediente(VBox container, List<IngredienteRow> rows,
+                                      UUID materialId, Double quantidade,
+                                      Label lblTotal, Label lblWarn, boolean disabled) {
         VBox ingredienteBox = new VBox(12);
-        ingredienteBox.setStyle("-fx-background-color: -color-bg-subtle; -fx-padding: 20; -fx-border-radius: 8; -fx-background-radius: 8;");
+        ingredienteBox.setStyle("-fx-background-color:-color-bg-subtle;-fx-padding:20;-fx-border-radius:8;-fx-background-radius:8;");
 
-        // Raw Material
         Label lblMaterial = new Label("Matéria-Prima");
         lblMaterial.getStyleClass().add("text-muted");
         ComboBox<MateriaPrimaItem> cmbMaterial = new ComboBox<>();
         cmbMaterial.setMaxWidth(Double.MAX_VALUE);
         cmbMaterial.setPromptText("Selecionar matéria-prima");
+        cmbMaterial.setDisable(disabled);
         carregarMateriasPrimas(cmbMaterial);
         if (materialId != null) {
-            cmbMaterial.getItems().stream()
-                    .filter(item -> item.id().equals(materialId))
-                    .findFirst()
-                    .ifPresent(cmbMaterial::setValue);
+            cmbMaterial.getItems().stream().filter(i -> i.id().equals(materialId)).findFirst().ifPresent(cmbMaterial::setValue);
         }
 
-        // Quantity
         Label lblQuantidade = new Label("Quantidade por kg de saída");
         lblQuantidade.getStyleClass().add("text-muted");
         TextField txtQuantidade = new TextField(quantidade != null ? String.valueOf(quantidade) : "0");
+        txtQuantidade.setDisable(disabled);
 
-        // Remove button
         Button btnRemove = new Button("Remover Ingrediente");
-        btnRemove.setStyle("-fx-text-fill: #ef4444; -fx-background-color: transparent; -fx-border-color: transparent;");
+        btnRemove.setStyle("-fx-text-fill:#ef4444;-fx-background-color:transparent;-fx-border-color:transparent;");
+        btnRemove.setDisable(disabled);
         btnRemove.setOnAction(e -> {
             container.getChildren().remove(ingredienteBox);
             rows.removeIf(r -> r.container() == ingredienteBox);
@@ -531,10 +484,8 @@ public class FormulaController {
         ingredienteBox.getChildren().addAll(lblMaterial, cmbMaterial, lblQuantidade, txtQuantidade, btnRemove);
         container.getChildren().add(ingredienteBox);
 
-        IngredienteRow row = new IngredienteRow(ingredienteBox, cmbMaterial, txtQuantidade);
+        IngredienteRow row = new IngredienteRow(ingredienteBox, cmbMaterial, txtQuantidade, btnRemove);
         rows.add(row);
-
-        // Update total on quantity change
         txtQuantidade.textProperty().addListener((obs, old, val) -> atualizarTotal(rows, lblTotal, lblWarn));
     }
 
@@ -542,23 +493,16 @@ public class FormulaController {
         double total = 0.0;
         for (IngredienteRow row : rows) {
             try {
-                String text = row.txtQuantidade().getText().replace(",", ".");
-                double quantidade = Double.parseDouble(text);
-                if (Double.isFinite(quantidade)) {
-                    total += quantidade;
-                }
-            } catch (NumberFormatException e) {
-                // Ignore invalid numbers
-            }
+                double q = Double.parseDouble(row.txtQuantidade().getText().replace(",", "."));
+                if (Double.isFinite(q)) total += q;
+            } catch (NumberFormatException ignored) {}
         }
-
         lblTotal.setText(String.format("%.2f kg", total));
-
         if (Math.abs(total - 1.0) < 0.01) {
-            lblTotal.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+            lblTotal.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#10b981;");
             lblWarn.setVisible(false);
         } else {
-            lblTotal.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
+            lblTotal.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#f59e0b;");
             lblWarn.setVisible(true);
         }
     }
@@ -566,10 +510,8 @@ public class FormulaController {
     private void carregarTiposPellet(ComboBox<TipoPelletItem> combo) {
         try {
             var page = stockService.listarTiposPelletComFiltros(1, 100, null, null, "nome", "ASC");
-            List<TipoPelletItem> items = page.getContent().stream()
-                    .map(dto -> new TipoPelletItem(dto.id(), dto.nome()))
-                    .toList();
-            combo.setItems(FXCollections.observableArrayList(items));
+            combo.setItems(FXCollections.observableArrayList(
+                    page.getContent().stream().map(dto -> new TipoPelletItem(dto.id(), dto.nome())).toList()));
         } catch (Exception e) {
             mostrarErro("Erro ao carregar tipos de pellet: " + e.getMessage());
         }
@@ -578,20 +520,14 @@ public class FormulaController {
     private void carregarMateriasPrimas(ComboBox<MateriaPrimaItem> combo) {
         try {
             var page = stockService.listarMateriasPrimasComFiltros(1, 100, null, "kg", null, "nome", "ASC");
-            List<MateriaPrimaItem> items = page.getContent().stream()
-                    .map(dto -> new MateriaPrimaItem(dto.id(), dto.nome()))
-                    .toList();
-            combo.setItems(FXCollections.observableArrayList(items));
+            combo.setItems(FXCollections.observableArrayList(
+                    page.getContent().stream().map(dto -> new MateriaPrimaItem(dto.id(), dto.nome())).toList()));
         } catch (Exception e) {
             mostrarErro("Erro ao carregar materias-primas: " + e.getMessage());
         }
     }
 
-    private VBox criarCampoFormulario(String label, Control input) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        return new VBox(8, lbl, input);
-    }
+    // ── Form builders ─────────────────────────────────────────────────────────
 
     private VBox criarCampoFormularioComErro(String label, Control input, Label erroLabel) {
         Label lbl = new Label(label);
@@ -599,21 +535,15 @@ public class FormulaController {
         return new VBox(6, lbl, input, erroLabel);
     }
 
+    // ── Save handlers ─────────────────────────────────────────────────────────
+
     private void handleAdicionar() {
-        boolean valido = true;
-        valido = formValidationService.validateRequiredCombo(cmbTipoPellet, lblErroCriarTipoPellet, "Tipo de pellet é obrigatório") && valido;
+        boolean valido = formValidationService.validateRequiredCombo(cmbTipoPellet, lblErroCriarTipoPellet, "Tipo de pellet é obrigatório");
         valido = formValidationService.validateRequiredText(txtVersao, lblErroCriarNome, "Nome da fórmula é obrigatório") && valido;
-
         if (!valido) return;
-
-        if (ingredienteRows.isEmpty()) {
-            mostrarErro("Adicione pelo menos um ingrediente");
-            return;
-        }
-
+        if (ingredienteRows.isEmpty()) { mostrarErro("Adicione pelo menos um ingrediente"); return; }
         try {
-            FormulaProducaoRequestDTO dto = criarFormulaDTO(cmbTipoPellet, txtVersao, chkAtiva);
-            formulaService.criarFormula(dto, lerIngredientes(ingredienteRows));
+            formulaService.criarFormula(criarFormulaDTO(cmbTipoPellet, txtVersao, chkAtiva), lerIngredientes(ingredienteRows));
             paginaAtual = 0;
             carregarFormulas();
             navigationService.hideModal();
@@ -626,8 +556,7 @@ public class FormulaController {
     private void handleAtualizarFormula(UUID id, ComboBox<TipoPelletItem> cmbTipo, TextField txtVer,
                                         List<IngredienteRow> rows, CheckBox chkAtv) {
         try {
-            FormulaProducaoRequestDTO dto = criarFormulaDTO(cmbTipo, txtVer, chkAtv);
-            formulaService.atualizarFormula(id, dto, lerIngredientes(rows));
+            formulaService.atualizarFormula(id, criarFormulaDTO(cmbTipo, txtVer, chkAtv), lerIngredientes(rows));
             carregarFormulas();
             navigationService.hideModal();
             mostrarSucesso("Fórmula atualizada!");
@@ -636,54 +565,53 @@ public class FormulaController {
         }
     }
 
-    private FormulaProducaoRequestDTO criarFormulaDTO(
-            ComboBox<TipoPelletItem> cmbTipo,
-            TextField txtNome,
-            CheckBox chkAtiva) {
-        if (cmbTipo.getValue() == null) {
-            throw new IllegalArgumentException("Selecione um tipo de pellet");
-        }
-        return new FormulaProducaoRequestDTO(
-                cmbTipo.getValue().id(),
-                txtNome.getText(),
-                chkAtiva.isSelected()
-        );
+    private FormulaProducaoRequestDTO criarFormulaDTO(ComboBox<TipoPelletItem> cmbTipo, TextField txtNome, CheckBox chkAtiva) {
+        if (cmbTipo.getValue() == null) throw new IllegalArgumentException("Selecione um tipo de pellet");
+        return new FormulaProducaoRequestDTO(cmbTipo.getValue().id(), txtNome.getText(), chkAtiva.isSelected());
     }
 
     private Map<UUID, Double> lerIngredientes(List<IngredienteRow> rows) {
-        if (rows.isEmpty()) {
-            throw new IllegalArgumentException("Adicione pelo menos um ingrediente");
-        }
+        if (rows.isEmpty()) throw new IllegalArgumentException("Adicione pelo menos um ingrediente");
         Map<UUID, Double> ingredientes = new LinkedHashMap<>();
         for (IngredienteRow row : rows) {
-            if (row.cmbMaterial().getValue() == null) {
+            if (row.cmbMaterial().getValue() == null)
                 throw new IllegalArgumentException("Selecione a matéria-prima de todos os ingredientes");
-            }
             double quantidade;
             try {
                 quantidade = Double.parseDouble(row.txtQuantidade().getText().replace(",", "."));
-            } catch (NumberFormatException exception) {
+            } catch (NumberFormatException ex) {
                 throw new IllegalArgumentException("Indique uma quantidade válida para todos os ingredientes");
             }
-            if (!Double.isFinite(quantidade) || quantidade <= 0) {
+            if (!Double.isFinite(quantidade) || quantidade <= 0)
                 throw new IllegalArgumentException("As quantidades dos ingredientes devem ser maiores que zero");
-            }
-            if (ingredientes.putIfAbsent(row.cmbMaterial().getValue().id(), quantidade) != null) {
+            if (ingredientes.putIfAbsent(row.cmbMaterial().getValue().id(), quantidade) != null)
                 throw new IllegalArgumentException("A mesma matéria-prima não pode ser repetida na fórmula");
-            }
         }
         double total = ingredientes.values().stream().mapToDouble(Double::doubleValue).sum();
-        if (!Double.isFinite(total) || Math.abs(total - 1.0) > 0.000001) {
+        if (!Double.isFinite(total) || Math.abs(total - 1.0) > 0.000001)
             throw new IllegalArgumentException("A composição total da fórmula deve ser exatamente 1 kg");
-        }
         return ingredientes;
     }
+
+    private void limparFormulario() {
+        cmbTipoPellet.setValue(null);
+        txtVersao.clear();
+        ingredientesContainer.getChildren().clear();
+        ingredienteRows.clear();
+        adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning, false);
+        chkAtiva.setSelected(true);
+        atualizarTotal(ingredienteRows, lblTotalKg, lblWarning);
+        formValidationService.clearError(cmbTipoPellet, lblErroCriarTipoPellet);
+        formValidationService.clearError(txtVersao, lblErroCriarNome);
+    }
+
+    // ── Pagination ────────────────────────────────────────────────────────────
 
     private void configurarPaginacao(VBox container) {
         HBox nav = new HBox();
         nav.setAlignment(Pos.CENTER_LEFT);
         nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
+        nav.setStyle("-fx-border-color:-color-border-muted;-fx-border-width:1 0 0 0;");
 
         lblPaginaStatus = new Label();
         lblPaginaStatus.getStyleClass().add("text-muted");
@@ -693,11 +621,7 @@ public class FormulaController {
 
         cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
         cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> {
-            itemsPerPage = cmbItemsPerPage.getValue();
-            paginaAtual = 0;
-            carregarFormulas();
-        });
+        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarFormulas(); });
         HBox center = new HBox(10, new Label("Por página"), cmbItemsPerPage);
         center.setAlignment(Pos.CENTER);
         HBox.setHgrow(center, Priority.ALWAYS);
@@ -716,32 +640,21 @@ public class FormulaController {
         Button prev = new Button();
         prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
         prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> {
-            paginaAtual--;
-            carregarFormulas();
-        });
+        prev.setOnAction(e -> { paginaAtual--; carregarFormulas(); });
         paginationButtons.getChildren().add(prev);
-
         for (int i = 0; i < totalPaginas; i++) {
             if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
                 Button p = new Button(String.valueOf(i + 1));
                 p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int finalI = i;
-                p.setOnAction(e -> {
-                    paginaAtual = finalI;
-                    carregarFormulas();
-                });
+                int fi = i;
+                p.setOnAction(e -> { paginaAtual = fi; carregarFormulas(); });
                 paginationButtons.getChildren().add(p);
             }
         }
-
         Button next = new Button();
         next.setGraphic(new FontIcon("mdi2c-chevron-right"));
         next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> {
-            paginaAtual++;
-            carregarFormulas();
-        });
+        next.setOnAction(e -> { paginaAtual++; carregarFormulas(); });
         paginationButtons.getChildren().add(next);
     }
 
@@ -751,19 +664,17 @@ public class FormulaController {
         lblPaginaStatus.setText("Mostrando " + start + " a " + end + " de " + page.getTotalElements());
     }
 
+    // ── Misc ──────────────────────────────────────────────────────────────────
+
     private HBox criarBadgeStatus(Boolean ativa) {
         HBox b = new HBox(8);
         b.setAlignment(Pos.CENTER_LEFT);
         b.setPadding(new Insets(4, 10, 4, 10));
-        b.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;");
-
         String color = ativa ? "#10b981" : "#6b7280";
-        String text = ativa ? "Ativa" : "Inativa";
-
-        b.setStyle(b.getStyle() + String.format("-fx-background-color: %s20; -fx-border-color: %s;",
+        b.setStyle(String.format("-fx-background-radius:6;-fx-border-radius:6;-fx-border-width:1.5;-fx-background-color:%s20;-fx-border-color:%s;",
                 color.replace("#", ""), color));
-        Label l = new Label(text);
-        l.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
+        Label l = new Label(ativa ? "Ativa" : "Inativa");
+        l.setStyle("-fx-text-fill:" + color + ";-fx-font-weight:500;");
         b.getChildren().add(l);
         return b;
     }
@@ -772,46 +683,11 @@ public class FormulaController {
         cmbFiltroStatus.setItems(FXCollections.observableArrayList("Ativa", "Inativa"));
     }
 
-    private void limparFormulario() {
-        cmbTipoPellet.setValue(null);
-        txtVersao.clear();
-        ingredientesContainer.getChildren().clear();
-        ingredienteRows.clear();
-        adicionarIngrediente(ingredientesContainer, ingredienteRows, null, null, lblTotalKg, lblWarning);
-        chkAtiva.setSelected(true);
-        atualizarTotal(ingredienteRows, lblTotalKg, lblWarning);
-        formValidationService.clearError(cmbTipoPellet, lblErroCriarTipoPellet);
-        formValidationService.clearError(txtVersao, lblErroCriarNome);
-    }
+    private void mostrarSucesso(String m) { toastService.showSuccess(i18nService.translate("common.success"), m); }
+    private void mostrarErro(String m)    { toastService.showError(i18nService.translate("common.error"), m); }
 
-    private void mostrarSucesso(String m) {
-        toastService.showSuccess(i18nService.translate("common.success"), m);
-    }
-
-    private void mostrarErro(String m) {
-        toastService.showError(i18nService.translate("common.error"), m);
-    }
-
-    @FXML
-    private void handleFiltrar() {
-        paginaAtual = 0;
-        carregarFormulas();
-    }
-
-    @FXML
-    private void handleMostrarTodos() {
-        txtFiltroNome.clear();
-        handleFiltrar();
-    }
-
-    // Helper records
-    private record IngredienteRow(VBox container, ComboBox<MateriaPrimaItem> cmbMaterial, TextField txtQuantidade) {}
-    private record TipoPelletItem(UUID id, String nome) {
-        @Override
-        public String toString() { return nome; }
-    }
-    private record MateriaPrimaItem(UUID id, String nome) {
-        @Override
-        public String toString() { return nome; }
-    }
+    private record IngredienteRow(VBox container, ComboBox<MateriaPrimaItem> cmbMaterial,
+                                   TextField txtQuantidade, Button btnRemover) {}
+    private record TipoPelletItem(UUID id, String nome) { @Override public String toString() { return nome; } }
+    private record MateriaPrimaItem(UUID id, String nome) { @Override public String toString() { return nome; } }
 }

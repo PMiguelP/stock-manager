@@ -22,12 +22,10 @@
 
         <!-- Filters -->
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="txtFiltroNome" promptText="formulas.search" prefWidth="320"/>
+            <TextField fx:id="txtSearch" promptText="formulas.search" prefWidth="320"/>
             <ComboBox fx:id="cmbFiltroStatus" prefWidth="150" promptText="common.status"/>
-            <Button text="common.filter" onAction="#handleFiltrar" styleClass="button-outlined">
-                <graphic><FontIcon iconLiteral="mdi2f-filter" iconSize="16"/></graphic>
-            </Button>
-            <Button text="common.clear" onAction="#handleMostrarTodos" styleClass="flat">
+            <Button onAction="#handleLimpar" styleClass="flat">
+                <tooltip><Tooltip text="common.clear"/></tooltip>
                 <graphic><FontIcon iconLiteral="mdi2c-close-circle-outline" iconSize="16"/></graphic>
             </Button>
             <Region HBox.hgrow="ALWAYS"/>

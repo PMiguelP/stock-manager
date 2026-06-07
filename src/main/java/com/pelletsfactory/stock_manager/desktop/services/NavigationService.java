@@ -57,55 +57,55 @@ public class NavigationService {
 
         addRoute("/funcionarios", "/fxml/views/funcionario-view.fxml", "employees.title",
                 "employees.subtitle", ViewId.FUNCIONARIOS,
-                "nav.home", "nav.administration", "nav.employees");
+                "nav.home", "nav.employees");
 
         addRoute("/settings", "/fxml/views/settings-view.fxml", "settings.title",
                 "settings.subtitle", ViewId.SETTINGS,
-                "nav.home", "nav.administration", "settings.title");
+                "nav.home", "settings.title");
 
         addRoute("/orders", "/fxml/views/orders-view.fxml", "orders.title",
                 "orders.subtitle", ViewId.ORDERS,
-                "nav.home", "nav.operations", "nav.orders");
+                "nav.home", "nav.orders");
 
         addRoute("/production", "/fxml/views/production-view.fxml", "production.title",
                 "production.subtitle", ViewId.PRODUCTION,
-                "nav.home", "nav.operations", "nav.production");
+                "nav.home", "nav.production");
 
         addRoute("/allocations", "/fxml/views/allocations-view.fxml", "allocations.title",
                 "allocations.subtitle", ViewId.ALLOCATIONS,
-                "nav.home", "nav.operations", "nav.allocations");
+                "nav.home", "nav.allocations");
 
         addRoute("/stock", "/fxml/views/stock-view.fxml", "stock.title",
                 "stock.subtitle", ViewId.STOCK,
-                "nav.home", "nav.inventory", "stock.title");
+                "nav.home", "stock.title");
 
         addRoute("/clients", "/fxml/views/clients-view.fxml", "clients.title",
                 "clients.subtitle", ViewId.CLIENTS,
-                "nav.home", "nav.sales", "nav.clients");
+                "nav.home", "nav.clients");
 
         addRoute("/suppliers", "/fxml/views/suppliers-view.fxml", "suppliers.title",
                 "suppliers.subtitle", ViewId.SUPPLIERS,
-                "nav.home", "nav.procurement", "nav.suppliers");
+                "nav.home", "nav.suppliers");
 
         addRoute("/purchase-orders", "/fxml/views/purchase-orders-view.fxml", "purchaseOrders.title",
                 "purchaseOrders.subtitle", ViewId.PURCHASE_ORDERS,
-                "nav.home", "nav.procurement", "purchaseOrders.title");
+                "nav.home", "purchaseOrders.title");
 
         addRoute("/raw-materials", "/fxml/views/raw-materials-view.fxml", "rawMaterials.title",
                 "rawMaterials.subtitle", ViewId.RAW_MATERIALS,
-                "nav.home", "nav.inventory", "rawMaterials.title");
+                "nav.home", "rawMaterials.title");
 
         addRoute("/pellet-types", "/fxml/views/pellet-types-view.fxml", "pelletTypes.title",
                 "pelletTypes.subtitle", ViewId.PELLET_TYPES,
-                "nav.home", "nav.catalog", "pelletTypes.title");
+                "nav.home", "pelletTypes.title");
 
         addRoute("/formulas", "/fxml/views/formulas-view.fxml", "formulas.title",
                 "formulas.subtitle", ViewId.FORMULAS,
-                "nav.home", "nav.catalog", "nav.formulas");
+                "nav.home", "nav.formulas");
 
         addRoute("/batches", "/fxml/views/batches-view.fxml", "batches.title",
                 "batches.subtitle", ViewId.BATCHES,
-                "nav.home", "nav.catalog", "nav.batches");
+                "nav.home", "nav.batches");
 
         addRoute("/notifications", "/fxml/views/notifications-view.fxml", "notifications.title",
                 "notifications.subtitle", ViewId.NOTIFICATIONS,
@@ -155,6 +155,12 @@ public class NavigationService {
         }
     }
 
+    public void clearCache() {
+        viewCache.clear();
+        controllerByFxmlPath.clear();
+        viewStateByRoute.clear();
+    }
+
     public void navigateTo(String route) {
         if (contentArea == null) {
             throw new IllegalStateException("Content area nao foi definida!");
@@ -200,10 +206,6 @@ public class NavigationService {
         controllerByFxmlPath.put(fxmlPath, loader.getController());
         viewCache.put(fxmlPath, view);
         return view;
-    }
-
-    public void clearCache() {
-        viewCache.clear();
     }
 
     public Node loadExternalView(String fxmlPath) {

@@ -270,11 +270,33 @@ public class SidebarController {
 
     private void aplicarPermissoes() {
         Funcionario funcionario = SessaoFuncionario.getFuncionarioLogado();
-        boolean podeAcederSuporte = funcionario != null
-                && (funcionario.getCargo() == Cargo.ASSISTENTE_COMERCIAL
-                || funcionario.getCargo() == Cargo.ADMINISTRADOR);
-        btnSupport.setVisible(podeAcederSuporte);
-        btnSupport.setManaged(podeAcederSuporte);
+        if (funcionario == null) return;
+        Cargo cargo = funcionario.getCargo();
+        if (cargo == Cargo.ADMINISTRADOR) return; // admin sees everything
+
+        boolean isProducao   = cargo == Cargo.RESPONSAVEL_PRODUCAO;
+        boolean isOperador   = cargo == Cargo.OPERADOR_PRODUCAO;
+        boolean isLogistica  = cargo == Cargo.RESPONSAVEL_LOGISTICA;
+        boolean isComercial  = cargo == Cargo.ASSISTENTE_COMERCIAL;
+
+        setVisible(btnFuncionarios,   false);
+        setVisible(btnOrders,         isComercial);
+        setVisible(btnProduction,     isProducao || isOperador);
+        setVisible(btnAllocations,    isProducao || isOperador);
+        setVisible(btnStock,          isProducao || isLogistica);
+        setVisible(btnClients,        isComercial);
+        setVisible(btnSupport,        isComercial);
+        setVisible(btnSuppliers,      isLogistica);
+        setVisible(btnPurchaseOrders, isLogistica);
+        setVisible(btnRawMaterials,   isProducao || isLogistica);
+        setVisible(btnPelletTypes,    isProducao);
+        setVisible(btnFormulas,       isProducao);
+        setVisible(btnBatches,        isProducao || isOperador);
+    }
+
+    private void setVisible(ToggleButton btn, boolean visible) {
+        btn.setVisible(visible);
+        btn.setManaged(visible);
     }
 
     @EventListener
@@ -356,6 +378,8 @@ public class SidebarController {
     @FXML
     private void handleSair() {
         try {
+            navigationService.clearCache();
+
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
                     getClass().getResource("/fxml/login-view.fxml")
             );
