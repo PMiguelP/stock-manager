@@ -557,7 +557,7 @@ public class OrdersController {
                 criarSecaoEdicao(i18nService.translate("orders.customer"), cmbClienteDetalhes),
                 criarSecaoEdicao(i18nService.translate("common.currency"), cmbMoedaDetalhes),
                 criarSecaoEdicao(i18nService.translate("common.status"), cmbEstadoDetalhes),
-                criarSecaoEdicao("Tracking ID", txtTracking),
+                criarSecaoTrackingComCopia(d.codigoTracking(), txtTracking),
                 criarSecaoItensEdicao(editRows, itensEdicao, btnAdicionarItem)
         );
         form.setPadding(new Insets(30));
@@ -719,7 +719,7 @@ public class OrdersController {
         HBox valores = new HBox(12,
                 criarResumoValor("Data", d.data() != null ? d.data().format(DATE_FORMATTER) : "—"),
                 criarResumoValor("Total", String.format("%.2f %s", d.totalFinal(), d.moedaCodigo())),
-                criarResumoValor("Tracking", valorOuVazio(d.codigoTracking()))
+                criarResumoTracking(d.codigoTracking())
         );
         valores.setFillHeight(true);
         card.getChildren().addAll(topo, valores);
@@ -737,11 +737,46 @@ public class OrdersController {
         return box;
     }
 
+    private VBox criarResumoTracking(String codigoTracking) {
+        VBox box = new VBox(4);
+        box.setMinWidth(135);
+        Label lbl = new Label("Tracking");
+        lbl.getStyleClass().add("text-muted");
+        String valor = valorOuVazio(codigoTracking);
+        Label val = new Label(valor);
+        val.setStyle("-fx-font-weight: 700; -fx-font-size: 15px;");
+        if (codigoTracking != null && !codigoTracking.isBlank()) {
+            HBox row = new HBox(6);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.getChildren().addAll(val, UiFactory.copyButton(codigoTracking));
+            box.getChildren().addAll(lbl, row);
+        } else {
+            box.getChildren().addAll(lbl, val);
+        }
+        return box;
+    }
+
     private VBox criarSecaoEdicao(String label, Control input) {
         VBox box = new VBox(8);
         Label lbl = new Label(label);
         lbl.getStyleClass().add("text-muted");
         box.getChildren().addAll(lbl, input);
+        return box;
+    }
+
+    private VBox criarSecaoTrackingComCopia(String codigoTracking, TextField txtTracking) {
+        VBox box = new VBox(8);
+        Label lbl = new Label("Tracking ID");
+        lbl.getStyleClass().add("text-muted");
+        HBox inputRow = new HBox(8);
+        inputRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(txtTracking, Priority.ALWAYS);
+        txtTracking.setMaxWidth(Double.MAX_VALUE);
+        inputRow.getChildren().add(txtTracking);
+        if (codigoTracking != null && !codigoTracking.isBlank()) {
+            inputRow.getChildren().add(UiFactory.copyButton(codigoTracking));
+        }
+        box.getChildren().addAll(lbl, inputRow);
         return box;
     }
 

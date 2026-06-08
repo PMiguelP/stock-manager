@@ -279,8 +279,8 @@ public class AllocationsController {
 
     private HBox criarLinhaAlocacao(AlocacaoLoteEncomendaResponseDTO alocacao) {
         Button apagar = new Button();
-        apagar.getStyleClass().add("icon-button");
-        apagar.setGraphic(new FontIcon("mdi2c-close"));
+        apagar.getStyleClass().addAll("button-icon", "flat");
+        apagar.setGraphic(new FontIcon("mdi2c-close:16"));
         apagar.setOnAction(event -> {
             event.consume();
             service.apagarAlocacao(alocacao.id());
@@ -350,7 +350,7 @@ public class AllocationsController {
     }
 
     private VBox criarEstadoVazio(String key) {
-        VBox box = new VBox(6, new FontIcon("mdi2p-package-variant"), texto(i18n.translate(key)));
+        VBox box = new VBox(6, new FontIcon("mdi2p-package-variant:32"), texto(i18n.translate(key)));
         box.setStyle("-fx-padding: 26; -fx-alignment: center; -fx-opacity: 0.75;");
         return box;
     }

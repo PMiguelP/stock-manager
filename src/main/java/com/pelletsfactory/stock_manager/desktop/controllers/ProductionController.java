@@ -283,7 +283,14 @@ public class ProductionController {
                 Label tracking = new Label(a.codigoTracking() != null ? a.codigoTracking() : i18nService.translate("production.noTracking"));
                 tracking.getStyleClass().add("text-muted");
                 tracking.setStyle("-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;");
-                info.getChildren().addAll(cliente, tracking);
+                if (a.codigoTracking() != null) {
+                    HBox trackingRow = new HBox(4);
+                    trackingRow.setAlignment(Pos.CENTER_LEFT);
+                    trackingRow.getChildren().addAll(tracking, UiFactory.copyButton(a.codigoTracking()));
+                    info.getChildren().addAll(cliente, trackingRow);
+                } else {
+                    info.getChildren().addAll(cliente, tracking);
+                }
                 HBox.setHgrow(info, Priority.ALWAYS);
                 VBox rightCol = new VBox(3);
                 rightCol.setAlignment(Pos.CENTER_RIGHT);
@@ -393,35 +400,15 @@ public class ProductionController {
     }
 
     private VBox criarDrawerEditar(OrdemProducaoDetailsDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(560);
-        root.setPrefWidth(560);
-        root.setMaxWidth(560);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        // Header
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        VBox headerText = new VBox(4);
-        Label titulo = new Label(i18nService.translate("production.editTitle"));
-        titulo.getStyleClass().add("title-3");
-        Label subtitulo = new Label(d.tipoPelletNome());
-        subtitulo.getStyleClass().add("text-muted");
-        headerText.getChildren().addAll(titulo, subtitulo);
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button();
-        btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> {
+        Runnable voltarDetalhes = () -> {
             try {
                 OrdemProducaoDetailsDTO fresh = ordemService.obterDetalhes(d.id());
                 navigationService.showModal(criarDrawerDetalhes(fresh));
             } catch (Exception ex) { navigationService.hideModal(); }
-        });
-        header.getChildren().addAll(headerText, sp, btnClose);
+        };
+
+        VBox root = UiFactory.drawerRoot(560);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("production.editTitle"), voltarDetalhes);
 
         // Form
         VBox form = new VBox(20);
@@ -547,19 +534,11 @@ public class ProductionController {
 
         form.getChildren().addAll(estadoAtualRow, secaoGeral, secaoProducao);
 
-        ScrollPane scroll = new ScrollPane(form);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
+        ScrollPane scroll = UiFactory.transparentScroll(form);
 
         // Footer
         Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
-        btnCancelar.setOnAction(e -> {
-            try {
-                OrdemProducaoDetailsDTO fresh = ordemService.obterDetalhes(d.id());
-                navigationService.showModal(criarDrawerDetalhes(fresh));
-            } catch (Exception ex) { navigationService.hideModal(); }
-        });
+        btnCancelar.setOnAction(e -> voltarDetalhes.run());
         Button btnGuardar = UiFactory.drawerPrimaryAction(i18nService.translate("common.save"), "mdi2c-content-save-outline");
         btnGuardar.setOnAction(e -> {
             boolean valido = true;
@@ -619,7 +598,7 @@ public class ProductionController {
                         cmbFormulaEdicao.getValue().id(),
                         qtdPlaneada,
                         qtdProduzida,
-                        dpDataInicio.getValue().atStartOfDay().toString(),
+                        dpDataInicio.getValue().toString(),
                         cmbNovoEstado.getValue().name()
                 );
                 ordemService.atualizarOrdem(d.id(), dto);
@@ -779,7 +758,7 @@ public class ProductionController {
                     cmbFormula.getValue().id(),
                     quantidade,
                     null,
-                    dpDataInicio.getValue().atStartOfDay().toString(),
+                    dpDataInicio.getValue().toString(),
                     "PENDENTE"
             );
             ordemService.criarOrdem(dto);

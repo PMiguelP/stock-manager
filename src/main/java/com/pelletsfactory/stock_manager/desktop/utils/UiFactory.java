@@ -3,8 +3,12 @@ package com.pelletsfactory.stock_manager.desktop.utils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -122,6 +126,34 @@ public final class UiFactory {
         icon.setIconSize(iconSize);
         button.setGraphic(icon);
         return button;
+    }
+
+    public static VBox formField(String label, Control input) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(8, lbl, input);
+    }
+
+    public static VBox formField(String label, Control input, Label errorLabel) {
+        Label lbl = new Label(label);
+        lbl.getStyleClass().add("text-muted");
+        return new VBox(6, lbl, input, errorLabel);
+    }
+
+    public static Button copyButton(String text) {
+        Button btn = new Button();
+        btn.getStyleClass().addAll("button-icon", "flat");
+        FontIcon icon = new FontIcon("mdi2c-content-copy:14");
+        icon.setIconColor(Color.web("#94a3b8"));
+        btn.setGraphic(icon);
+        btn.setTooltip(new Tooltip("Copiar"));
+        btn.setPadding(new Insets(2, 4, 2, 4));
+        btn.setOnAction(e -> {
+            ClipboardContent content = new ClipboardContent();
+            content.putString(text != null ? text : "");
+            Clipboard.getSystemClipboard().setContent(content);
+        });
+        return btn;
     }
 
     public static HBox statusBadge(String label, String iconLiteral, String color) {

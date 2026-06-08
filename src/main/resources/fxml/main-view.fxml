@@ -16,9 +16,9 @@
     <ModalPane fx:id="modalPane"/>
 
     <VBox fx:id="toastContainer"
-          alignment="TOP_RIGHT"
+          alignment="TOP_CENTER"
           spacing="10"
-          StackPane.alignment="TOP_RIGHT"
+          StackPane.alignment="TOP_CENTER"
           pickOnBounds="false"
           mouseTransparent="true"
           style="-fx-padding: 24;"/>

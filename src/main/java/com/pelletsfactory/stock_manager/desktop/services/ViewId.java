@@ -16,5 +16,6 @@ public enum ViewId {
     FORMULAS,
     BATCHES,
     SUPPORT,
-    NOTIFICATIONS
+    NOTIFICATIONS,
+    FINANCIAL
 }

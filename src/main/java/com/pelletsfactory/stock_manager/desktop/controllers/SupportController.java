@@ -14,6 +14,7 @@ import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.SupportTicketSelectionService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.services.ViewReloadable;
+import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
@@ -62,6 +63,7 @@ public class SupportController implements ViewReloadable {
     @FXML private Label lblEmptyConversation;
     @FXML private Label lblClient;
     @FXML private Label lblTracking;
+    @FXML private Button btnCopyTracking;
     @FXML private Label lblOrderDate;
     @FXML private Label lblOrderTotal;
     @FXML private Label lblResponsible;
@@ -204,11 +206,18 @@ public class SupportController implements ViewReloadable {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         title.getChildren().addAll(subject, spacer, state);
         HBox meta = new HBox(8);
-        Label tracking = muted(value(ticket.codigoTracking()));
+        String trackingVal = value(ticket.codigoTracking());
         Region metaSpacer = new Region();
         HBox.setHgrow(metaSpacer, Priority.ALWAYS);
         Label time = muted(ticket.ultimaMensagemEm() != null ? DATE_TIME.format(ticket.ultimaMensagemEm()) : "");
-        meta.getChildren().addAll(tracking, metaSpacer, time);
+        if (!trackingVal.equals("-")) {
+            HBox trackingRow = new HBox(2);
+            trackingRow.setAlignment(Pos.CENTER_LEFT);
+            trackingRow.getChildren().addAll(muted(trackingVal), UiFactory.copyButton(trackingVal));
+            meta.getChildren().addAll(trackingRow, metaSpacer, time);
+        } else {
+            meta.getChildren().addAll(muted(trackingVal), metaSpacer, time);
+        }
         card.getChildren().addAll(title, muted(ticket.clienteNome()), meta);
         if (ticket.estado() == EstadoTicket.AGUARDA_EQUIPE) {
             card.getChildren().add(pendingIndicator());
@@ -234,7 +243,19 @@ public class SupportController implements ViewReloadable {
         lblTicketTitle.setText(ticket.assunto());
         lblTicketState.setText(ticket.estado().getDisplayName());
         lblClient.setText(ticket.clienteNome());
-        lblTracking.setText(value(ticket.codigoTracking()));
+        String trackingCode = value(ticket.codigoTracking());
+        lblTracking.setText(trackingCode);
+        if (!trackingCode.equals("-")) {
+            Button copyBtn = UiFactory.copyButton(trackingCode);
+            btnCopyTracking.setGraphic(copyBtn.getGraphic());
+            btnCopyTracking.setTooltip(copyBtn.getTooltip());
+            btnCopyTracking.setOnAction(copyBtn.getOnAction());
+            btnCopyTracking.setVisible(true);
+            btnCopyTracking.setManaged(true);
+        } else {
+            btnCopyTracking.setVisible(false);
+            btnCopyTracking.setManaged(false);
+        }
         lblOrderDate.setText(ticket.dataEncomenda() != null ? ticket.dataEncomenda().toString() : "-");
         lblOrderState.setText(ticket.estadoEncomenda() != null ? ticket.estadoEncomenda().getDisplayName() : "-");
         lblOrderQuantity.setText(kg(ticket.quantidadeTotalKg()));
@@ -279,6 +300,8 @@ public class SupportController implements ViewReloadable {
         lblTicketState.setText("-");
         lblClient.setText("-");
         lblTracking.setText("-");
+        btnCopyTracking.setVisible(false);
+        btnCopyTracking.setManaged(false);
         lblOrderDate.setText("-");
         lblOrderState.setText("-");
         lblOrderQuantity.setText("-");

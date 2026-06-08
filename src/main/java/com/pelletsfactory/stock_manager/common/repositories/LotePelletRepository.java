@@ -38,6 +38,9 @@ public interface LotePelletRepository extends JpaRepository<LotePellet, UUID> {
 
     boolean existsByCodigoLote(String codigoLote);
 
+    @Query("SELECT l.codigoLote FROM LotePellet l WHERE l.codigoLote LIKE CONCAT(:prefix, '%') ORDER BY l.codigoLote DESC")
+    List<String> findTopCodigosComPrefix(@Param("prefix") String prefix, Pageable pageable);
+
     List<LotePellet> findByDataProducaoGreaterThanEqualAndDataProducaoLessThan(Instant inicio, Instant fim);
 
     @Query("SELECT l FROM LotePellet l WHERE " +

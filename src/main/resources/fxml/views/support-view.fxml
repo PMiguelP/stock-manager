@@ -63,7 +63,10 @@
             <Label styleClass="text-muted" text="support.client"/>
             <Label fx:id="lblClient" text="-"/>
             <Label styleClass="text-muted" text="support.tracking"/>
-            <Label fx:id="lblTracking" text="-"/>
+            <HBox alignment="CENTER_LEFT" spacing="4">
+                <Label fx:id="lblTracking" text="-"/>
+                <Button fx:id="btnCopyTracking" styleClass="button-icon,flat" visible="false" managed="false"/>
+            </HBox>
             <Label styleClass="text-muted" text="support.orderDate"/>
             <Label fx:id="lblOrderDate" text="-"/>
             <Label styleClass="text-muted" text="support.orderState"/>

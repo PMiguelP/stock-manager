@@ -9,6 +9,7 @@ import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
 import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
@@ -53,12 +54,7 @@ public class FuncionarioController {
     private Label lblErroNifAdicionar;
     private Label lblErroContactoAdicionar;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<FuncionarioSimpleDTO> funcionarios = FXCollections.observableArrayList();
     private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
@@ -79,18 +75,12 @@ public class FuncionarioController {
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarFuncionarios, i18nService);
         configurarTabela();
         configurarComboBoxes();
         configurarPesquisaDinamica();
-        configurarDrawerAdicionar(); // Configura o drawer de criação com 550px
+        configurarDrawerAdicionar();
         carregarFuncionarios();
-    }
-
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
     }
 
     private void configurarTabela() {
@@ -162,18 +152,16 @@ public class FuncionarioController {
 
     private void carregarFuncionarios() {
         try {
-            String nome = (txtFiltroNome != null && !txtFiltroNome.getText().isEmpty()) ? txtFiltroNome.getText() : null;
-            Cargo cargo = (cmbFiltroCargo != null) ? cmbFiltroCargo.getValue() : null;
+            String nome = txtFiltroNome != null && !txtFiltroNome.getText().isEmpty() ? txtFiltroNome.getText() : null;
+            Cargo cargo = cmbFiltroCargo != null ? cmbFiltroCargo.getValue() : null;
 
             Page<FuncionarioSimpleDTO> page = funcionarioService.listarFuncionarios(
-                    paginaAtual + 1, itemsPerPage, nome, null, cargo, null, "dataAdmissao", "DESC"
+                    pagination.pageNumberForService(), pagination.pageSize(), nome, null, cargo, null, "dataAdmissao", "DESC"
             );
 
             funcionarios.setAll(page.getContent());
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             mostrarErro(e.getMessage());
         }
@@ -200,23 +188,8 @@ public class FuncionarioController {
     }
 
     private VBox criarDrawerVisualizacao(FuncionarioDetailsDTO d) {
-        VBox root = new VBox(0);
-        root.setMinWidth(550);
-        root.setPrefWidth(550);
-        root.setMaxWidth(550);
-        root.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label(i18nService.translate("employees.detailsTitle"));
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnClose = new Button(); btnClose.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnClose.getStyleClass().addAll("button-icon", "flat");
-        btnClose.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnClose);
+        VBox root = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("employees.detailsTitle"), navigationService::hideModal);
 
         TextField txtNomeDetalhes = new TextField(valorOuVazio(d.nome()));
         Label lblErroNomeDetalhes = formValidationService.createErrorLabel();
@@ -249,19 +222,16 @@ public class FuncionarioController {
         String[] contactoOriginal = {valorOuVazio(d.contacto())};
 
         VBox form = new VBox(20,
-                criarCampoFormulario("Nome Completo", txtNomeDetalhes, lblErroNomeDetalhes),
-                criarCampoFormulario("Cargo", cmbCargoDetalhes, lblErroCargoDetalhes),
-                criarCampoFormulario("NIF", txtNifDetalhes, lblErroNifDetalhes),
-                criarCampoFormulario("Telemóvel", txtContactoDetalhes, lblErroContactoDetalhes),
-                criarCampoFormulario("Número Interno", txtNumeroDetalhes),
-                criarCampoFormulario("Data de Entrada", txtDataAdmissaoDetalhes)
+                UiFactory.formField("Nome Completo", txtNomeDetalhes, lblErroNomeDetalhes),
+                UiFactory.formField("Cargo", cmbCargoDetalhes, lblErroCargoDetalhes),
+                UiFactory.formField("NIF", txtNifDetalhes, lblErroNifDetalhes),
+                UiFactory.formField("Telemóvel", txtContactoDetalhes, lblErroContactoDetalhes),
+                UiFactory.formField("Número Interno", txtNumeroDetalhes),
+                UiFactory.formField("Data de Entrada", txtDataAdmissaoDetalhes)
         );
         form.setPadding(new Insets(30));
 
-        ScrollPane scrollPane = new ScrollPane(form);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        ScrollPane scrollPane = UiFactory.transparentScroll(form);
 
         Button btnGuardar = UiFactory.drawerPrimaryAction(
                 i18nService.translate("employees.save"),
@@ -374,18 +344,6 @@ public class FuncionarioController {
         return root;
     }
 
-    private VBox criarCampoFormulario(String label, Control input) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        return new VBox(8, lbl, input);
-    }
-
-    private VBox criarCampoFormulario(String label, Control input, Label erroLabel) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        return new VBox(6, lbl, input, erroLabel);
-    }
-
     private void setCamposDetalhesEditaveis(boolean editavel, TextField txtNomeDetalhes, ComboBox<Cargo> cmbCargoDetalhes,
                                             TextField txtNifDetalhes, TextField txtContactoDetalhes) {
         txtNomeDetalhes.setEditable(editavel);
@@ -422,26 +380,8 @@ public class FuncionarioController {
     }
 
     private void configurarDrawerAdicionar() {
-        drawerRoot = new VBox(0);
-
-        // CORREÇÃO DE LARGURA
-        drawerRoot.setMinWidth(550);
-        drawerRoot.setPrefWidth(550);
-        drawerRoot.setMaxWidth(550);
-
-        drawerRoot.setStyle("-fx-background-color: -color-bg-default; -fx-border-color: -color-border-muted; -fx-border-width: 0 0 0 1;");
-
-        HBox header = new HBox();
-        header.setPadding(new Insets(25));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setStyle("-fx-background-color: -color-bg-subtle;");
-        Label titulo = new Label(i18nService.translate("employees.newTitle"));
-        titulo.getStyleClass().add("title-3");
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button btnF = new Button(); btnF.setGraphic(new FontIcon("mdi2c-close:22"));
-        btnF.getStyleClass().addAll("button-icon", "flat");
-        btnF.setOnAction(e -> navigationService.hideModal());
-        header.getChildren().addAll(titulo, sp, btnF);
+        drawerRoot = UiFactory.drawerRoot(550);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("employees.newTitle"), navigationService::hideModal);
 
         VBox form = new VBox(20);
         form.setPadding(new Insets(30));
@@ -461,25 +401,20 @@ public class FuncionarioController {
         formValidationService.attachTextAutoClear(txtContacto, lblErroContactoAdicionar);
 
         form.getChildren().addAll(
-                criarCampoFormulario(i18nService.translate("employees.fullName"), txtNome, lblErroNomeAdicionar),
-                criarCampoFormulario(i18nService.translate("employees.role"), cmbCargo, lblErroCargoAdicionar),
-                criarCampoFormulario(i18nService.translate("employees.nif"), txtNif, lblErroNifAdicionar),
-                criarCampoFormulario(i18nService.translate("employees.phone"), txtContacto, lblErroContactoAdicionar)
+                UiFactory.formField(i18nService.translate("employees.fullName"), txtNome, lblErroNomeAdicionar),
+                UiFactory.formField(i18nService.translate("employees.role"), cmbCargo, lblErroCargoAdicionar),
+                UiFactory.formField(i18nService.translate("employees.nif"), txtNif, lblErroNifAdicionar),
+                UiFactory.formField(i18nService.translate("employees.phone"), txtContacto, lblErroContactoAdicionar)
         );
 
-        HBox footer = new HBox();
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-        Button btnS = new Button(i18nService.translate("employees.save"));
-        btnS.getStyleClass().add("accent");
-        btnS.setPrefHeight(44);
+        Button btnS = UiFactory.drawerPrimaryAction(i18nService.translate("employees.save"), "mdi2c-content-save-outline");
         btnS.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(btnS, Priority.ALWAYS);
         btnS.setOnAction(e -> handleAdicionar());
+        HBox footer = UiFactory.drawerFooter();
         footer.getChildren().add(btnS);
 
-        drawerRoot.getChildren().addAll(header, new ScrollPane(form){{setFitToWidth(true); setStyle("-fx-background: transparent;");}}, footer);
+        drawerRoot.getChildren().addAll(header, UiFactory.transparentScroll(form), footer);
     }
 
     private void handleAdicionar() {
@@ -501,7 +436,7 @@ public class FuncionarioController {
                     null,
                     null
             ));
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarFuncionarios();
             navigationService.hideModal();
             mostrarSucesso(i18nService.translate("employees.created"));
@@ -546,64 +481,7 @@ public class FuncionarioController {
         return valido;
     }
 
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus); left.setAlignment(Pos.CENTER_LEFT); HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarFuncionarios(); });
-        HBox center = new HBox(10, new Label(i18nService.translate("common.perPage")), cmbItemsPerPage); center.setAlignment(Pos.CENTER); HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons); right.setAlignment(Pos.CENTER_RIGHT); HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button(); prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarFuncionarios(); });
-        paginationButtons.getChildren().add(prev);
-
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int finalI = i; p.setOnAction(e -> { paginaAtual = finalI; carregarFuncionarios(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-
-        Button next = new Button(); next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarFuncionarios(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<FuncionarioSimpleDTO> page) {
-        if (page.getTotalElements() == 0) {
-            lblPaginaStatus.setText(i18nService.translate("common.noResults"));
-            return;
-        }
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText(java.text.MessageFormat.format(
-                i18nService.translate("common.showingRange"), start, end, page.getTotalElements()));
-    }
-
     private HBox criarBadgeCargo(Cargo cargo) {
-        HBox b = new HBox(8); b.setAlignment(Pos.CENTER_LEFT); b.setPadding(new Insets(4, 10, 4, 10));
-        b.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1.5;");
         String color = switch (cargo) {
             case ADMINISTRADOR -> "#eab308";
             case RESPONSAVEL_PRODUCAO -> "#3b82f6";
@@ -611,12 +489,12 @@ public class FuncionarioController {
             case RESPONSAVEL_LOGISTICA -> "#f97316";
             case ASSISTENTE_COMERCIAL -> "#0ea5e9";
         };
-        b.setStyle(b.getStyle() + String.format("-fx-background-color: %s20; -fx-border-color: %s;", color.replace("#", ""), color));
-        Label l = new Label(cargo.getDisplayName()); l.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
-        FontIcon ic = new FontIcon(switch(cargo){case ADMINISTRADOR->"mdi2s-shield-account"; case RESPONSAVEL_LOGISTICA->"mdi2t-truck"; default->"mdi2a-account";});
-        ic.setIconColor(javafx.scene.paint.Color.web(color));
-        b.getChildren().addAll(ic, l);
-        return b;
+        String icon = switch (cargo) {
+            case ADMINISTRADOR -> "mdi2s-shield-account:16";
+            case RESPONSAVEL_LOGISTICA -> "mdi2t-truck:16";
+            default -> "mdi2a-account:16";
+        };
+        return UiFactory.statusBadge(cargo.getDisplayName(), icon, color);
     }
 
     private void configurarComboBoxes() {
@@ -638,7 +516,7 @@ public class FuncionarioController {
     }
 
     private void aplicarFiltrosDinamicos() {
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarFuncionarios();
     }
 

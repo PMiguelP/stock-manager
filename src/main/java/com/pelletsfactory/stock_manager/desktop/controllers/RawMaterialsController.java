@@ -148,16 +148,25 @@ public class RawMaterialsController {
         });
 
         colActions.setCellFactory(col -> new TableCell<>() {
-            private final Button btn = new Button();
+            private final Button btnEye = new Button();
+            private final Button btnAdjust = new Button();
+            private final HBox box = new HBox(4, btnEye, btnAdjust);
             {
-                btn.getStyleClass().addAll("button-icon", "flat");
-                btn.setGraphic(new FontIcon("mdi2e-eye-outline:20"));
-                btn.setOnAction(e -> handleAbrirDetalhes(getTableView().getItems().get(getIndex())));
+                btnEye.getStyleClass().addAll("button-icon", "flat");
+                btnEye.setGraphic(new FontIcon("mdi2e-eye-outline:18"));
+                btnEye.setOnAction(e -> handleAbrirDetalhes(getTableView().getItems().get(getIndex())));
+
+                btnAdjust.getStyleClass().addAll("button-icon", "flat");
+                btnAdjust.setGraphic(new FontIcon("mdi2s-swap-vertical:18"));
+                btnAdjust.setTooltip(new Tooltip(i18nService.translate("rawMaterials.adjustStock")));
+                btnAdjust.setOnAction(e -> handleAbrirAjusteRapido(getTableView().getItems().get(getIndex())));
+
+                box.setAlignment(Pos.CENTER);
             }
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                setGraphic(empty ? null : box);
                 setAlignment(Pos.CENTER);
             }
         });
@@ -239,6 +248,173 @@ public class RawMaterialsController {
         l.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 500;");
         b.getChildren().add(l);
         return b;
+    }
+
+    // ── Material stock adjustment ─────────────────────────────────────────────
+
+    @FXML private void handleAdicionarMaterial() { abrirDrawerAjusteMaterial(true); }
+    @FXML private void handleRemoverMaterial()   { abrirDrawerAjusteMaterial(false); }
+
+    private void abrirDrawerAjusteMaterial(boolean adicionar) {
+        VBox root = UiFactory.drawerRoot(480);
+        String titulo = adicionar
+                ? i18nService.translate("stock.addMaterialTitle")
+                : i18nService.translate("stock.removeMaterialTitle");
+        HBox header = UiFactory.drawerHeader(titulo, navigationService::hideModal);
+
+        ComboBox<MateriaPrimaSimpleDTO> cmbTipo = new ComboBox<>();
+        cmbTipo.setMaxWidth(Double.MAX_VALUE);
+        cmbTipo.setPromptText(i18nService.translate("stock.selectType"));
+        cmbTipo.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(MateriaPrimaSimpleDTO m) {
+                return m != null ? m.nome() + " (" + m.unidade() + ")" : "";
+            }
+            @Override public MateriaPrimaSimpleDTO fromString(String s) { return null; }
+        });
+        Label lblErroTipo = criarErroLabel();
+
+        try {
+            cmbTipo.getItems().setAll(
+                    stockService.listarMateriasPrimasComFiltros(1, 100, null, null, null, "nome", "ASC").getContent());
+        } catch (Exception e) {
+            mostrarErro(e.getMessage());
+            return;
+        }
+
+        cmbTipo.setOnAction(e -> { lblErroTipo.setVisible(false); lblErroTipo.setManaged(false); cmbTipo.setStyle(""); });
+
+        TextField txtQtd = new TextField();
+        txtQtd.setPromptText("0.00");
+        Label lblErroQtd = criarErroLabel();
+        txtQtd.textProperty().addListener((obs, ov, nv) -> { lblErroQtd.setVisible(false); lblErroQtd.setManaged(false); txtQtd.setStyle(""); });
+
+        Label lblErroGeral = criarErroGeralLabel();
+
+        Label lblTipoLbl = new Label(i18nService.translate("rawMaterials.title"));
+        lblTipoLbl.getStyleClass().add("text-muted");
+        Label lblQtdLbl = new Label(i18nService.translate("stock.quantityKg"));
+        lblQtdLbl.getStyleClass().add("text-muted");
+
+        VBox form = new VBox(20,
+                new VBox(6, lblTipoLbl, cmbTipo, lblErroTipo),
+                new VBox(6, lblQtdLbl, txtQtd, lblErroQtd),
+                lblErroGeral);
+        form.setPadding(new Insets(30));
+
+        HBox footer = UiFactory.drawerFooter();
+        Button btnConfirmar = new Button(titulo);
+        btnConfirmar.getStyleClass().add(adicionar ? "accent" : "danger");
+        btnConfirmar.setPrefHeight(44);
+        btnConfirmar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnConfirmar, Priority.ALWAYS);
+        btnConfirmar.setOnAction(e -> {
+            lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
+            boolean valido = true;
+            if (cmbTipo.getValue() == null) {
+                lblErroTipo.setText(i18nService.translate("stock.selectType"));
+                lblErroTipo.setVisible(true); lblErroTipo.setManaged(true);
+                cmbTipo.setStyle("-fx-border-color: #ef4444;");
+                valido = false;
+            }
+            Double quantidade = null;
+            try {
+                quantidade = Double.parseDouble(txtQtd.getText().replace(",", ".").trim());
+                if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                lblErroQtd.setText(i18nService.translate("stock.quantityInvalid"));
+                lblErroQtd.setVisible(true); lblErroQtd.setManaged(true);
+                txtQtd.setStyle("-fx-border-color: #ef4444;");
+                valido = false;
+            }
+            if (!valido) return;
+            try {
+                UUID id = cmbTipo.getValue().id();
+                if (adicionar) stockService.adicionarStockMateriaPrima(id, quantidade);
+                else           stockService.subtrairStockMateriaPrima(id, quantidade);
+                mostrarSucesso(i18nService.translate(adicionar ? "stock.addedSuccess" : "stock.removedSuccess"));
+                navigationService.hideModal();
+                carregarMaterias();
+            } catch (Exception ex) {
+                lblErroGeral.setText(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("common.saveError"));
+                lblErroGeral.setVisible(true); lblErroGeral.setManaged(true);
+            }
+        });
+        footer.getChildren().add(btnConfirmar);
+        root.getChildren().addAll(header, UiFactory.transparentScroll(form), footer);
+        navigationService.showModal(root);
+    }
+
+    private void handleAbrirAjusteRapido(MateriaPrimaRow row) {
+        VBox root = UiFactory.drawerRoot(480);
+        HBox header = UiFactory.drawerHeader(row.nome(), navigationService::hideModal);
+
+        Label lblCurrentLabel = new Label(i18nService.translate("stock.current"));
+        lblCurrentLabel.getStyleClass().add("text-muted");
+        Label lblCurrentValue = new Label(row.stockAtual() + " " + row.unidade());
+        lblCurrentValue.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+
+        ToggleGroup direcaoGroup = new ToggleGroup();
+        ToggleButton btnAdd = new ToggleButton(i18nService.translate("stock.entry"));
+        ToggleButton btnRemove = new ToggleButton(i18nService.translate("stock.exit"));
+        btnAdd.setToggleGroup(direcaoGroup);
+        btnRemove.setToggleGroup(direcaoGroup);
+        btnAdd.setSelected(true);
+        btnAdd.setMaxWidth(Double.MAX_VALUE);
+        btnRemove.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnAdd, Priority.ALWAYS);
+        HBox.setHgrow(btnRemove, Priority.ALWAYS);
+        HBox toggleRow = new HBox(0, btnAdd, btnRemove);
+        toggleRow.setMaxWidth(Double.MAX_VALUE);
+
+        TextField txtQtd = new TextField();
+        txtQtd.setPromptText("0.00");
+        Label lblQtdLabel = new Label(i18nService.translate("stock.quantityKg"));
+        lblQtdLabel.getStyleClass().add("text-muted");
+        Label lblErroQtd = criarErroLabel();
+        txtQtd.textProperty().addListener((obs, ov, nv) -> { lblErroQtd.setVisible(false); lblErroQtd.setManaged(false); txtQtd.setStyle(""); });
+
+        Label lblErroGeral = criarErroGeralLabel();
+
+        VBox form = new VBox(20,
+                new VBox(4, lblCurrentLabel, lblCurrentValue),
+                toggleRow,
+                new VBox(6, lblQtdLabel, txtQtd, lblErroQtd),
+                lblErroGeral);
+        form.setPadding(new Insets(30));
+
+        HBox footer = UiFactory.drawerFooter();
+        Button btnConfirmar = UiFactory.drawerPrimaryAction(
+                i18nService.translate("rawMaterials.adjustStock"), "mdi2c-check");
+        btnConfirmar.setPrefHeight(44);
+        btnConfirmar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnConfirmar, Priority.ALWAYS);
+        btnConfirmar.setOnAction(e -> {
+            lblErroGeral.setVisible(false); lblErroGeral.setManaged(false);
+            Double quantidade = null;
+            try {
+                quantidade = Double.parseDouble(txtQtd.getText().replace(",", ".").trim());
+                if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                lblErroQtd.setText(i18nService.translate("stock.quantityInvalid"));
+                lblErroQtd.setVisible(true); lblErroQtd.setManaged(true);
+                txtQtd.setStyle("-fx-border-color: #ef4444;");
+                return;
+            }
+            try {
+                boolean adicionar = direcaoGroup.getSelectedToggle() == btnAdd;
+                if (adicionar) stockService.adicionarStockMateriaPrima(row.id(), quantidade);
+                else           stockService.subtrairStockMateriaPrima(row.id(), quantidade);
+                mostrarSucesso(i18nService.translate(adicionar ? "stock.addedSuccess" : "stock.removedSuccess"));
+                navigationService.hideModal();
+                carregarMaterias();
+            } catch (Exception ex) {
+                lblErroGeral.setText(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("common.saveError"));
+                lblErroGeral.setVisible(true); lblErroGeral.setManaged(true);
+            }
+        });
+        footer.getChildren().add(btnConfirmar);
+        root.getChildren().addAll(header, UiFactory.transparentScroll(form), footer);
+        navigationService.showModal(root);
     }
 
     // ── Create drawer ─────────────────────────────────────────────────────────
@@ -497,6 +673,24 @@ public class RawMaterialsController {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(i18nService.translate("stock.minimum") + " deve ser >= 0");
         }
+    }
+
+    private Label criarErroLabel() {
+        Label lbl = new Label();
+        lbl.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 11px;");
+        lbl.setVisible(false);
+        lbl.setManaged(false);
+        return lbl;
+    }
+
+    private Label criarErroGeralLabel() {
+        Label lbl = new Label();
+        lbl.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 8 12; -fx-background-color: #ef444420; -fx-background-radius: 6; -fx-border-color: #ef4444; -fx-border-radius: 6; -fx-border-width: 1;");
+        lbl.setWrapText(true);
+        lbl.setMaxWidth(Double.MAX_VALUE);
+        lbl.setVisible(false);
+        lbl.setManaged(false);
+        return lbl;
     }
 
     private void mostrarErro(String m)    { toastService.showError(i18nService.translate("common.error"), m); }

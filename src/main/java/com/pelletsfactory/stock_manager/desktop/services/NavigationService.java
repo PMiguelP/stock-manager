@@ -114,6 +114,10 @@ public class NavigationService {
         addRoute("/support", "/fxml/views/support-view.fxml", "support.title",
                 "support.subtitle", ViewId.SUPPORT,
                 "nav.home", "support.title");
+
+        addRoute("/financial", "/fxml/views/financial-view.fxml", "financial.title",
+                "financial.subtitle", ViewId.FINANCIAL,
+                "nav.home", "nav.financial");
     }
 
     private void addRoute(String route,

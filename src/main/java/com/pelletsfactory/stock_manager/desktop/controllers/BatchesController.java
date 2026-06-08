@@ -10,6 +10,7 @@ import com.pelletsfactory.stock_manager.desktop.services.FormValidationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
+import com.pelletsfactory.stock_manager.desktop.utils.PaginationControls;
 import com.pelletsfactory.stock_manager.desktop.utils.UiFactory;
 import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
@@ -60,12 +61,7 @@ public class BatchesController {
     private Label lblErroQuantidade;
     private UUID selectedTipoPelletId;
 
-    private Label lblPaginaStatus;
-    private ComboBox<Integer> cmbItemsPerPage;
-    private HBox paginationButtons;
-    private int itemsPerPage = 10;
-    private int paginaAtual = 0;
-    private int totalPaginas = 0;
+    private PaginationControls pagination;
 
     private final ObservableList<LotePelletSimpleDTO> lotes = FXCollections.observableArrayList();
     private static final DateTimeFormatter DT_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -88,23 +84,17 @@ public class BatchesController {
 
     @FXML
     public void initialize() {
-        resetPaginationControls();
+        pagination = new PaginationControls(10, this::carregarLotes, i18nService);
         configurarTabela();
         configurarPesquisaDinamica();
         configurarDrawer();
         carregarLotes();
     }
 
-    private void resetPaginationControls() {
-        lblPaginaStatus = null;
-        cmbItemsPerPage = null;
-        paginationButtons = null;
-    }
-
     // ── Search ────────────────────────────────────────────────────────────────
 
     private void configurarPesquisaDinamica() {
-        searchDebounce.setOnFinished(e -> { paginaAtual = 0; carregarLotes(); });
+        searchDebounce.setOnFinished(e -> { pagination.resetPage(); carregarLotes(); });
         txtSearch.textProperty().addListener((obs, old, val) -> {
             if (updatingSearch) return;
             searchDebounce.playFromStart();
@@ -117,7 +107,7 @@ public class BatchesController {
         updatingSearch = true;
         txtSearch.clear();
         updatingSearch = false;
-        paginaAtual = 0;
+        pagination.resetPage();
         carregarLotes();
     }
 
@@ -192,13 +182,11 @@ public class BatchesController {
         try {
             String codigo = (txtSearch != null && !txtSearch.getText().isEmpty()) ? txtSearch.getText() : null;
             Page<LotePelletSimpleDTO> page = lotePelletService.listarLotesComFiltros(
-                    paginaAtual + 1, itemsPerPage, codigo, null, null, "dataProducao", "DESC"
+                    pagination.pageNumberForService(), pagination.pageSize(), codigo, null, null, "dataProducao", "DESC"
             );
             lotes.setAll(page.getContent());
-            totalPaginas = page.getTotalPages();
-            if (lblPaginaStatus == null) configurarPaginacao(vboxContainer);
-            atualizarLabelStatus(page);
-            atualizarBotoesPaginacao();
+            pagination.attachTo(vboxContainer);
+            pagination.update(page);
         } catch (Exception e) {
             mostrarErro(e.getMessage());
         }
@@ -222,6 +210,7 @@ public class BatchesController {
         // Edit fields (pre-populated, disabled initially)
         TextField txtCodigo = new TextField(d.codigoLote() != null ? d.codigoLote() : "");
         txtCodigo.setDisable(true);
+        txtCodigo.setEditable(false);
         Label lblErroCod = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCodigo, lblErroCod);
 
@@ -245,9 +234,9 @@ public class BatchesController {
 
         VBox form = new VBox(20,
                 secInfo,
-                criarCampoFormulario(i18nService.translate("batches.batchCode") + " *", txtCodigo, lblErroCod),
-                criarCampoFormulario(i18nService.translate("batches.quantityKg") + " *", txtQtd, lblErroQtd),
-                criarCampoFormulario(i18nService.translate("batches.location"), txtLoc),
+                UiFactory.formField(i18nService.translate("batches.batchCode") + " *", txtCodigo, lblErroCod),
+                UiFactory.formField(i18nService.translate("batches.quantityKg") + " *", txtQtd, lblErroQtd),
+                UiFactory.formField(i18nService.translate("batches.location"), txtLoc),
                 lblErroGeral
         );
         form.setPadding(new Insets(30));
@@ -264,7 +253,7 @@ public class BatchesController {
         btnGuardar.setDisable(true);
         HBox footer = UiFactory.drawerActionFooter(btnEliminar, btnCancelar, btnEditar, btnGuardar);
 
-        TextField[] campos = {txtCodigo, txtQtd, txtLoc};
+        TextField[] campos = {txtQtd, txtLoc};
 
         btnEditar.setOnAction(e -> {
             for (TextField c : campos) c.setDisable(false);
@@ -303,7 +292,7 @@ public class BatchesController {
                         d.ordemProducaoId(), d.tipoPelletId(),
                         txtCodigo.getText().trim(), quantidade, loc
                 ));
-                paginaAtual = 0;
+                pagination.resetPage();
                 carregarLotes();
                 navigationService.hideModal();
                 mostrarSucesso(i18nService.translate("batches.updated"));
@@ -322,7 +311,7 @@ public class BatchesController {
             if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
             try {
                 lotePelletService.apagarLote(d.id());
-                paginaAtual = 0;
+                pagination.resetPage();
                 carregarLotes();
                 navigationService.hideModal();
                 mostrarSucesso(i18nService.translate("batches.deleted"));
@@ -395,7 +384,7 @@ public class BatchesController {
         tipoPelletBox.getChildren().add(lblTipoPelletNome);
         campoTipoPellet.getChildren().addAll(lblTipoPelletLabel, tipoPelletBox);
 
-        txtCodigoLote = new TextField(); txtCodigoLote.setPromptText(i18nService.translate("batches.batchCodeExample"));
+        txtCodigoLote = new TextField(); txtCodigoLote.setEditable(false); txtCodigoLote.setFocusTraversable(false);
         lblErroCodigo = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCodigoLote, lblErroCodigo);
 
@@ -406,11 +395,11 @@ public class BatchesController {
         txtLocalizacao = new TextField(); txtLocalizacao.setPromptText(i18nService.translate("batches.locationExample"));
 
         VBox form = new VBox(20,
-                criarCampoFormulario(i18nService.translate("batches.productionOrder") + " *", cmbOrdem, lblErroOrdem),
+                UiFactory.formField(i18nService.translate("batches.productionOrder") + " *", cmbOrdem, lblErroOrdem),
                 campoTipoPellet,
-                criarCampoFormulario(i18nService.translate("batches.batchCode") + " *", txtCodigoLote, lblErroCodigo),
-                criarCampoFormulario(i18nService.translate("batches.quantityKg") + " *", txtQuantidadeKg, lblErroQuantidade),
-                criarCampoFormulario(i18nService.translate("batches.location"), txtLocalizacao)
+                UiFactory.formField(i18nService.translate("batches.batchCode") + " *", txtCodigoLote, lblErroCodigo),
+                UiFactory.formField(i18nService.translate("batches.quantityKg") + " *", txtQuantidadeKg, lblErroQuantidade),
+                UiFactory.formField(i18nService.translate("batches.location"), txtLocalizacao)
         );
         form.setPadding(new Insets(30));
 
@@ -459,7 +448,7 @@ public class BatchesController {
                     cmbOrdem.getValue().id(), selectedTipoPelletId,
                     txtCodigoLote.getText().trim(), quantidade, localizacao
             ));
-            paginaAtual = 0;
+            pagination.resetPage();
             carregarLotes();
             navigationService.hideModal();
             mostrarSucesso(i18nService.translate("batches.created"));
@@ -481,91 +470,17 @@ public class BatchesController {
         cmbOrdem.setValue(null);
         lblTipoPelletNome.setText("—");
         selectedTipoPelletId = null;
-        txtCodigoLote.clear();
+        try {
+            txtCodigoLote.setText(lotePelletService.gerarProximoCodigo());
+        } catch (Exception e) {
+            txtCodigoLote.clear();
+        }
         txtQuantidadeKg.clear();
         txtLocalizacao.clear();
         formValidationService.clearError(cmbOrdem, lblErroOrdem);
         formValidationService.clearError(txtCodigoLote, lblErroCodigo);
         formValidationService.clearError(txtQuantidadeKg, lblErroQuantidade);
         navigationService.showModal(drawerRoot);
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private VBox criarCampoFormulario(String label, Control input) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        return new VBox(8, lbl, input);
-    }
-
-    private VBox criarCampoFormulario(String label, Control input, Label erroLabel) {
-        Label lbl = new Label(label);
-        lbl.getStyleClass().add("text-muted");
-        return new VBox(6, lbl, input, erroLabel);
-    }
-
-    // ── Pagination ────────────────────────────────────────────────────────────
-
-    private void configurarPaginacao(VBox container) {
-        HBox nav = new HBox();
-        nav.setAlignment(Pos.CENTER_LEFT);
-        nav.setPadding(new Insets(20, 0, 20, 0));
-        nav.setStyle("-fx-border-color:-color-border-muted;-fx-border-width:1 0 0 0;");
-
-        lblPaginaStatus = new Label();
-        lblPaginaStatus.getStyleClass().add("text-muted");
-        HBox left = new HBox(lblPaginaStatus);
-        left.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(left, Priority.ALWAYS);
-
-        cmbItemsPerPage = new ComboBox<>(FXCollections.observableArrayList(10, 25, 50, 100));
-        cmbItemsPerPage.setValue(itemsPerPage);
-        cmbItemsPerPage.setOnAction(e -> { itemsPerPage = cmbItemsPerPage.getValue(); paginaAtual = 0; carregarLotes(); });
-        HBox center = new HBox(10, new Label(i18nService.translate("common.perPage")), cmbItemsPerPage);
-        center.setAlignment(Pos.CENTER);
-        HBox.setHgrow(center, Priority.ALWAYS);
-
-        paginationButtons = new HBox(5);
-        HBox right = new HBox(paginationButtons);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(right, Priority.ALWAYS);
-
-        nav.getChildren().addAll(left, center, right);
-        container.getChildren().add(nav);
-    }
-
-    private void atualizarBotoesPaginacao() {
-        paginationButtons.getChildren().clear();
-        Button prev = new Button();
-        prev.setGraphic(new FontIcon("mdi2c-chevron-left"));
-        prev.setDisable(paginaAtual == 0);
-        prev.setOnAction(e -> { paginaAtual--; carregarLotes(); });
-        paginationButtons.getChildren().add(prev);
-        for (int i = 0; i < totalPaginas; i++) {
-            if (i < 3 || i > totalPaginas - 2 || (i >= paginaAtual - 1 && i <= paginaAtual + 1)) {
-                Button p = new Button(String.valueOf(i + 1));
-                p.getStyleClass().add(i == paginaAtual ? "accent" : "flat");
-                int fi = i;
-                p.setOnAction(e -> { paginaAtual = fi; carregarLotes(); });
-                paginationButtons.getChildren().add(p);
-            }
-        }
-        Button next = new Button();
-        next.setGraphic(new FontIcon("mdi2c-chevron-right"));
-        next.setDisable(paginaAtual >= totalPaginas - 1);
-        next.setOnAction(e -> { paginaAtual++; carregarLotes(); });
-        paginationButtons.getChildren().add(next);
-    }
-
-    private void atualizarLabelStatus(Page<LotePelletSimpleDTO> page) {
-        if (page.getTotalElements() == 0) {
-            lblPaginaStatus.setText(i18nService.translate("common.noResults"));
-            return;
-        }
-        long start = (long) page.getNumber() * page.getSize() + 1;
-        long end = Math.min(start + page.getNumberOfElements() - 1, page.getTotalElements());
-        lblPaginaStatus.setText(java.text.MessageFormat.format(
-                i18nService.translate("common.showingRange"), start, end, page.getTotalElements()));
     }
 
     private void mostrarSucesso(String m) { toastService.showSuccess(i18nService.translate("common.success"), m); }

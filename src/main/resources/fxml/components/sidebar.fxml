@@ -56,6 +56,12 @@
         <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
     </ToggleButton>
 
+    <ToggleButton fx:id="btnFinancial" text="nav.financial" onAction="#handleFinancial" focusTraversable="false"
+            maxWidth="Infinity" alignment="CENTER_LEFT">
+        <graphic><FontIcon iconLiteral="mdi2c-cash-multiple" iconSize="18"/></graphic>
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+    </ToggleButton>
+
     <ToggleButton fx:id="btnClients" text="nav.clients" onAction="#handleClients" focusTraversable="false"
             maxWidth="Infinity" alignment="CENTER_LEFT">
         <graphic><FontIcon iconLiteral="mdi2b-briefcase" iconSize="18"/></graphic>

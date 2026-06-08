@@ -48,7 +48,7 @@ public class SidebarController {
     private final ConfigurableApplicationContext springContext;
 
     @FXML private ToggleButton btnDashboard, btnFuncionarios, btnOrders, btnProduction, btnAllocations,
-            btnStock, btnClients, btnSupport, btnSuppliers, btnPurchaseOrders,
+            btnStock, btnFinancial, btnClients, btnSupport, btnSuppliers, btnPurchaseOrders,
             btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches, btnSettings;
     @FXML private Button btnSair;
     @FXML private ImageView sidebarLogoImage;
@@ -88,7 +88,7 @@ public class SidebarController {
 
         navButtons = List.of(
                 btnDashboard, btnFuncionarios, btnOrders, btnProduction, btnAllocations,
-                btnStock, btnClients, btnSupport, btnSuppliers, btnPurchaseOrders,
+                btnStock, btnFinancial, btnClients, btnSupport, btnSuppliers, btnPurchaseOrders,
                 btnRawMaterials, btnPelletTypes, btnFormulas, btnBatches,
                 btnSettings
         );
@@ -109,6 +109,7 @@ public class SidebarController {
         navByViewId.put(ViewId.PRODUCTION, btnProduction);
         navByViewId.put(ViewId.ALLOCATIONS, btnAllocations);
         navByViewId.put(ViewId.STOCK, btnStock);
+        navByViewId.put(ViewId.FINANCIAL, btnFinancial);
         navByViewId.put(ViewId.CLIENTS, btnClients);
         navByViewId.put(ViewId.SUPPORT, btnSupport);
         navByViewId.put(ViewId.SUPPLIERS, btnSuppliers);
@@ -138,6 +139,7 @@ public class SidebarController {
         btnProduction.setText(i18nService.translate("nav.production"));
         btnAllocations.setText(i18nService.translate("nav.allocations"));
         btnStock.setText(i18nService.translate("stock.title"));
+        btnFinancial.setText(i18nService.translate("nav.financial"));
         btnClients.setText(i18nService.translate("nav.clients"));
         btnSupport.setText(i18nService.translate("support.title"));
         btnSuppliers.setText(i18nService.translate("nav.suppliers"));
@@ -215,6 +217,12 @@ public class SidebarController {
     }
 
     @FXML
+    private void handleFinancial() {
+        switchView(btnFinancial);
+        navigationService.navigateTo("/financial");
+    }
+
+    @FXML
     private void handleClients() {
         switchView(btnClients);
         navigationService.navigateTo("/clients");
@@ -284,6 +292,7 @@ public class SidebarController {
         setVisible(btnProduction,     isProducao || isOperador);
         setVisible(btnAllocations,    isProducao || isOperador);
         setVisible(btnStock,          isProducao || isLogistica);
+        setVisible(btnFinancial,      isLogistica);
         setVisible(btnClients,        isComercial);
         setVisible(btnSupport,        isComercial);
         setVisible(btnSuppliers,      isLogistica);

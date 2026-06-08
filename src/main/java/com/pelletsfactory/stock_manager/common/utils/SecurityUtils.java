@@ -13,6 +13,10 @@ public class SecurityUtils {
             throw new SecurityException("Sessão expirada. Faça login novamente.");
         }
 
+        if (logged.getCargo() == Cargo.ADMINISTRADOR) {
+            return;
+        }
+
         boolean hasAccess = false;
         for (Cargo role : authorizedRoles) {
             if (logged.getCargo() == role) {

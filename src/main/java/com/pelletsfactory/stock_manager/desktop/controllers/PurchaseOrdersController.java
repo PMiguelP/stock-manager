@@ -343,8 +343,8 @@ public class PurchaseOrdersController {
         secInfoEdit.setVisible(false);
         secInfoEdit.setManaged(false);
 
-        // ── Itens (sempre read-only) ──────────────────────────────────────────
-        VBox secItems = criarSecao(i18nService.translate("purchaseOrders.orderItems"));
+        // ── Itens view (read-only) ────────────────────────────────────────────
+        VBox secItemsView = criarSecao(i18nService.translate("purchaseOrders.orderItems"));
         if (d.itens() != null && !d.itens().isEmpty()) {
             for (ItemEncomendaFornecedorResponseDTO item : d.itens()) {
                 double qty   = item.quantidade()       != null ? item.quantidade()       : 0;
@@ -352,12 +352,48 @@ public class PurchaseOrdersController {
                 Label lbl = new Label(String.format("%s  ×  %.2f %s  @  €%.2f",
                         valorOuTraco(item.materiaPrimaNome()), qty, valorOuTraco(item.unidade()), price));
                 lbl.setStyle("-fx-font-size: 12px;");
-                secItems.getChildren().add(lbl);
+                secItemsView.getChildren().add(lbl);
             }
         } else {
             Label no = new Label("—"); no.setStyle("-fx-font-size: 12px; -fx-text-fill: -color-fg-muted;");
-            secItems.getChildren().add(no);
+            secItemsView.getChildren().add(no);
         }
+
+        // ── Itens edit (editable, RASCUNHO) ──────────────────────────────────
+        List<ItemRow> editItemRows = new ArrayList<>();
+        VBox editItemsContainer = new VBox(10);
+        Label lblEditSubtotal   = new Label();
+        Label lblEditVat        = new Label();
+        Label lblEditGrandTotal = new Label();
+        lblEditGrandTotal.setStyle("-fx-font-weight: 700; -fx-font-size: 14px;");
+        VBox editSummary = new VBox(8, lblEditSubtotal, lblEditVat, lblEditGrandTotal);
+        editSummary.setPadding(new Insets(16));
+        editSummary.setStyle("-fx-background-color: -color-bg-default; -fx-background-radius: 8;");
+
+        Runnable recalcEditTotals = () -> {
+            double sub   = editItemRows.stream().mapToDouble(ItemRow::getTotal).sum();
+            double vat   = CalculationUtils.vat(sub, DEFAULT_VAT_RATE);
+            double grand = CalculationUtils.total(sub, vat);
+            lblEditSubtotal.setText(i18nService.translate("purchaseOrders.subtotal") + ": " + formatMoney(sub));
+            lblEditVat.setText(i18nService.translate("purchaseOrders.vat") + ": " + formatMoney(vat));
+            lblEditGrandTotal.setText(i18nService.translate("purchaseOrders.grandTotal") + ": " + formatMoney(grand));
+        };
+
+        Button btnAddEditItem = UiFactory.drawerSecondaryAction(i18nService.translate("purchaseOrders.addItem"), "mdi2p-plus-circle-outline");
+        btnAddEditItem.setOnAction(ev -> {
+            ItemRow row = new ItemRow(materiais, recalcEditTotals);
+            editItemRows.add(row);
+            editItemsContainer.getChildren().add(row.buildCard(() -> {
+                editItemRows.remove(row);
+                editItemsContainer.getChildren().remove(row.getCard());
+                recalcEditTotals.run();
+            }));
+        });
+
+        VBox secItemsEdit = criarSecao(i18nService.translate("purchaseOrders.orderItems"));
+        secItemsEdit.getChildren().addAll(editItemsContainer, btnAddEditItem, editSummary);
+        secItemsEdit.setVisible(false);
+        secItemsEdit.setManaged(false);
 
         VBox secTotal = criarSecao(i18nService.translate("purchaseOrders.orderTotal"));
         secTotal.getChildren().addAll(
@@ -366,7 +402,7 @@ public class PurchaseOrdersController {
                 criarLinhaDetalhe(i18nService.translate("purchaseOrders.grandTotal"), d.totalFinal() != null ? formatMoney(d.totalFinal()) : "—", true)
         );
 
-        VBox content = new VBox(20, secInfoView, secInfoEdit, secItems, secTotal);
+        VBox content = new VBox(20, secInfoView, secInfoEdit, secItemsView, secItemsEdit, secTotal);
         content.setPadding(new Insets(30));
         ScrollPane scroll = UiFactory.transparentScroll(content);
 
@@ -390,6 +426,26 @@ public class PurchaseOrdersController {
                 btnGuardar.setDisable(false);
                 btnEditar.setVisible(false);   btnEditar.setManaged(false);
                 btnCancelar.setVisible(true);  btnCancelar.setManaged(true);
+                // populate editable items
+                editItemsContainer.getChildren().clear();
+                editItemRows.clear();
+                if (d.itens() != null) {
+                    for (ItemEncomendaFornecedorResponseDTO item : d.itens()) {
+                        ItemRow row = new ItemRow(materiais, recalcEditTotals,
+                                item.id(), item.materiaPrimaId(),
+                                item.quantidade() != null ? item.quantidade() : 0,
+                                item.precoUnitarioNet() != null ? item.precoUnitarioNet() : 0);
+                        editItemRows.add(row);
+                        editItemsContainer.getChildren().add(row.buildCard(() -> {
+                            editItemRows.remove(row);
+                            editItemsContainer.getChildren().remove(row.getCard());
+                            recalcEditTotals.run();
+                        }));
+                    }
+                }
+                recalcEditTotals.run();
+                secItemsView.setVisible(false); secItemsView.setManaged(false);
+                secItemsEdit.setVisible(true);  secItemsEdit.setManaged(true);
             });
 
             btnCancelar.setOnAction(e -> {
@@ -404,6 +460,11 @@ public class PurchaseOrdersController {
                         .ifPresent(cmbFornecedorEdit::setValue);
                 txtDataEdit.setText(d.data() != null ? d.data().format(DATE_FMT) : "");
                 cmbStatusEdit.setValue(d.estado());
+                // reset items section
+                secItemsEdit.setVisible(false); secItemsEdit.setManaged(false);
+                secItemsView.setVisible(true);  secItemsView.setManaged(true);
+                editItemRows.clear();
+                editItemsContainer.getChildren().clear();
             });
 
             btnGuardar.setOnAction(e -> {
@@ -414,11 +475,43 @@ public class PurchaseOrdersController {
                     lblErroEdit.setText(i18nService.translate("purchaseOrders.supplierRequired"));
                     lblErroEdit.setVisible(true); lblErroEdit.setManaged(true); return;
                 }
+                for (ItemRow row : editItemRows) {
+                    if (row.getMaterial() != null &&
+                            (!Double.isFinite(row.getParsedQty()) || row.getParsedQty() <= 0 ||
+                             !Double.isFinite(row.getParsedPrice()) || row.getParsedPrice() <= 0)) {
+                        lblErroEdit.setText(i18nService.translate("purchaseOrders.itemsInvalid"));
+                        lblErroEdit.setVisible(true); lblErroEdit.setManaged(true); return;
+                    }
+                }
                 LocalDate selectedDate = null;
                 try { selectedDate = LocalDate.parse(txtDataEdit.getText(), DATE_FMT); }
                 catch (Exception ignored) {}
                 try {
                     compraService.atualizarEncomenda(d.id(), selectedF.id(), selectedDate);
+                    // sync items: delete removed, update existing, add new
+                    java.util.Set<UUID> originalIds = d.itens() != null
+                            ? d.itens().stream().map(ItemEncomendaFornecedorResponseDTO::id)
+                                .collect(java.util.stream.Collectors.toSet())
+                            : new java.util.HashSet<>();
+                    java.util.Set<UUID> currentIds = editItemRows.stream()
+                            .filter(r -> r.getItemId() != null)
+                            .map(ItemRow::getItemId)
+                            .collect(java.util.stream.Collectors.toSet());
+                    for (UUID removedId : originalIds) {
+                        if (!currentIds.contains(removedId)) {
+                            compraService.removerItemEncomenda(removedId);
+                        }
+                    }
+                    for (ItemRow row : editItemRows) {
+                        if (row.getMaterial() == null) continue;
+                        if (row.getItemId() != null) {
+                            compraService.atualizarItemEncomenda(row.getItemId(),
+                                    row.getMaterial().id(), row.getParsedQty(), row.getParsedPrice(), DEFAULT_VAT_RATE);
+                        } else {
+                            compraService.adicionarItemEncomenda(d.id(),
+                                    row.getMaterial().id(), row.getParsedQty(), row.getParsedPrice(), DEFAULT_VAT_RATE);
+                        }
+                    }
                     if (selectedStatus != null && selectedStatus != EstadoEncomendaFornecedor.RASCUNHO) {
                         if (selectedStatus == EstadoEncomendaFornecedor.EFETIVA) {
                             compraService.confirmarEncomenda(d.id());
@@ -558,13 +651,13 @@ public class PurchaseOrdersController {
 
         ScrollPane scroll = UiFactory.transparentScroll(form);
 
-        Button btnDraft = UiFactory.drawerSecondaryAction(i18nService.translate("purchaseOrders.saveDraft"), "mdi2c-content-save-outline");
+        Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
+        btnCancelar.setOnAction(e -> navigationService.hideModal());
+
+        Button btnDraft = UiFactory.drawerPrimaryAction(i18nService.translate("purchaseOrders.saveDraft"), "mdi2c-content-save-outline");
         btnDraft.setOnAction(e -> handleGuardarRascunho());
 
-        Button btnConfirm = UiFactory.drawerPrimaryAction(i18nService.translate("purchaseOrders.confirmOrder"), "mdi2c-check-circle-outline");
-        btnConfirm.setOnAction(e -> handleConfirmarEncomenda());
-
-        HBox footer = UiFactory.drawerActionFooter(null, btnDraft, btnConfirm);
+        HBox footer = UiFactory.drawerActionFooter(null, btnCancelar, btnDraft);
         drawerCriar.getChildren().addAll(header, scroll, footer);
     }
 
@@ -594,20 +687,6 @@ public class PurchaseOrdersController {
             pagination.resetPage();
             carregarEncomendas();
             toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.savedDraft"));
-        } catch (Exception e) {
-            toastService.showError(i18nService.translate("common.error"), e.getMessage());
-        }
-    }
-
-    private void handleConfirmarEncomenda() {
-        if (!validarFormularioCriar()) return;
-        try {
-            UUID encomendaId = criarRascunho();
-            compraService.confirmarEncomenda(encomendaId);
-            navigationService.hideModal();
-            pagination.resetPage();
-            carregarEncomendas();
-            toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.confirmed"));
         } catch (Exception e) {
             toastService.showError(i18nService.translate("common.error"), e.getMessage());
         }
@@ -716,6 +795,7 @@ public class PurchaseOrdersController {
     // ── ItemRow ───────────────────────────────────────────────────────────────
 
     private class ItemRow {
+        private UUID itemId;
         private final ComboBox<MateriaPrimaSimpleDTO> cmbMaterial;
         private final TextField txtQty;
         private final TextField txtPrice;
@@ -737,6 +817,17 @@ public class PurchaseOrdersController {
             txtQty.textProperty().addListener((obs, o, n)   -> { recalc(); onTotalChanged.run(); });
             txtPrice.textProperty().addListener((obs, o, n) -> { recalc(); onTotalChanged.run(); });
         }
+
+        ItemRow(List<MateriaPrimaSimpleDTO> materiais, Runnable onTotalChanged, UUID itemId, UUID materiaPrimaId, double qty, double price) {
+            this(materiais, onTotalChanged);
+            this.itemId = itemId;
+            txtQty.setText(String.valueOf(qty));
+            txtPrice.setText(String.format(java.util.Locale.US, "%.4f", price));
+            materiais.stream().filter(m -> m.id().equals(materiaPrimaId)).findFirst()
+                    .ifPresent(cmbMaterial::setValue);
+        }
+
+        UUID getItemId() { return itemId; }
 
         private void recalc() {
             lblTotal.setText(totalLabel(getTotal()));

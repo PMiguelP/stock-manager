@@ -200,6 +200,24 @@ public class LotePelletService {
     }
 
     /**
+     * Gera o próximo código de lote disponível no formato LOT-YYYY-NNN.
+     */
+    public String gerarProximoCodigo() {
+        String year = String.valueOf(java.time.Year.now().getValue());
+        String prefix = "LOT-" + year + "-";
+        java.util.List<String> tops = loteRepo.findTopCodigosComPrefix(prefix, PageRequest.of(0, 1));
+        if (tops.isEmpty()) {
+            return prefix + "001";
+        }
+        try {
+            int seq = Integer.parseInt(tops.get(0).substring(prefix.length()));
+            return prefix + String.format("%03d", seq + 1);
+        } catch (NumberFormatException e) {
+            return prefix + String.format("%03d", loteRepo.findTopCodigosComPrefix(prefix, PageRequest.of(0, Integer.MAX_VALUE)).size() + 1);
+        }
+    }
+
+    /**
      * Obter por ID
      */
     public LotePelletResponseDTO buscarPorId(UUID id) {

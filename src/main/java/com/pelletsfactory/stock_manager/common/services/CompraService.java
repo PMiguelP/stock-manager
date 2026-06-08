@@ -120,6 +120,56 @@ public class CompraService {
     }
 
     /**
+     * Atualiza um item existente de uma encomenda em rascunho.
+     */
+    @Transactional
+    public void atualizarItemEncomenda(UUID itemId, UUID materiaPrimaId, Double quantidade, Double precoUnitarioNet, Double taxaIva) {
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
+
+        ItemEncomendaFornecedor item = itemEncomendaFornecedorRepo.findById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException("Item não encontrado"));
+
+        if (!EstadoEncomendaFornecedor.RASCUNHO.equals(item.getEncomenda().getEstado())) {
+            throw new RuntimeException("Apenas encomendas em rascunho podem ser modificadas");
+        }
+
+        MateriaPrima matPrima = matPrimaRepo.findById(materiaPrimaId)
+                .orElseThrow(() -> new EntityNotFoundException("Matéria-prima não encontrada"));
+
+        CalculationUtils.requirePositive(quantidade, "Quantidade");
+        CalculationUtils.requirePositive(precoUnitarioNet, "Preço unitário");
+        CalculationUtils.requirePercentage(taxaIva, "Taxa de IVA");
+
+        item.setMateriaPrima(matPrima);
+        item.setQuantidade(quantidade);
+        item.setPrecoUnitarioNet(precoUnitarioNet);
+        item.setTaxaIva(taxaIva);
+        item.setValorIvaCalculado(CalculationUtils.vat(CalculationUtils.subtotal(quantidade, precoUnitarioNet), taxaIva));
+
+        itemEncomendaFornecedorRepo.save(item);
+        recalcularTotaisEncomenda(item.getEncomenda().getId());
+    }
+
+    /**
+     * Remove um item de uma encomenda em rascunho.
+     */
+    @Transactional
+    public void removerItemEncomenda(UUID itemId) {
+        SecurityUtils.checkPermission(Cargo.ASSISTENTE_COMERCIAL, Cargo.ADMINISTRADOR);
+
+        ItemEncomendaFornecedor item = itemEncomendaFornecedorRepo.findById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException("Item não encontrado"));
+
+        if (!EstadoEncomendaFornecedor.RASCUNHO.equals(item.getEncomenda().getEstado())) {
+            throw new RuntimeException("Apenas encomendas em rascunho podem ser modificadas");
+        }
+
+        UUID encomendaId = item.getEncomenda().getId();
+        itemEncomendaFornecedorRepo.deleteById(itemId);
+        recalcularTotaisEncomenda(encomendaId);
+    }
+
+    /**
      * Confirmar encomenda (mudar para EFETIVA)
      * Apenas ADMINISTRADOR pode confirmar
      */
