@@ -109,14 +109,7 @@ public class ProductionController {
         cmbEstadoFiltro.setItems(FXCollections.observableArrayList(EstadoOrdemProducao.values()));
         cmbEstadoFiltro.setConverter(new StringConverter<>() {
             @Override public String toString(EstadoOrdemProducao e) {
-                if (e == null) return "Todos";
-                return switch (e) {
-                    case PENDENTE -> "Pendente";
-                    case EM_PRODUCAO -> "Em Produção";
-                    case CONCLUIDA -> "Concluída";
-                    case PAUSADA -> "Pausada";
-                    case ANULADA -> "Anulada";
-                };
+                return e == null ? i18nService.translate("common.all") : estadoLabel(e);
             }
             @Override public EstadoOrdemProducao fromString(String s) { return null; }
         });
@@ -238,45 +231,45 @@ public class ProductionController {
 
     private VBox criarDrawerDetalhes(OrdemProducaoDetailsDTO d) {
         VBox root = UiFactory.drawerRoot(580);
-        HBox header = UiFactory.drawerHeader("Detalhes da Ordem", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("production.detailsTitle"), navigationService::hideModal);
 
         // ── Section: Informação Geral ─────────────────────────────────────────
-        VBox secaoGeral = criarSecao("Informação Geral");
+        VBox secaoGeral = criarSecao(i18nService.translate("production.generalInfo"));
         VBox camposGeral = new VBox(15);
         camposGeral.setPadding(new Insets(15));
         HBox estadoRow = new HBox(10);
         estadoRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblEstadoKey = new Label("Estado");
+        Label lblEstadoKey = new Label(i18nService.translate("common.status"));
         lblEstadoKey.getStyleClass().add("text-muted");
         lblEstadoKey.setPrefWidth(140);
         estadoRow.getChildren().addAll(lblEstadoKey, criarBadgeEstado(d.estado()));
         camposGeral.getChildren().addAll(
                 estadoRow,
-                criarCampoLeitura("Tipo de Pellet", d.tipoPelletNome()),
-                criarCampoLeitura("Fórmula", d.formulaNome()),
-                criarCampoLeitura("Operador", d.funcionarioNome())
+                criarCampoLeitura(i18nService.translate("production.pelletType"), d.tipoPelletNome()),
+                criarCampoLeitura(i18nService.translate("production.formula"), d.formulaNome()),
+                criarCampoLeitura(i18nService.translate("production.operator"), d.funcionarioNome())
         );
         secaoGeral.getChildren().add(camposGeral);
 
         // ── Section: Produção ─────────────────────────────────────────────────
-        VBox secaoProducao = criarSecao("Produção");
+        VBox secaoProducao = criarSecao(i18nService.translate("production.production"));
         VBox camposProducao = new VBox(15);
         camposProducao.setPadding(new Insets(15));
         camposProducao.getChildren().addAll(
-                criarCampoLeitura("Qtd. Planeada (kg)",
+                criarCampoLeitura(i18nService.translate("production.plannedQuantityKg"),
                         d.quantidadePlaneada() != null ? String.format("%.2f", d.quantidadePlaneada()) : "—"),
-                criarCampoLeitura("Qtd. Produzida (kg)",
+                criarCampoLeitura(i18nService.translate("production.realProducedQuantityKg"),
                         d.quantidadeProduzidaReal() != null ? String.format("%.2f", d.quantidadeProduzidaReal()) : "—"),
-                criarCampoLeitura("Data Início",
+                criarCampoLeitura(i18nService.translate("production.startDate"),
                         d.dataInicio() != null ? d.dataInicio().atZone(ZoneId.systemDefault()).toLocalDate().format(DATE_FMT) : "—"),
-                criarCampoLeitura("Data Fim",
+                criarCampoLeitura(i18nService.translate("production.endDate"),
                         d.dataFim() != null ? d.dataFim().atZone(ZoneId.systemDefault()).toLocalDate().format(DATE_FMT) : "—")
         );
         secaoProducao.getChildren().add(camposProducao);
 
         // ── Section: Encomendas Associadas ────────────────────────────────────
         int numEncomendas = d.encomendas() != null ? d.encomendas().size() : 0;
-        VBox secaoEncomendas = criarSecao("Encomendas Associadas (" + numEncomendas + ")");
+        VBox secaoEncomendas = criarSecao(i18nService.translate("production.associatedOrders") + " (" + numEncomendas + ")");
         if (d.encomendas() != null && !d.encomendas().isEmpty()) {
             VBox lista = new VBox(8);
             lista.setPadding(new Insets(15));
@@ -287,7 +280,7 @@ public class ProductionController {
                 VBox info = new VBox(3);
                 Label cliente = new Label(a.clienteNome());
                 cliente.setStyle("-fx-font-weight: 500;");
-                Label tracking = new Label(a.codigoTracking() != null ? a.codigoTracking() : "Sem tracking");
+                Label tracking = new Label(a.codigoTracking() != null ? a.codigoTracking() : i18nService.translate("production.noTracking"));
                 tracking.getStyleClass().add("text-muted");
                 tracking.setStyle("-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;");
                 info.getChildren().addAll(cliente, tracking);
@@ -307,7 +300,7 @@ public class ProductionController {
 
         // ── Section: Consumos ─────────────────────────────────────────────────
         int numConsumos = d.consumos() != null ? d.consumos().size() : 0;
-        VBox secaoConsumos = criarSecao("Consumos de Matérias-Primas (" + numConsumos + ")");
+        VBox secaoConsumos = criarSecao(i18nService.translate("production.rawMaterialConsumptions") + " (" + numConsumos + ")");
         if (d.consumos() != null && !d.consumos().isEmpty()) {
             VBox lista = new VBox(8);
             lista.setPadding(new Insets(15));
@@ -328,7 +321,7 @@ public class ProductionController {
 
         // ── Section: Lotes ────────────────────────────────────────────────────
         int numLotes = d.lotes() != null ? d.lotes().size() : 0;
-        VBox secaoLotes = criarSecao("Lotes Produzidos (" + numLotes + ")");
+        VBox secaoLotes = criarSecao(i18nService.translate("production.producedBatches") + " (" + numLotes + ")");
         if (d.lotes() != null && !d.lotes().isEmpty()) {
             VBox lista = new VBox(8);
             lista.setPadding(new Insets(15));
@@ -365,9 +358,9 @@ public class ProductionController {
             btnDeletar = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
             btnDeletar.setOnAction(e -> {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                        "Eliminar a ordem de produção para \"" + d.tipoPelletNome() + "\"?",
+                        i18nService.translate("production.deleteQuestion") + " \"" + d.tipoPelletNome() + "\"?",
                         ButtonType.YES, ButtonType.NO);
-                confirm.setTitle("Confirmar eliminação");
+                confirm.setTitle(i18nService.translate("common.confirmDelete"));
                 confirm.setHeaderText(null);
                 confirm.showAndWait().ifPresent(bt -> {
                     if (bt == ButtonType.YES) {
@@ -412,7 +405,7 @@ public class ProductionController {
         header.setAlignment(Pos.CENTER_LEFT);
         header.setStyle("-fx-background-color: -color-bg-subtle;");
         VBox headerText = new VBox(4);
-        Label titulo = new Label("Editar Ordem");
+        Label titulo = new Label(i18nService.translate("production.editTitle"));
         titulo.getStyleClass().add("title-3");
         Label subtitulo = new Label(d.tipoPelletNome());
         subtitulo.getStyleClass().add("text-muted");
@@ -435,7 +428,7 @@ public class ProductionController {
         form.setPadding(new Insets(30));
 
         // General info
-        VBox secaoGeral = criarSecao("Informação Geral");
+        VBox secaoGeral = criarSecao(i18nService.translate("production.generalInfo"));
         VBox camposGeral = new VBox(15);
         camposGeral.setPadding(new Insets(15));
 
@@ -494,12 +487,12 @@ public class ProductionController {
 
         TextField txtQtdPlaneada = new TextField(d.quantidadePlaneada() != null ? String.format("%.2f", d.quantidadePlaneada()) : "");
         txtQtdPlaneada.setMaxWidth(Double.MAX_VALUE);
-        txtQtdPlaneada.setPromptText("ex: 500.00");
+        txtQtdPlaneada.setPromptText(i18nService.translate("production.quantityExample"));
         Label lblErroQtdPlaneada = criarErroLabel();
 
         TextField txtQtdProduzida = new TextField(d.quantidadeProduzidaReal() != null ? String.format("%.2f", d.quantidadeProduzidaReal()) : "");
         txtQtdProduzida.setMaxWidth(Double.MAX_VALUE);
-        txtQtdProduzida.setPromptText("ex: 450.00");
+        txtQtdProduzida.setPromptText(i18nService.translate("production.producedQuantityExample"));
         Label lblErroQtdProduzida = criarErroLabel();
 
         DatePicker dpDataInicio = new DatePicker(d.dataInicio() != null
@@ -510,7 +503,7 @@ public class ProductionController {
 
         HBox estadoAtualRow = new HBox(10);
         estadoAtualRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblAtual = new Label("Estado Atual");
+        Label lblAtual = new Label(i18nService.translate("production.currentStatus"));
         lblAtual.getStyleClass().add("text-muted");
         lblAtual.setPrefWidth(140);
         estadoAtualRow.getChildren().addAll(lblAtual, criarBadgeEstado(d.estado()));
@@ -527,13 +520,7 @@ public class ProductionController {
         cmbNovoEstado.setConverter(new StringConverter<>() {
             @Override public String toString(EstadoOrdemProducao e) {
                 if (e == null) return "";
-                return switch (e) {
-                    case PENDENTE -> "Pendente";
-                    case EM_PRODUCAO -> "Em Produção";
-                    case CONCLUIDA -> "Concluída";
-                    case PAUSADA -> "Pausada";
-                    case ANULADA -> "Anulada";
-                };
+                return estadoLabel(e);
             }
             @Override public EstadoOrdemProducao fromString(String s) { return null; }
         });
@@ -541,20 +528,20 @@ public class ProductionController {
         Label lblErroEstado = criarErroLabel();
 
         camposGeral.getChildren().addAll(
-                criarCampoFormulario("Tipo de Pellet *", cmbTipoPelletEdicao, lblErroTipoPellet),
-                criarCampoFormulario("Fórmula de Produção *", cmbFormulaEdicao, lblErroFormula),
-                criarCampoFormulario("Operador *", cmbFuncionarioEdicao, lblErroFuncionario),
-                criarCampoFormulario("Estado *", cmbNovoEstado, lblErroEstado)
+                criarCampoFormulario(i18nService.translate("production.pelletType") + " *", cmbTipoPelletEdicao, lblErroTipoPellet),
+                criarCampoFormulario(i18nService.translate("production.formula") + " *", cmbFormulaEdicao, lblErroFormula),
+                criarCampoFormulario(i18nService.translate("production.operator") + " *", cmbFuncionarioEdicao, lblErroFuncionario),
+                criarCampoFormulario(i18nService.translate("common.status") + " *", cmbNovoEstado, lblErroEstado)
         );
         secaoGeral.getChildren().add(camposGeral);
 
-        VBox secaoProducao = criarSecao("Produção");
+        VBox secaoProducao = criarSecao(i18nService.translate("production.production"));
         VBox camposProducao = new VBox(15);
         camposProducao.setPadding(new Insets(15));
         camposProducao.getChildren().addAll(
-                criarCampoFormulario("Quantidade Planeada (kg) *", txtQtdPlaneada, lblErroQtdPlaneada),
-                criarCampoFormulario("Quantidade Produzida Real (kg)", txtQtdProduzida, lblErroQtdProduzida),
-                criarCampoFormulario("Data de Início *", dpDataInicio, lblErroDataInicio)
+                criarCampoFormulario(i18nService.translate("production.plannedQuantityKg") + " *", txtQtdPlaneada, lblErroQtdPlaneada),
+                criarCampoFormulario(i18nService.translate("production.realProducedQuantityKg"), txtQtdProduzida, lblErroQtdProduzida),
+                criarCampoFormulario(i18nService.translate("production.startDate") + " *", dpDataInicio, lblErroDataInicio)
         );
         secaoProducao.getChildren().add(camposProducao);
 
@@ -578,19 +565,19 @@ public class ProductionController {
             boolean valido = true;
 
             if (cmbTipoPelletEdicao.getValue() == null) {
-                mostrarErroLabel(lblErroTipoPellet, cmbTipoPelletEdicao, "Tipo de pellet é obrigatório");
+                mostrarErroLabel(lblErroTipoPellet, cmbTipoPelletEdicao, i18nService.translate("production.pelletTypeRequired"));
                 valido = false;
             }
             if (cmbFormulaEdicao.getValue() == null) {
-                mostrarErroLabel(lblErroFormula, cmbFormulaEdicao, "Fórmula é obrigatória");
+                mostrarErroLabel(lblErroFormula, cmbFormulaEdicao, i18nService.translate("production.formulaRequired"));
                 valido = false;
             }
             if (cmbFuncionarioEdicao.getValue() == null) {
-                mostrarErroLabel(lblErroFuncionario, cmbFuncionarioEdicao, "Operador é obrigatório");
+                mostrarErroLabel(lblErroFuncionario, cmbFuncionarioEdicao, i18nService.translate("production.operatorRequired"));
                 valido = false;
             }
             if (cmbNovoEstado.getValue() == null) {
-                mostrarErroLabel(lblErroEstado, cmbNovoEstado, "Selecione o estado");
+                mostrarErroLabel(lblErroEstado, cmbNovoEstado, i18nService.translate("production.statusRequired"));
                 valido = false;
             }
 
@@ -599,7 +586,7 @@ public class ProductionController {
                 qtdPlaneada = Double.parseDouble(txtQtdPlaneada.getText().replace(",", ".").trim());
                 if (!Double.isFinite(qtdPlaneada) || qtdPlaneada <= 0) throw new NumberFormatException();
             } catch (Exception ex) {
-                mostrarErroLabel(lblErroQtdPlaneada, txtQtdPlaneada, "Quantidade inválida (> 0)");
+                mostrarErroLabel(lblErroQtdPlaneada, txtQtdPlaneada, i18nService.translate("production.quantityInvalid"));
                 valido = false;
                 qtdPlaneada = null;
             }
@@ -611,13 +598,13 @@ public class ProductionController {
                     qtdProduzida = Double.parseDouble(qtdProduzidaRaw.replace(",", "."));
                     if (!Double.isFinite(qtdProduzida) || qtdProduzida < 0) throw new NumberFormatException();
                 } catch (Exception ex) {
-                    mostrarErroLabel(lblErroQtdProduzida, txtQtdProduzida, "Quantidade produzida inválida");
+                    mostrarErroLabel(lblErroQtdProduzida, txtQtdProduzida, i18nService.translate("production.producedQuantityInvalid"));
                     valido = false;
                 }
             }
 
             if (dpDataInicio.getValue() == null) {
-                mostrarErroLabel(lblErroDataInicio, dpDataInicio, "Data de início é obrigatória");
+                mostrarErroLabel(lblErroDataInicio, dpDataInicio, i18nService.translate("production.startDateRequired"));
                 valido = false;
             }
 
@@ -641,7 +628,7 @@ public class ProductionController {
                 navigationService.showModal(criarDrawerDetalhes(fresh));
                 toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("production.updated"));
             } catch (Exception ex) {
-                toastService.showError("Erro", ex.getMessage());
+                toastService.showError(i18nService.translate("common.error"), ex.getMessage());
             }
         });
         HBox footer = UiFactory.drawerActionFooter(null, btnCancelar, btnGuardar);
@@ -654,7 +641,7 @@ public class ProductionController {
 
     private void configurarDrawerCriarOrdem() {
         criarOrdemDrawer = UiFactory.drawerRoot(560);
-        HBox header = UiFactory.drawerHeader("Nova Ordem de Produção", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("production.newTitle"), navigationService::hideModal);
 
         // Form
         VBox form = new VBox(20);
@@ -674,7 +661,7 @@ public class ProductionController {
 
         cmbFormula = new ComboBox<>();
         cmbFormula.setMaxWidth(Double.MAX_VALUE);
-        cmbFormula.setPromptText("Selecione primeiro o tipo de pellet");
+        cmbFormula.setPromptText(i18nService.translate("production.selectPelletFirst"));
         cmbFormula.setConverter(new StringConverter<>() {
             @Override public String toString(FormulaSimpleDTO f) { return f == null ? "" : f.nome(); }
             @Override public FormulaSimpleDTO fromString(String s) { return null; }
@@ -693,7 +680,7 @@ public class ProductionController {
 
         txtQuantidade = new TextField();
         txtQuantidade.setMaxWidth(Double.MAX_VALUE);
-        txtQuantidade.setPromptText("ex: 500.00");
+        txtQuantidade.setPromptText(i18nService.translate("production.quantityExample"));
         txtQuantidade.textProperty().addListener((obs, ov, nv) -> esconderErro(lblErroQuantidade, txtQuantidade));
         lblErroQuantidade = criarErroLabel();
 
@@ -710,11 +697,11 @@ public class ProductionController {
         lblErroGeral.setManaged(false);
 
         form.getChildren().addAll(
-                criarCampoFormulario("Tipo de Pellet *", cmbTipoPellet, lblErroTipoPellet),
-                criarCampoFormulario("Fórmula de Produção *", cmbFormula, lblErroFormula),
-                criarCampoFormulario("Operador *", cmbFuncionario, lblErroFuncionario),
-                criarCampoFormulario("Quantidade Planeada (kg) *", txtQuantidade, lblErroQuantidade),
-                criarCampoFormulario("Data de Início *", dpDataInicio, lblErroData),
+                criarCampoFormulario(i18nService.translate("production.pelletType") + " *", cmbTipoPellet, lblErroTipoPellet),
+                criarCampoFormulario(i18nService.translate("production.formula") + " *", cmbFormula, lblErroFormula),
+                criarCampoFormulario(i18nService.translate("production.operator") + " *", cmbFuncionario, lblErroFuncionario),
+                criarCampoFormulario(i18nService.translate("production.plannedQuantityKg") + " *", txtQuantidade, lblErroQuantidade),
+                criarCampoFormulario(i18nService.translate("production.startDate") + " *", dpDataInicio, lblErroData),
                 lblErroGeral
         );
 
@@ -726,7 +713,7 @@ public class ProductionController {
         // Footer
         Button btnCancelar = UiFactory.drawerNeutralAction(i18nService.translate("common.cancel"), "mdi2c-close");
         btnCancelar.setOnAction(e -> navigationService.hideModal());
-        Button btnCriar = UiFactory.drawerPrimaryAction("Criar Ordem", "mdi2c-check-circle-outline");
+        Button btnCriar = UiFactory.drawerPrimaryAction(i18nService.translate("production.createOrder"), "mdi2c-check-circle-outline");
         btnCriar.setOnAction(e -> handleCriarOrdem());
         HBox footer = UiFactory.drawerActionFooter(null, btnCancelar, btnCriar);
 
@@ -737,7 +724,7 @@ public class ProductionController {
         cmbFormula.setValue(null);
         if (tipoPellet == null) {
             cmbFormula.setItems(FXCollections.emptyObservableList());
-            cmbFormula.setPromptText("Selecione primeiro o tipo de pellet");
+            cmbFormula.setPromptText(i18nService.translate("production.selectPelletFirst"));
             return;
         }
         try {
@@ -745,7 +732,7 @@ public class ProductionController {
                     .listarFormulasPorTipoPellet(tipoPellet.id(), 1, 100)
                     .getContent();
             cmbFormula.setItems(FXCollections.observableArrayList(formulas));
-            cmbFormula.setPromptText(formulas.isEmpty() ? "Sem fórmulas disponíveis" : "Selecionar fórmula");
+            cmbFormula.setPromptText(formulas.isEmpty() ? i18nService.translate("production.noFormulasAvailable") : i18nService.translate("production.selectFormula"));
         } catch (Exception e) {
             cmbFormula.setItems(FXCollections.emptyObservableList());
         }
@@ -755,15 +742,15 @@ public class ProductionController {
         boolean valido = true;
 
         if (cmbTipoPellet.getValue() == null) {
-            mostrarErroLabel(lblErroTipoPellet, cmbTipoPellet, "Tipo de pellet é obrigatório");
+            mostrarErroLabel(lblErroTipoPellet, cmbTipoPellet, i18nService.translate("production.pelletTypeRequired"));
             valido = false;
         }
         if (cmbFormula.getValue() == null) {
-            mostrarErroLabel(lblErroFormula, cmbFormula, "Fórmula é obrigatória");
+            mostrarErroLabel(lblErroFormula, cmbFormula, i18nService.translate("production.formulaRequired"));
             valido = false;
         }
         if (cmbFuncionario.getValue() == null) {
-            mostrarErroLabel(lblErroFuncionario, cmbFuncionario, "Operador é obrigatório");
+            mostrarErroLabel(lblErroFuncionario, cmbFuncionario, i18nService.translate("production.operatorRequired"));
             valido = false;
         }
 
@@ -772,12 +759,12 @@ public class ProductionController {
             quantidade = Double.parseDouble(txtQuantidade.getText().replace(",", ".").trim());
             if (!Double.isFinite(quantidade) || quantidade <= 0) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
-            mostrarErroLabel(lblErroQuantidade, txtQuantidade, "Insira uma quantidade válida (> 0)");
+            mostrarErroLabel(lblErroQuantidade, txtQuantidade, i18nService.translate("production.quantityInvalid"));
             valido = false;
         }
 
         if (dpDataInicio.getValue() == null) {
-            mostrarErroLabel(lblErroData, dpDataInicio, "Data de início é obrigatória");
+            mostrarErroLabel(lblErroData, dpDataInicio, i18nService.translate("production.startDateRequired"));
             valido = false;
         }
 
@@ -857,7 +844,7 @@ public class ProductionController {
         cmbTipoPellet.setValue(null);
         cmbFormula.setItems(FXCollections.emptyObservableList());
         cmbFormula.setValue(null);
-        cmbFormula.setPromptText("Selecione primeiro o tipo de pellet");
+        cmbFormula.setPromptText(i18nService.translate("production.selectPelletFirst"));
         cmbFuncionario.setValue(null);
         txtQuantidade.clear();
         dpDataInicio.setValue(LocalDate.now());
@@ -890,11 +877,11 @@ public class ProductionController {
             case ANULADA -> "mdi2c-close-circle-outline";
         };
         String label = switch (estado) {
-            case PENDENTE -> "Pendente";
-            case EM_PRODUCAO -> "Em Produção";
-            case CONCLUIDA -> "Concluída";
-            case PAUSADA -> "Pausada";
-            case ANULADA -> "Anulada";
+            case PENDENTE -> i18nService.translate("production.status.PENDENTE");
+            case EM_PRODUCAO -> i18nService.translate("production.status.EM_PRODUCAO");
+            case CONCLUIDA -> i18nService.translate("production.status.CONCLUIDA");
+            case PAUSADA -> i18nService.translate("production.status.PAUSADA");
+            case ANULADA -> i18nService.translate("production.status.ANULADA");
         };
         return UiFactory.statusBadge(label, icon, color);
     }
@@ -971,7 +958,7 @@ public class ProductionController {
         if (tipoPelletId == null) {
             combo.setItems(FXCollections.emptyObservableList());
             combo.setValue(null);
-            combo.setPromptText("Selecione primeiro o tipo de pellet");
+            combo.setPromptText(i18nService.translate("production.selectPelletFirst"));
             return;
         }
 
@@ -986,11 +973,15 @@ public class ProductionController {
                         .findFirst()
                         .ifPresent(combo::setValue);
             }
-            combo.setPromptText(formulas.isEmpty() ? "Sem fórmulas disponíveis" : "Selecionar fórmula");
+            combo.setPromptText(formulas.isEmpty() ? i18nService.translate("production.noFormulasAvailable") : i18nService.translate("production.selectFormula"));
         } catch (Exception e) {
             combo.setItems(FXCollections.emptyObservableList());
             combo.setValue(null);
         }
+    }
+
+    private String estadoLabel(EstadoOrdemProducao estado) {
+        return estado == null ? "" : i18nService.translate("production.status." + estado.name());
     }
 
     private Label criarErroLabel() {

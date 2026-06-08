@@ -33,4 +33,18 @@ public interface AlocacaoLoteEncomendaRepository extends JpaRepository<AlocacaoL
 
     @Query("SELECT COALESCE(SUM(a.quantidadeReservada), 0) FROM AlocacaoLoteEncomenda a WHERE a.itemEncomenda.id = :itemId")
     Double sumQuantidadeReservadaByItemId(@Param("itemId") UUID itemId);
+
+    @Query("""
+            SELECT a.itemEncomenda.id, COALESCE(SUM(a.quantidadeReservada), 0)
+            FROM AlocacaoLoteEncomenda a
+            GROUP BY a.itemEncomenda.id
+            """)
+    List<Object[]> sumQuantidadeReservadaGroupedByItem();
+
+    @Query("""
+            SELECT a.lote.id, COALESCE(SUM(a.quantidadeReservada), 0)
+            FROM AlocacaoLoteEncomenda a
+            GROUP BY a.lote.id
+            """)
+    List<Object[]> sumQuantidadeReservadaGroupedByLote();
 }

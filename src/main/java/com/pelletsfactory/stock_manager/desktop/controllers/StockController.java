@@ -213,7 +213,7 @@ public class StockController {
             pagination.attachTo(vboxContainer);
             pagination.update(page);
         } catch (Exception e) {
-            mostrarErro("Erro: " + e.getMessage());
+            mostrarErro(i18nService.translate("common.error") + ": " + e.getMessage());
         }
     }
 
@@ -263,20 +263,20 @@ public class StockController {
             VBox drawer = criarDrawerDetalhes(detalhes);
             navigationService.showModal(drawer);
         } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
+            mostrarErro(i18nService.translate("common.detailsLoadError") + ": " + e.getMessage());
         }
     }
 
     private VBox criarDrawerDetalhes(MovimentoFinanceiroResponseDTO d) {
         VBox root = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader("Detalhes do Movimento", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("stock.movementDetails"), navigationService::hideModal);
 
         VBox content = new VBox(16);
         content.setPadding(new Insets(30));
 
         HBox tipoBox = new HBox(10);
         tipoBox.setAlignment(Pos.CENTER_LEFT);
-        Label lblTipo = new Label("Tipo");
+        Label lblTipo = new Label(i18nService.translate("common.type"));
         lblTipo.getStyleClass().add("text-muted");
         lblTipo.setPrefWidth(140);
         tipoBox.getChildren().addAll(lblTipo, d.tipoMovimento() != null ? criarBadgeTipo(d.tipoMovimento()) : new Label("-"));
@@ -290,10 +290,10 @@ public class StockController {
 
         content.getChildren().addAll(
                 tipoBox,
-                criarCampoLeitura("Valor", d.valorTotal() != null ? String.format("%.2f", d.valorTotal()) : "-"),
-                criarCampoLeitura("Moeda", valorOuVazio(d.moedaCodigo())),
-                criarCampoLeitura("Data", dataFormatada),
-                criarCampoLeitura("Encomenda Relacionada", encomendaRelacionada)
+                criarCampoLeitura(i18nService.translate("common.value"), d.valorTotal() != null ? String.format("%.2f", d.valorTotal()) : "-"),
+                criarCampoLeitura(i18nService.translate("common.currency"), valorOuVazio(d.moedaCodigo())),
+                criarCampoLeitura(i18nService.translate("common.date"), dataFormatada),
+                criarCampoLeitura(i18nService.translate("stock.relatedOrder"), encomendaRelacionada)
         );
 
         ScrollPane scrollPane = UiFactory.transparentScroll(content);

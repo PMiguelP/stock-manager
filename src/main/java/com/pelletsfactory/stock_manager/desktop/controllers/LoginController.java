@@ -269,17 +269,17 @@ public class LoginController {
         String pin = txtPin.getText() != null ? txtPin.getText().trim() : "";
 
         if (employeeNumberRaw.isBlank() || pin.isBlank()) {
-            showError("Preencha todos os campos!");
+            showError(i18nService.translate("login.fillAllFields"));
             return;
         }
 
         if (!employeeNumberRaw.matches("\\d+")) {
-            showError("O número do funcionário deve conter apenas dígitos.");
+            showError(i18nService.translate("login.employeeNumberDigits"));
             return;
         }
 
         if (!pin.matches("\\d{4}")) {
-            showError("O PIN deve conter exatamente 4 dígitos.");
+            showError(i18nService.translate("login.pinFourDigits"));
             return;
         }
 
@@ -287,7 +287,7 @@ public class LoginController {
         try {
             employeeNumber = Integer.parseInt(employeeNumberRaw);
         } catch (NumberFormatException exception) {
-            showError("O número do funcionário não é válido.");
+            showError(i18nService.translate("login.employeeNumberInvalid"));
             return;
         }
 
@@ -295,13 +295,13 @@ public class LoginController {
             authService.login(employeeNumber, pin);
             abrirTelaPrincipal();
         } catch (RuntimeException ex) {
-            showError(ex.getMessage() != null ? ex.getMessage() : "Credenciais inválidas.");
+            showError(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("login.invalidCredentials"));
         }
     }
 
     @FXML
     private void handleForgotPin() {
-        showError("Entre em contato com o administrador para redefinir seu PIN.");
+        showError(i18nService.translate("login.forgotPinHelp"));
     }
 
     private void abrirTelaPrincipal() {
@@ -322,7 +322,7 @@ public class LoginController {
 
         } catch (Exception e) {
             log.error("Erro ao carregar tela principal", e);
-            showError("Erro ao abrir a tela principal.");
+            showError(i18nService.translate("login.openMainError"));
         }
     }
 

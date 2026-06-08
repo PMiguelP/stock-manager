@@ -197,7 +197,7 @@ public class OrdersController {
             pagination.attachTo(vboxContainer);
             pagination.update(page);
         } catch (Exception e) {
-            mostrarErro("Erro ao carregar: " + e.getMessage());
+            mostrarErro(i18nService.translate("common.loadError") + ": " + e.getMessage());
         }
     }
 
@@ -334,7 +334,7 @@ public class OrdersController {
             tiposPellet.setAll(stockService.listarTiposPelletComFiltros(1, 100, null, null, "nome", "ASC").getContent());
         } catch (Exception e) {
             tiposPellet.clear();
-            mostrarErro("Erro ao carregar produtos: " + e.getMessage());
+            mostrarErro(i18nService.translate("orders.loadProductsError") + ": " + e.getMessage());
         }
     }
 
@@ -468,13 +468,13 @@ public class OrdersController {
             EncomendaClienteDetailsDTO d = vendaService.obterDetalhesEncomendaCliente(enc.id());
             navigationService.showModal(criarDrawerVisualizacao(d));
         } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
+            mostrarErro(i18nService.translate("common.detailsLoadError") + ": " + e.getMessage());
         }
     }
 
     private VBox criarDrawerVisualizacao(EncomendaClienteDetailsDTO d) {
         VBox root = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader("Detalhes da Encomenda", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("orders.detailsTitle"), navigationService::hideModal);
         boolean encomendaCancelada = EstadoEncomendaCliente.CANCELADA.equals(d.estado());
         boolean encomendaExpedida = EstadoEncomendaCliente.EXPEDIDA.equals(d.estado());
         boolean podeEditarItens = EstadoEncomendaCliente.PENDENTE.equals(d.estado());
@@ -554,9 +554,9 @@ public class OrdersController {
         VBox resumo = criarResumoEncomenda(d);
         VBox form = new VBox(18,
                 resumo,
-                criarSecaoEdicao("Cliente", cmbClienteDetalhes),
-                criarSecaoEdicao("Moeda", cmbMoedaDetalhes),
-                criarSecaoEdicao("Estado", cmbEstadoDetalhes),
+                criarSecaoEdicao(i18nService.translate("orders.customer"), cmbClienteDetalhes),
+                criarSecaoEdicao(i18nService.translate("common.currency"), cmbMoedaDetalhes),
+                criarSecaoEdicao(i18nService.translate("common.status"), cmbEstadoDetalhes),
                 criarSecaoEdicao("Tracking ID", txtTracking),
                 criarSecaoItensEdicao(editRows, itensEdicao, btnAdicionarItem)
         );
@@ -653,11 +653,11 @@ public class OrdersController {
                                               List<OrderItemRow> rows) {
         boolean podeEditarItens = EstadoEncomendaCliente.PENDENTE.equals(d.estado());
         if (podeEditarItens && (cliente.getValue() == null || moeda.getValue() == null)) {
-            mostrarErro("Cliente e moeda são obrigatórios");
+            mostrarErro(i18nService.translate("orders.customerAndCurrencyRequired"));
             return;
         }
         if (estado.getValue() == null) {
-            mostrarErro("Estado é obrigatório");
+            mostrarErro(i18nService.translate("orders.statusRequired"));
             return;
         }
 

@@ -196,14 +196,19 @@ public class CompraService {
     @Transactional
     public void apagarEncomenda(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
-        encomendaFornecedorRepo.deleteById(encomendaId);
+        EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);
+        if (!EstadoEncomendaFornecedor.RASCUNHO.equals(encomenda.getEstado())
+                && !EstadoEncomendaFornecedor.ANULADA.equals(encomenda.getEstado())) {
+            throw new IllegalStateException("Só é possível eliminar encomendas em rascunho ou anuladas");
+        }
+        encomendaFornecedorRepo.delete(encomenda);
     }
 
     /**
      * Anular encomenda
      */
     @Transactional
-    public EncomendaFornecedorResponseDTO anumarEncomenda(UUID encomendaId) {
+    public EncomendaFornecedorResponseDTO anularEncomenda(UUID encomendaId) {
         SecurityUtils.checkPermission(Cargo.ADMINISTRADOR);
 
         EncomendaFornecedor encomenda = buscarParaAtualizarOuFalhar(encomendaId);

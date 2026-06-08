@@ -254,7 +254,7 @@ public class RawMaterialsController {
         HBox header = UiFactory.drawerHeader(i18nService.translate("rawMaterials.title"), navigationService::hideModal);
 
         txtNomeAdicionar = new TextField();
-        txtNomeAdicionar.setPromptText("ex: Aparas de Madeira");
+        txtNomeAdicionar.setPromptText(i18nService.translate("rawMaterials.nameExample"));
         lblErroNomeAdicionar = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtNomeAdicionar, lblErroNomeAdicionar);
 

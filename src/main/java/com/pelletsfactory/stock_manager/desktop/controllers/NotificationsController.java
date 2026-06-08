@@ -3,6 +3,7 @@ package com.pelletsfactory.stock_manager.desktop.controllers;
 import com.pelletsfactory.stock_manager.common.dto.response.NotificacaoSimpleDTO;
 import com.pelletsfactory.stock_manager.common.enums.TipoEventoNotificacao;
 import com.pelletsfactory.stock_manager.common.services.NotificacaoService;
+import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.ToastService;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.SupportTicketSelectionService;
@@ -56,24 +57,32 @@ public class NotificationsController {
     private final ToastService toastService;
     private final NavigationService navigationService;
     private final SupportTicketSelectionService supportTicketSelectionService;
+    private final I18nService i18nService;
     private final ObservableList<NotificationItem> allNotifications = FXCollections.observableArrayList();
 
     public NotificationsController(NotificacaoService notificacaoService,
                                    ToastService toastService,
                                    NavigationService navigationService,
-                                   SupportTicketSelectionService supportTicketSelectionService) {
+                                   SupportTicketSelectionService supportTicketSelectionService,
+                                   I18nService i18nService) {
         this.notificacaoService = notificacaoService;
         this.toastService = toastService;
         this.navigationService = navigationService;
         this.supportTicketSelectionService = supportTicketSelectionService;
+        this.i18nService = i18nService;
     }
 
     @FXML
     public void initialize() {
         cmbType.setItems(FXCollections.observableArrayList(buildTypeOptions()));
-        cmbStatus.setItems(FXCollections.observableArrayList("All Status", "Unread", "Read", "Pending", "Done"));
-        cmbType.setValue("All Types");
-        cmbStatus.setValue("All Status");
+        cmbStatus.setItems(FXCollections.observableArrayList(
+                i18nService.translate("notifications.status.all"),
+                i18nService.translate("notifications.status.unread"),
+                i18nService.translate("notifications.status.read"),
+                i18nService.translate("notifications.pending"),
+                i18nService.translate("notifications.done")));
+        cmbType.setValue(i18nService.translate("notifications.type.all"));
+        cmbStatus.setValue(i18nService.translate("notifications.status.all"));
 
         txtSearch.textProperty().addListener((obs, oldValue, newValue) -> render());
         cmbType.valueProperty().addListener((obs, oldValue, newValue) -> loadNotifications());
@@ -87,7 +96,7 @@ public class NotificationsController {
         List<String> options = Arrays.stream(TipoEventoNotificacao.values())
                 .map(TipoEventoNotificacao::getDisplayName)
                 .collect(Collectors.toList());
-        options.add(0, "All Types");
+        options.add(0, i18nService.translate("notifications.type.all"));
         return options;
     }
 
@@ -106,13 +115,13 @@ public class NotificationsController {
                     .collect(Collectors.toList()));
             render();
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao carregar notificações: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("notifications.loadError") + ": " + e.getMessage());
         }
     }
 
     private TipoEventoNotificacao selectedTipoEvento() {
         String selected = cmbType.getValue();
-        if (selected == null || "All Types".equals(selected)) {
+        if (selected == null || i18nService.translate("notifications.type.all").equals(selected)) {
             return null;
         }
         return Arrays.stream(TipoEventoNotificacao.values())
@@ -123,15 +132,15 @@ public class NotificationsController {
 
     private Boolean selectedReadFilter() {
         String status = cmbStatus.getValue();
-        if ("Unread".equals(status)) return false;
-        if ("Read".equals(status)) return true;
+        if (i18nService.translate("notifications.status.unread").equals(status)) return false;
+        if (i18nService.translate("notifications.status.read").equals(status)) return true;
         return null;
     }
 
     private Boolean selectedDoneFilter() {
         String status = cmbStatus.getValue();
-        if ("Pending".equals(status)) return false;
-        if ("Done".equals(status)) return true;
+        if (i18nService.translate("notifications.pending").equals(status)) return false;
+        if (i18nService.translate("notifications.done").equals(status)) return true;
         return null;
     }
 
@@ -140,7 +149,7 @@ public class NotificationsController {
             notificacaoService.marcarTodasComoLidas();
             loadNotifications();
         } catch (Exception e) {
-            toastService.showError("Erro", "Erro ao marcar notificações como lidas: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("notifications.markAllReadError") + ": " + e.getMessage());
         }
     }
 
@@ -153,9 +162,9 @@ public class NotificationsController {
             emptyState.setPadding(new Insets(40));
             emptyState.setAlignment(Pos.CENTER);
             emptyState.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 12; -fx-border-color: -color-border-muted; -fx-border-radius: 12;");
-            Label title = new Label("Sem notificações para estes filtros");
+            Label title = new Label(i18nService.translate("notifications.emptyFiltered"));
             title.setStyle("-fx-font-size: 16px; -fx-font-weight: 600;");
-            Label desc = new Label("Tenta ajustar a pesquisa ou os filtros de tipo e estado.");
+            Label desc = new Label(i18nService.translate("notifications.emptyFilteredDesc"));
             desc.getStyleClass().add("text-muted");
             emptyState.getChildren().addAll(title, desc);
             notificationsList.getChildren().add(emptyState);
@@ -164,7 +173,7 @@ public class NotificationsController {
         }
 
         long unread = allNotifications.stream().filter(n -> n.unread).count();
-        lblNotificationsSummary.setText(unread + " unread notifications • " + allNotifications.size() + " total");
+        lblNotificationsSummary.setText(String.format(i18nService.translate("notifications.summary"), unread, allNotifications.size()));
         btnMarkAllRead.setDisable(unread == 0);
         notificationsScroll.setVvalue(0);
     }
@@ -255,7 +264,7 @@ public class NotificationsController {
         meta.getChildren().add(typeBadge);
 
         if (item.requerAcao) {
-            Label doneBadge = new Label(item.done ? "Done" : "Pending");
+            Label doneBadge = new Label(item.done ? i18nService.translate("notifications.done") : i18nService.translate("notifications.pending"));
             String doneColor = item.done ? "#22c55e" : "#f97316";
             doneBadge.setStyle(String.format(
                     "-fx-padding: 4 12 4 12; -fx-background-radius: 999; -fx-border-radius: 999; -fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: %s; -fx-border-color: %s;",
@@ -266,13 +275,13 @@ public class NotificationsController {
         }
 
         if (item.done && item.doneBy != null) {
-            Label doneBy = new Label("Feita por " + item.doneBy);
+            Label doneBy = new Label(i18nService.translate("notifications.doneBy") + " " + item.doneBy);
             doneBy.getStyleClass().add("text-muted");
             meta.getChildren().add(doneBy);
         }
 
         if (item.unread) {
-            Hyperlink markRead = new Hyperlink("Marcar como lida");
+            Hyperlink markRead = new Hyperlink(i18nService.translate("notifications.markRead"));
             markRead.setFocusTraversable(false);
             markRead.setStyle("-fx-text-fill: -color-accent-emphasis;");
             markRead.setOnAction(event -> {
@@ -280,14 +289,14 @@ public class NotificationsController {
                     notificacaoService.marcarComoLida(item.id);
                     loadNotifications();
                 } catch (Exception e) {
-                    toastService.showError("Erro", "Erro ao marcar como lida: " + e.getMessage());
+                    toastService.showError(i18nService.translate("common.error"), i18nService.translate("notifications.markReadError") + ": " + e.getMessage());
                 }
             });
             meta.getChildren().add(markRead);
         }
 
         if (item.requerAcao && !item.done) {
-            Hyperlink markDone = new Hyperlink("Marcar como feita");
+            Hyperlink markDone = new Hyperlink(i18nService.translate("notifications.markDone"));
             markDone.setFocusTraversable(false);
             markDone.setStyle("-fx-text-fill: -color-accent-emphasis;");
             markDone.setOnAction(event -> {
@@ -295,7 +304,7 @@ public class NotificationsController {
                     notificacaoService.marcarComoConcluida(item.id);
                     loadNotifications();
                 } catch (Exception e) {
-                    toastService.showError("Erro", "Erro ao marcar como feita: " + e.getMessage());
+                    toastService.showError(i18nService.translate("common.error"), i18nService.translate("notifications.markDoneError") + ": " + e.getMessage());
                 }
             });
             meta.getChildren().add(markDone);

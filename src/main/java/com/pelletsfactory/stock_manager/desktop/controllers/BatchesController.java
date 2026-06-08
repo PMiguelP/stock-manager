@@ -211,14 +211,13 @@ public class BatchesController {
             LotePelletResponseDTO d = lotePelletService.buscarPorId(lote.id());
             navigationService.showModal(criarDrawerDetalhes(d));
         } catch (Exception e) {
-            mostrarErro("Erro ao obter detalhes: " + e.getMessage());
+            mostrarErro(i18nService.translate("common.detailsLoadError") + ": " + e.getMessage());
         }
     }
 
     private VBox criarDrawerDetalhes(LotePelletResponseDTO d) {
         VBox root = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader(i18nService.translate("batches.detailsTitle") != null
-                ? i18nService.translate("batches.detailsTitle") : "Detalhes do Lote", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("batches.detailsTitle"), navigationService::hideModal);
 
         // Edit fields (pre-populated, disabled initially)
         TextField txtCodigo = new TextField(d.codigoLote() != null ? d.codigoLote() : "");
@@ -232,7 +231,7 @@ public class BatchesController {
         formValidationService.attachTextAutoClear(txtQtd, lblErroQtd);
 
         TextField txtLoc = new TextField(d.localizacaoArmazem() != null ? d.localizacaoArmazem() : "");
-        txtLoc.setPromptText("opcional");
+        txtLoc.setPromptText(i18nService.translate("common.optional"));
         txtLoc.setDisable(true);
 
         Label lblErroGeral = new Label();
@@ -307,7 +306,7 @@ public class BatchesController {
                 paginaAtual = 0;
                 carregarLotes();
                 navigationService.hideModal();
-                mostrarSucesso(i18nService.translate("batches.updated") != null ? i18nService.translate("batches.updated") : "Lote atualizado!");
+                mostrarSucesso(i18nService.translate("batches.updated"));
             } catch (Exception ex) {
                 lblErroGeral.setText(ex.getMessage() != null ? ex.getMessage() : i18nService.translate("common.saveError"));
                 lblErroGeral.setVisible(true); lblErroGeral.setManaged(true);
@@ -340,11 +339,11 @@ public class BatchesController {
         VBox sec = new VBox(10);
         sec.setStyle("-fx-background-color:-color-bg-subtle;-fx-padding:16;-fx-background-radius:8;-fx-border-radius:8;");
 
-        Label titulo = new Label("Informação do Lote");
+        Label titulo = new Label(i18nService.translate("batches.batchInformation"));
         titulo.setStyle("-fx-font-weight:600;-fx-font-size:13px;-fx-text-fill:-color-fg-muted;");
 
-        HBox rowTipo = criarLinhaInfo("Tipo de Pellet", d.tipoPelletNome() != null ? d.tipoPelletNome() : "—");
-        HBox rowData = criarLinhaInfo("Data de Produção",
+        HBox rowTipo = criarLinhaInfo(i18nService.translate("batches.pelletType"), d.tipoPelletNome() != null ? d.tipoPelletNome() : "—");
+        HBox rowData = criarLinhaInfo(i18nService.translate("batches.productionDate"),
                 d.dataProducao() != null ? d.dataProducao().format(DT_FORMATTER) : "—");
 
         sec.getChildren().addAll(titulo, rowTipo, rowData);
@@ -374,7 +373,7 @@ public class BatchesController {
         cmbOrdem.setConverter(new StringConverter<>() {
             @Override public String toString(OrdemProducaoSimpleDTO o) {
                 if (o == null) return "";
-                return o.tipoPelletNome() + " — " + String.format("%.0f kg planeados", o.quantidadePlaneada())
+                return o.tipoPelletNome() + " — " + String.format(i18nService.translate("batches.plannedKg"), o.quantidadePlaneada())
                         + " [" + o.estado().name() + "]";
             }
             @Override public OrdemProducaoSimpleDTO fromString(String s) { return null; }
@@ -396,15 +395,15 @@ public class BatchesController {
         tipoPelletBox.getChildren().add(lblTipoPelletNome);
         campoTipoPellet.getChildren().addAll(lblTipoPelletLabel, tipoPelletBox);
 
-        txtCodigoLote = new TextField(); txtCodigoLote.setPromptText("Ex: LOT-2026-001");
+        txtCodigoLote = new TextField(); txtCodigoLote.setPromptText(i18nService.translate("batches.batchCodeExample"));
         lblErroCodigo = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCodigoLote, lblErroCodigo);
 
-        txtQuantidadeKg = new TextField(); txtQuantidadeKg.setPromptText("Ex: 1500.00");
+        txtQuantidadeKg = new TextField(); txtQuantidadeKg.setPromptText(i18nService.translate("batches.quantityExample"));
         lblErroQuantidade = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtQuantidadeKg, lblErroQuantidade);
 
-        txtLocalizacao = new TextField(); txtLocalizacao.setPromptText("Ex: Armazém A, Zona 3 (opcional)");
+        txtLocalizacao = new TextField(); txtLocalizacao.setPromptText(i18nService.translate("batches.locationExample"));
 
         VBox form = new VBox(20,
                 criarCampoFormulario(i18nService.translate("batches.productionOrder") + " *", cmbOrdem, lblErroOrdem),
@@ -435,7 +434,7 @@ public class BatchesController {
             selectedTipoPelletId = detalhes.tipoPelletId();
             lblTipoPelletNome.setText(detalhes.tipoPelletNome() != null ? detalhes.tipoPelletNome() : "—");
         } catch (Exception e) {
-            lblTipoPelletNome.setText("Erro ao carregar");
+            lblTipoPelletNome.setText(i18nService.translate("common.loadError"));
             selectedTipoPelletId = null;
         }
     }

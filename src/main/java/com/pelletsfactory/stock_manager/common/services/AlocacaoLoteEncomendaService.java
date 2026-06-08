@@ -85,10 +85,9 @@ public class AlocacaoLoteEncomendaService {
 
     @Transactional
     public List<ItemEncomendaPendenteAlocacaoDTO> listarItensPendentes(UUID tipoPelletId) {
-        Map<UUID, List<AlocacaoLoteEncomenda>> alocacoesPorItem = alocacaoRepo.findAllWithDetails().stream()
-                .collect(Collectors.groupingBy(alocacao -> alocacao.getItemEncomenda().getId()));
+        Map<UUID, Double> reservadoPorItem = reservedTotals(alocacaoRepo.sumQuantidadeReservadaGroupedByItem());
         return itemRepo.findAllocationCandidates(tipoPelletId, estadosEncomendaSemAlocacao()).stream()
-                .map(item -> toPendente(item, alocacoesPorItem.getOrDefault(item.getId(), List.of())))
+                .map(item -> toPendente(item, reservadoPorItem.getOrDefault(item.getId(), 0.0)))
                 .filter(item -> item.quantidadeEmFalta() > 0.000001)
                 .sorted(Comparator.comparing(item -> item.encomendaId().toString()))
                 .toList();
@@ -96,11 +95,7 @@ public class AlocacaoLoteEncomendaService {
 
     @Transactional
     public List<LoteDisponivelAlocacaoDTO> listarLotesDisponiveis(UUID tipoPelletId) {
-        Map<UUID, Double> reservadoPorLote = alocacaoRepo.findAllWithDetails().stream()
-                .collect(Collectors.groupingBy(
-                        alocacao -> alocacao.getLote().getId(),
-                        Collectors.summingDouble(AlocacaoLoteEncomenda::getQuantidadeReservada)
-                ));
+        Map<UUID, Double> reservadoPorLote = reservedTotals(alocacaoRepo.sumQuantidadeReservadaGroupedByLote());
         return loteRepo.findAllocationCandidates(tipoPelletId).stream()
                 .map(lote -> toDisponivel(lote, reservadoPorLote.getOrDefault(lote.getId(), 0.0)))
                 .filter(lote -> lote.quantidadeDisponivel() > 0.000001)
@@ -170,13 +165,10 @@ public class AlocacaoLoteEncomendaService {
 
     private ItemEncomendaPendenteAlocacaoDTO toPendente(
             ItemEncomendaCliente item,
-            List<AlocacaoLoteEncomenda> alocacoesDoItem) {
-        List<AlocacaoLoteEncomendaResponseDTO> alocacoes = alocacoesDoItem.stream()
+            double alocado) {
+        List<AlocacaoLoteEncomendaResponseDTO> alocacoes = alocacaoRepo.findByItemEncomendaId(item.getId()).stream()
                 .map(this::toResponse)
                 .toList();
-        double alocado = alocacoes.stream()
-                .mapToDouble(AlocacaoLoteEncomendaResponseDTO::quantidadeReservada)
-                .sum();
         return new ItemEncomendaPendenteAlocacaoDTO(
                 item.getId(),
                 item.getEncomenda().getId(),
@@ -189,6 +181,13 @@ public class AlocacaoLoteEncomendaService {
                 item.getQuantidadeKg() - alocado,
                 alocacoes
         );
+    }
+
+    private Map<UUID, Double> reservedTotals(List<Object[]> rows) {
+        return rows.stream().collect(Collectors.toMap(
+                row -> (UUID) row[0],
+                row -> ((Number) row[1]).doubleValue()
+        ));
     }
 
     private LoteDisponivelAlocacaoDTO toDisponivel(LotePellet lote, double reservado) {

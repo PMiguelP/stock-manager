@@ -318,7 +318,7 @@ public class SuppliersController {
         lblErroNifAdicionar = formValidationService.createErrorLabel();
         txtContactoAdicionar = new TextField(); txtContactoAdicionar.setPromptText(i18nService.translate("suppliers.contactPlaceholder"));
         lblErroContactoAdicionar = formValidationService.createErrorLabel();
-        txtEmailAdicionar = new TextField(); txtEmailAdicionar.setPromptText("email@exemplo.com");
+        txtEmailAdicionar = new TextField(); txtEmailAdicionar.setPromptText(i18nService.translate("common.emailPlaceholder"));
         lblErroEmailAdicionar = formValidationService.createErrorLabel();
 
         formValidationService.attachTextAutoClear(txtNomeAdicionar, lblErroNomeAdicionar);

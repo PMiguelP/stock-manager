@@ -128,7 +128,7 @@ public class HeaderController {
             header.setAlignment(Pos.CENTER_LEFT);
             header.setPadding(new Insets(30, 30, 10, 30));
 
-            Label title = new Label("Notifications");
+            Label title = new Label(i18nService.translate("notifications.title"));
             title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
             Region spacer = new Region();
@@ -149,13 +149,13 @@ public class HeaderController {
             subHeader.setPadding(new Insets(0, 30, 20, 30));
 
             long unreadCount = notificacaoService.contarNotLidas();
-            Label subTitle = new Label(unreadCount + " unread notifications");
+            Label subTitle = new Label(String.format(i18nService.translate("notifications.unreadCount"), unreadCount));
             subTitle.setStyle("-fx-text-fill: -color-fg-muted;");
 
             Region spacer2 = new Region();
             HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-            Hyperlink markRead = new Hyperlink("Mark all as read");
+            Hyperlink markRead = new Hyperlink(i18nService.translate("notifications.markAllRead"));
             markRead.setStyle("-fx-text-fill: -color-accent-fg; -fx-underline: false; -fx-font-weight: bold;");
             markRead.setDisable(unreadCount == 0);
 
@@ -186,9 +186,9 @@ public class HeaderController {
                 emptyState.setAlignment(Pos.CENTER);
                 emptyState.setPadding(new Insets(40));
                 emptyState.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 12; -fx-border-color: -color-border-muted; -fx-border-radius: 12;");
-                Label emptyTitle = new Label("Sem notificações");
+                Label emptyTitle = new Label(i18nService.translate("notifications.empty"));
                 emptyTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 15px;");
-                Label emptyDesc = new Label("Quando houver novidades, aparecem aqui.");
+                Label emptyDesc = new Label(i18nService.translate("notifications.emptyDesc"));
                 emptyDesc.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 13px;");
                 emptyState.getChildren().addAll(emptyTitle, emptyDesc);
                 listContainer.getChildren().add(emptyState);

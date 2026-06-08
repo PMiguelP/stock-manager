@@ -6,6 +6,7 @@ import com.pelletsfactory.stock_manager.common.services.CompraService;
 import com.pelletsfactory.stock_manager.common.services.FornecedorService;
 import com.pelletsfactory.stock_manager.common.services.MoedaService;
 import com.pelletsfactory.stock_manager.common.services.StockService;
+import com.pelletsfactory.stock_manager.common.utils.CalculationUtils;
 import com.pelletsfactory.stock_manager.desktop.services.NavigationService;
 import com.pelletsfactory.stock_manager.desktop.services.I18nService;
 import com.pelletsfactory.stock_manager.desktop.services.PurchaseOrderPdfService;
@@ -71,6 +72,7 @@ public class PurchaseOrdersController {
     private final ObservableList<EncomendaFornecedorSimpleDTO> encomendas = FXCollections.observableArrayList();
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final double DEFAULT_VAT_RATE = 23.0;
 
     private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(300));
     private boolean updatingSearch;
@@ -111,12 +113,7 @@ public class PurchaseOrdersController {
         cmbFiltroStatus.setConverter(new StringConverter<>() {
             @Override public String toString(EstadoEncomendaFornecedor e) {
                 if (e == null) return "";
-                return switch (e) {
-                    case RASCUNHO -> "Draft";
-                    case EFETIVA  -> "Confirmed";
-                    case RECEBIDA -> "Received";
-                    case ANULADA  -> "Cancelled";
-                };
+                return estadoLabel(e);
             }
             @Override public EstadoEncomendaFornecedor fromString(String s) { return null; }
         });
@@ -274,9 +271,7 @@ public class PurchaseOrdersController {
     @FXML
     private void handleAbrirModal() {
         if (itemsContainerRef != null) itemsContainerRef.getChildren().clear();
-        if (lblCriarSubtotal != null)   lblCriarSubtotal.setText("Subtotal: €0.00");
-        if (lblCriarVat != null)        lblCriarVat.setText("VAT (23%): €0.00");
-        if (lblCriarGrandTotal != null) lblCriarGrandTotal.setText("Grand Total: €0.00");
+        atualizarResumoCriacao(0, 0, 0);
         if (cmbFornecedorCriar != null) cmbFornecedorCriar.setValue(null);
         itemRows.clear();
         navigationService.showModal(drawerCriar);
@@ -297,12 +292,12 @@ public class PurchaseOrdersController {
                 i18nService.translate("purchaseOrders.detailsTitle"), navigationService::hideModal);
 
         // ── Secção view (read-only) ───────────────────────────────────────────
-        VBox secInfoView = criarSecao("Order Information");
+        VBox secInfoView = criarSecao(i18nService.translate("purchaseOrders.orderInformation"));
         secInfoView.getChildren().addAll(
-                criarLinhaDetalhe("PO Number",  String.format("PO-%03d", poSeq), true),
-                criarLinhaDetalhe("Supplier",   valorOuTraco(d.fornecedorNome()), false),
-                criarLinhaDetalhe("Order Date", d.data() != null ? d.data().format(DATE_FMT) : "—", false),
-                criarLinhaDetalheComBadge("Status", criarBadgeEstado(d.estado()))
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.poNumber"), String.format("PO-%03d", poSeq), true),
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.supplier"), valorOuTraco(d.fornecedorNome()), false),
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.orderDate"), d.data() != null ? d.data().format(DATE_FMT) : "—", false),
+                criarLinhaDetalheComBadge(i18nService.translate("purchaseOrders.status"), criarBadgeEstado(d.estado()))
         );
 
         // ── Secção edit (editável, RASCUNHO) ─────────────────────────────────
@@ -324,10 +319,7 @@ public class PurchaseOrdersController {
         cmbStatusEdit.setConverter(new StringConverter<>() {
             @Override public String toString(EstadoEncomendaFornecedor e) {
                 if (e == null) return "";
-                return switch (e) {
-                    case RASCUNHO -> "Draft"; case EFETIVA -> "Confirmed";
-                    case RECEBIDA -> "Received"; case ANULADA -> "Cancelled";
-                };
+                return estadoLabel(e);
             }
             @Override public EstadoEncomendaFornecedor fromString(String s) { return null; }
         });
@@ -340,19 +332,19 @@ public class PurchaseOrdersController {
         lblErroEdit.setMaxWidth(Double.MAX_VALUE);
         lblErroEdit.setVisible(false); lblErroEdit.setManaged(false);
 
-        VBox secInfoEdit = criarSecao("Order Information");
+        VBox secInfoEdit = criarSecao(i18nService.translate("purchaseOrders.orderInformation"));
         secInfoEdit.getChildren().addAll(
-                criarLinhaDetalhe("PO Number", String.format("PO-%03d", poSeq), true),
-                criarCampoFormulario("Supplier", cmbFornecedorEdit),
-                criarCampoFormulario("Order Date (dd/MM/yyyy)", txtDataEdit),
-                criarCampoFormulario("Status", cmbStatusEdit),
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.poNumber"), String.format("PO-%03d", poSeq), true),
+                criarCampoFormulario(i18nService.translate("purchaseOrders.supplier"), cmbFornecedorEdit),
+                criarCampoFormulario(i18nService.translate("purchaseOrders.orderDateWithFormat"), txtDataEdit),
+                criarCampoFormulario(i18nService.translate("purchaseOrders.status"), cmbStatusEdit),
                 lblErroEdit
         );
         secInfoEdit.setVisible(false);
         secInfoEdit.setManaged(false);
 
         // ── Itens (sempre read-only) ──────────────────────────────────────────
-        VBox secItems = criarSecao("Order Items");
+        VBox secItems = criarSecao(i18nService.translate("purchaseOrders.orderItems"));
         if (d.itens() != null && !d.itens().isEmpty()) {
             for (ItemEncomendaFornecedorResponseDTO item : d.itens()) {
                 double qty   = item.quantidade()       != null ? item.quantidade()       : 0;
@@ -367,11 +359,11 @@ public class PurchaseOrdersController {
             secItems.getChildren().add(no);
         }
 
-        VBox secTotal = criarSecao("Order Total");
+        VBox secTotal = criarSecao(i18nService.translate("purchaseOrders.orderTotal"));
         secTotal.getChildren().addAll(
-                criarLinhaDetalhe("Subtotal",    d.totalLiquido() != null ? String.format("€%.2f", d.totalLiquido()) : "—", false),
-                criarLinhaDetalhe("VAT (23%)",   d.totalIva()     != null ? String.format("€%.2f", d.totalIva())     : "—", false),
-                criarLinhaDetalhe("Grand Total", d.totalFinal()   != null ? String.format("€%.2f", d.totalFinal())   : "—", true)
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.subtotal"), d.totalLiquido() != null ? formatMoney(d.totalLiquido()) : "—", false),
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.vat"), d.totalIva() != null ? formatMoney(d.totalIva()) : "—", false),
+                criarLinhaDetalhe(i18nService.translate("purchaseOrders.grandTotal"), d.totalFinal() != null ? formatMoney(d.totalFinal()) : "—", true)
         );
 
         VBox content = new VBox(20, secInfoView, secInfoEdit, secItems, secTotal);
@@ -419,7 +411,7 @@ public class PurchaseOrdersController {
                 FornecedorSimpleDTO selectedF = cmbFornecedorEdit.getValue();
                 EstadoEncomendaFornecedor selectedStatus = cmbStatusEdit.getValue();
                 if (selectedF == null) {
-                    lblErroEdit.setText("Selecione um fornecedor.");
+                    lblErroEdit.setText(i18nService.translate("purchaseOrders.supplierRequired"));
                     lblErroEdit.setVisible(true); lblErroEdit.setManaged(true); return;
                 }
                 LocalDate selectedDate = null;
@@ -431,7 +423,7 @@ public class PurchaseOrdersController {
                         if (selectedStatus == EstadoEncomendaFornecedor.EFETIVA) {
                             compraService.confirmarEncomenda(d.id());
                         } else if (selectedStatus == EstadoEncomendaFornecedor.ANULADA) {
-                            compraService.anumarEncomenda(d.id());
+                            compraService.anularEncomenda(d.id());
                         }
                     }
                     toastService.showSuccess(i18nService.translate("common.success"), i18nService.translate("purchaseOrders.statusUpdated"));
@@ -448,14 +440,14 @@ public class PurchaseOrdersController {
                     i18nService.translate("purchaseOrders.deleted")));
 
         } else if (estado == EstadoEncomendaFornecedor.EFETIVA) {
-            Button btnAnular   = UiFactory.drawerDangerAction("Anular", "mdi2c-close-circle-outline");
-            Button btnGerarPDF = UiFactory.drawerSecondaryAction("Gerar PDF", "mdi2f-file-pdf-box");
-            Button btnReceber  = UiFactory.drawerPrimaryAction("Marcar como Recebida", "mdi2c-check-circle-outline");
+            Button btnAnular = UiFactory.drawerDangerAction(i18nService.translate("purchaseOrders.cancel"), "mdi2c-close-circle-outline");
+            Button btnGerarPDF = UiFactory.drawerSecondaryAction(i18nService.translate("purchaseOrders.generatePdf"), "mdi2f-file-pdf-box");
+            Button btnReceber = UiFactory.drawerPrimaryAction(i18nService.translate("purchaseOrders.markReceived"), "mdi2c-check-circle-outline");
 
             footer = UiFactory.drawerActionFooter(btnAnular, btnGerarPDF, btnReceber);
 
             btnAnular.setOnAction(e -> handleConfirmarApagar(d.id(), String.format("PO-%03d", poSeq),
-                    () -> compraService.anumarEncomenda(d.id()),
+                    () -> compraService.anularEncomenda(d.id()),
                     i18nService.translate("purchaseOrders.statusUpdated")));
 
             btnGerarPDF.setOnAction(e -> handleGerarPDF(d, poSeq));
@@ -472,6 +464,11 @@ public class PurchaseOrdersController {
             });
 
         } else if (estado == EstadoEncomendaFornecedor.RECEBIDA) {
+            Button btnGerarPDF = UiFactory.drawerSecondaryAction(i18nService.translate("purchaseOrders.generatePdf"), "mdi2f-file-pdf-box");
+            footer = UiFactory.drawerActionFooter(null, btnGerarPDF);
+            btnGerarPDF.setOnAction(e -> handleGerarPDF(d, poSeq));
+
+        } else if (estado == EstadoEncomendaFornecedor.ANULADA) {
             Button btnApagar = UiFactory.drawerDangerAction(i18nService.translate("common.delete"), "mdi2d-delete-outline");
             footer = UiFactory.drawerActionFooter(btnApagar);
             btnApagar.setOnAction(e -> handleConfirmarApagar(d.id(), String.format("PO-%03d", poSeq),
@@ -505,14 +502,15 @@ public class PurchaseOrdersController {
 
     private void handleGerarPDF(EncomendaFornecedorDetailsDTO d, int poSeq) {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Guardar PDF");
+        chooser.setTitle(i18nService.translate("purchaseOrders.savePdf"));
         chooser.setInitialFileName(String.format("PO-%03d.pdf", poSeq));
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
         File file = chooser.showSaveDialog(null);
         if (file == null) return;
         try (FileOutputStream fos = new FileOutputStream(file)) {
             pdfService.generate(d, poSeq, fos);
-            toastService.showSuccess(i18nService.translate("common.success"), "PDF gerado: " + file.getName());
+            toastService.showSuccess(i18nService.translate("common.success"),
+                    i18nService.translate("purchaseOrders.pdfGenerated") + ": " + file.getName());
             if (java.awt.Desktop.isDesktopSupported()) {
                 java.awt.Desktop.getDesktop().open(file);
             }
@@ -525,61 +523,48 @@ public class PurchaseOrdersController {
 
     private void configurarDrawerCriar() {
         drawerCriar = UiFactory.drawerRoot(550);
-        HBox header = UiFactory.drawerHeader("Create Purchase Order", navigationService::hideModal);
+        HBox header = UiFactory.drawerHeader(i18nService.translate("purchaseOrders.createTitle"), navigationService::hideModal);
 
         VBox form = new VBox(20);
         form.setPadding(new Insets(30));
 
         cmbFornecedorCriar = new ComboBox<>(FXCollections.observableArrayList(fornecedores));
         cmbFornecedorCriar.setMaxWidth(Double.MAX_VALUE);
-        cmbFornecedorCriar.setPromptText("Select supplier...");
+        cmbFornecedorCriar.setPromptText(i18nService.translate("purchaseOrders.selectSupplier"));
         cmbFornecedorCriar.setConverter(new StringConverter<>() {
             @Override public String toString(FornecedorSimpleDTO f) { return f != null ? f.nome() : ""; }
             @Override public FornecedorSimpleDTO fromString(String s) { return null; }
         });
 
         itemsContainerRef = new VBox(10);
-        Button btnAddItem = new Button("+ Add Item");
-        btnAddItem.getStyleClass().add("button-outlined");
+        Button btnAddItem = UiFactory.drawerSecondaryAction(i18nService.translate("purchaseOrders.addItem"), "mdi2p-plus-circle-outline");
         btnAddItem.setOnAction(e -> adicionarItemRow());
 
-        Label itemsLabel = new Label("Order Items");
+        Label itemsLabel = new Label(i18nService.translate("purchaseOrders.orderItems"));
         itemsLabel.getStyleClass().add("text-muted");
         itemsLabel.setStyle("-fx-font-weight: 600;");
         VBox itemsSection = new VBox(10, itemsLabel, itemsContainerRef, btnAddItem);
 
-        lblCriarSubtotal   = new Label("Subtotal: €0.00");
-        lblCriarVat        = new Label("VAT (23%): €0.00");
-        lblCriarGrandTotal = new Label("Grand Total: €0.00");
+        lblCriarSubtotal = new Label();
+        lblCriarVat = new Label();
+        lblCriarGrandTotal = new Label();
         lblCriarGrandTotal.setStyle("-fx-font-weight: 700; -fx-font-size: 14px;");
         VBox summary = new VBox(8, lblCriarSubtotal, lblCriarVat, lblCriarGrandTotal);
         summary.setPadding(new Insets(16));
         summary.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8;");
 
-        form.getChildren().addAll(criarCampoFormulario("Supplier", cmbFornecedorCriar), itemsSection, summary);
+        atualizarResumoCriacao(0, 0, 0);
+        form.getChildren().addAll(criarCampoFormulario(i18nService.translate("purchaseOrders.supplier"), cmbFornecedorCriar), itemsSection, summary);
 
         ScrollPane scroll = UiFactory.transparentScroll(form);
 
-        HBox footer = new HBox(12);
-        footer.setPadding(new Insets(25));
-        footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-border-color: -color-border-muted; -fx-border-width: 1 0 0 0;");
-
-        Button btnDraft = new Button("Save as Draft");
-        btnDraft.getStyleClass().add("button-outlined");
-        btnDraft.setPrefHeight(44);
-        btnDraft.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnDraft, Priority.ALWAYS);
+        Button btnDraft = UiFactory.drawerSecondaryAction(i18nService.translate("purchaseOrders.saveDraft"), "mdi2c-content-save-outline");
         btnDraft.setOnAction(e -> handleGuardarRascunho());
 
-        Button btnConfirm = new Button("Confirm Order");
-        btnConfirm.getStyleClass().add("accent");
-        btnConfirm.setPrefHeight(44);
-        btnConfirm.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnConfirm, Priority.ALWAYS);
+        Button btnConfirm = UiFactory.drawerPrimaryAction(i18nService.translate("purchaseOrders.confirmOrder"), "mdi2c-check-circle-outline");
         btnConfirm.setOnAction(e -> handleConfirmarEncomenda());
 
-        footer.getChildren().addAll(btnDraft, btnConfirm);
+        HBox footer = UiFactory.drawerActionFooter(null, btnDraft, btnConfirm);
         drawerCriar.getChildren().addAll(header, scroll, footer);
     }
 
@@ -596,11 +581,9 @@ public class PurchaseOrdersController {
 
     private void recalcularTotais() {
         double subtotal = itemRows.stream().mapToDouble(ItemRow::getTotal).sum();
-        double vat      = subtotal * 0.23;
-        double grand    = subtotal + vat;
-        lblCriarSubtotal.setText(String.format("Subtotal: €%.2f", subtotal));
-        lblCriarVat.setText(String.format("VAT (23%): €%.2f", vat));
-        lblCriarGrandTotal.setText(String.format("Grand Total: €%.2f", grand));
+        double vat = CalculationUtils.vat(subtotal, DEFAULT_VAT_RATE);
+        double grand = CalculationUtils.total(subtotal, vat);
+        atualizarResumoCriacao(subtotal, vat, grand);
     }
 
     private void handleGuardarRascunho() {
@@ -658,7 +641,7 @@ public class PurchaseOrdersController {
         FornecedorSimpleDTO fornecedor = cmbFornecedorCriar.getValue();
         EncomendaFornecedorResponseDTO draft = compraService.gerarEncomendaRascunho(fornecedor.id(), moedaPadraoId);
         for (ItemRow row : itemRows) {
-            compraService.adicionarItemEncomenda(draft.id(), row.getMaterial().id(), row.getParsedQty(), row.getParsedPrice(), 23.0);
+            compraService.adicionarItemEncomenda(draft.id(), row.getMaterial().id(), row.getParsedQty(), row.getParsedPrice(), DEFAULT_VAT_RATE);
         }
         return draft.id();
     }
@@ -669,24 +652,28 @@ public class PurchaseOrdersController {
         if (estado == null) return new HBox();
         String color, icon, label;
         switch (estado) {
-            case RASCUNHO -> { color = "#6b7280"; icon = "mdi2c-circle-outline";       label = "DRAFT";     }
-            case EFETIVA  -> { color = "#3b82f6"; icon = "mdi2c-check-circle-outline"; label = "CONFIRMED"; }
-            case RECEBIDA -> { color = "#22c55e"; icon = "mdi2c-check-circle";         label = "RECEIVED";  }
-            case ANULADA  -> { color = "#ef4444"; icon = "mdi2c-close-circle";         label = "CANCELLED"; }
-            default       -> { color = "#6b7280"; icon = "mdi2c-circle-outline";       label = estado.getDisplayName().toUpperCase(); }
+            case RASCUNHO -> { color = "#6b7280"; icon = "mdi2c-circle-outline"; }
+            case EFETIVA -> { color = "#3b82f6"; icon = "mdi2c-check-circle-outline"; }
+            case RECEBIDA -> { color = "#22c55e"; icon = "mdi2c-check-circle"; }
+            case ANULADA -> { color = "#ef4444"; icon = "mdi2c-close-circle"; }
+            default -> { color = "#6b7280"; icon = "mdi2c-circle-outline"; }
         }
-        HBox b = new HBox(6);
-        b.setAlignment(Pos.CENTER_LEFT);
-        b.setPadding(new Insets(4, 10, 4, 10));
-        b.setStyle(String.format(
-                "-fx-background-color: %s22; -fx-border-color: %s; -fx-border-radius: 6; -fx-background-radius: 6; -fx-border-width: 1.5;",
-                color.replace("#", ""), color));
-        FontIcon ic = new FontIcon(icon + ":14");
-        ic.setIconColor(javafx.scene.paint.Color.web(color));
-        Label lbl = new Label(label);
-        lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: 600; -fx-font-size: 12px;");
-        b.getChildren().addAll(ic, lbl);
-        return b;
+        return UiFactory.statusBadge(estadoLabel(estado), icon, color);
+    }
+
+    private String estadoLabel(EstadoEncomendaFornecedor estado) {
+        if (estado == null) return "";
+        return i18nService.translate("purchaseOrders.status." + estado.name());
+    }
+
+    private void atualizarResumoCriacao(double subtotal, double vat, double grand) {
+        if (lblCriarSubtotal != null) lblCriarSubtotal.setText(i18nService.translate("purchaseOrders.subtotal") + ": " + formatMoney(subtotal));
+        if (lblCriarVat != null) lblCriarVat.setText(i18nService.translate("purchaseOrders.vat") + ": " + formatMoney(vat));
+        if (lblCriarGrandTotal != null) lblCriarGrandTotal.setText(i18nService.translate("purchaseOrders.grandTotal") + ": " + formatMoney(grand));
+    }
+
+    private String formatMoney(double value) {
+        return String.format("€%.2f", CalculationUtils.money(value));
     }
 
     private VBox criarSecao(String titulo) {
@@ -728,7 +715,7 @@ public class PurchaseOrdersController {
 
     // ── ItemRow ───────────────────────────────────────────────────────────────
 
-    private static class ItemRow {
+    private class ItemRow {
         private final ComboBox<MateriaPrimaSimpleDTO> cmbMaterial;
         private final TextField txtQty;
         private final TextField txtPrice;
@@ -738,25 +725,30 @@ public class PurchaseOrdersController {
         ItemRow(List<MateriaPrimaSimpleDTO> materiais, Runnable onTotalChanged) {
             cmbMaterial = new ComboBox<>(FXCollections.observableArrayList(materiais));
             cmbMaterial.setMaxWidth(Double.MAX_VALUE);
-            cmbMaterial.setPromptText("Select raw material...");
+            cmbMaterial.setPromptText(i18nService.translate("purchaseOrders.selectRawMaterial"));
             cmbMaterial.setConverter(new StringConverter<>() {
                 @Override public String toString(MateriaPrimaSimpleDTO m) { return m != null ? m.nome() : ""; }
                 @Override public MateriaPrimaSimpleDTO fromString(String s) { return null; }
             });
             txtQty   = new TextField("0");
             txtPrice = new TextField("0.00");
-            lblTotal = new Label("Total: €0.00");
+            lblTotal = new Label(totalLabel(0));
             lblTotal.setStyle("-fx-font-weight: 600;");
             txtQty.textProperty().addListener((obs, o, n)   -> { recalc(); onTotalChanged.run(); });
             txtPrice.textProperty().addListener((obs, o, n) -> { recalc(); onTotalChanged.run(); });
         }
 
-        private void recalc() { lblTotal.setText(String.format("Total: €%.2f", getTotal())); }
+        private void recalc() {
+            lblTotal.setText(totalLabel(getTotal()));
+        }
 
         VBox buildCard(Runnable onRemove) {
-            Label matLabel   = new Label("Raw Material");   matLabel.getStyleClass().add("text-muted");
-            Label qtyLabel   = new Label("Quantity (kg)");  qtyLabel.getStyleClass().add("text-muted");
-            Label priceLabel = new Label("Unit Price (€)"); priceLabel.getStyleClass().add("text-muted");
+            Label matLabel = new Label(i18nService.translate("purchaseOrders.rawMaterial"));
+            matLabel.getStyleClass().add("text-muted");
+            Label qtyLabel = new Label(i18nService.translate("purchaseOrders.quantityKg"));
+            qtyLabel.getStyleClass().add("text-muted");
+            Label priceLabel = new Label(i18nService.translate("purchaseOrders.unitPrice"));
+            priceLabel.getStyleClass().add("text-muted");
 
             VBox qtyField   = new VBox(6, qtyLabel,   txtQty);
             VBox priceField = new VBox(6, priceLabel, txtPrice);
@@ -785,5 +777,9 @@ public class PurchaseOrdersController {
         double getParsedQty()   { try { return Double.parseDouble(txtQty.getText().replace(",", ".")); }   catch (Exception e) { return 0; } }
         double getParsedPrice() { try { return Double.parseDouble(txtPrice.getText().replace(",", ".")); } catch (Exception e) { return 0; } }
         double getTotal()       { double t = getParsedQty() * getParsedPrice(); return Double.isFinite(t) ? t : 0; }
+
+        private String totalLabel(double value) {
+            return i18nService.translate("purchaseOrders.itemTotal") + ": " + formatMoney(value);
+        }
     }
 }

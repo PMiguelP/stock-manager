@@ -149,7 +149,7 @@ public class ClientsController {
         Label lblErroNome = formValidationService.createErrorLabel();
         TextField txtNif = new TextField(); txtNif.setPromptText(i18nService.translate("common.nifPlaceholder"));
         Label lblErroNif = formValidationService.createErrorLabel();
-        TextField txtEmail = new TextField(); txtEmail.setPromptText("Email");
+        TextField txtEmail = new TextField(); txtEmail.setPromptText(i18nService.translate("common.emailPlaceholder"));
         Label lblErroEmail = formValidationService.createErrorLabel();
         TextField txtContacto = new TextField(); txtContacto.setPromptText(i18nService.translate("clients.contactPlaceholder"));
         Label lblErroContacto = formValidationService.createErrorLabel();

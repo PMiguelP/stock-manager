@@ -191,7 +191,7 @@ public class PelletTypesController {
             pagination.attachTo(vboxContainer);
             pagination.update(page);
         } catch (Exception e) {
-            toastService.showError(i18nService.translate("common.error"), "Erro ao carregar tipos de pellet: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("pelletTypes.loadError") + ": " + e.getMessage());
         }
     }
 
@@ -202,7 +202,7 @@ public class PelletTypesController {
         String color = definida ? "#22c55e" : "#f59e0b";
         b.setStyle(String.format("-fx-background-radius:6;-fx-border-radius:6;-fx-border-width:1.5;-fx-background-color:%s20;-fx-border-color:%s;",
                 color.replace("#", ""), color));
-        Label l = new Label(definida ? "Defined" : "Missing");
+        Label l = new Label(definida ? i18nService.translate("pelletTypes.formulaDefined") : i18nService.translate("pelletTypes.formulaMissing"));
         l.setStyle("-fx-text-fill:" + color + ";-fx-font-weight:500;");
         b.getChildren().add(l);
         return b;
@@ -213,7 +213,7 @@ public class PelletTypesController {
             TipoPelletDetailsDTO d = stockService.obterDetalhesTipoPellet(row.id());
             navigationService.showModal(criarDrawerEdicao(d));
         } catch (Exception e) {
-            toastService.showError(i18nService.translate("common.error"), "Erro ao obter detalhes: " + e.getMessage());
+            toastService.showError(i18nService.translate("common.error"), i18nService.translate("common.detailsLoadError") + ": " + e.getMessage());
         }
     }
 
@@ -392,15 +392,15 @@ public class PelletTypesController {
         drawerCriar = UiFactory.drawerRoot(550);
         HBox header = UiFactory.drawerHeader(i18nService.translate("pelletTypes.newTitle"), navigationService::hideModal);
 
-        txtNomeCriar = new TextField(); txtNomeCriar.setPromptText("ex: Pellet Industrial 6mm");
+        txtNomeCriar = new TextField(); txtNomeCriar.setPromptText(i18nService.translate("pelletTypes.nameExample"));
         lblErroNomeCriar = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtNomeCriar, lblErroNomeCriar);
 
-        txtDiametroCriar = new TextField(); txtDiametroCriar.setPromptText("ex: 6.0");
+        txtDiametroCriar = new TextField(); txtDiametroCriar.setPromptText(i18nService.translate("pelletTypes.diameterExample"));
         lblErroDiametroCriar = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtDiametroCriar, lblErroDiametroCriar);
 
-        txtCalorificoCriar = new TextField(); txtCalorificoCriar.setPromptText("ex: 4800");
+        txtCalorificoCriar = new TextField(); txtCalorificoCriar.setPromptText(i18nService.translate("pelletTypes.calorificExample"));
         lblErroCalorificoCriar = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCalorificoCriar, lblErroCalorificoCriar);
 
@@ -412,7 +412,7 @@ public class PelletTypesController {
         lblErroStockMinimoCriar = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtStockMinimoCriar, lblErroStockMinimoCriar);
 
-        txtCustoCriar = new TextField(); txtCustoCriar.setPromptText("ex: 0.25");
+        txtCustoCriar = new TextField(); txtCustoCriar.setPromptText(i18nService.translate("pelletTypes.costExample"));
         lblErroCustoCriar = formValidationService.createErrorLabel();
         formValidationService.attachTextAutoClear(txtCustoCriar, lblErroCustoCriar);
 
