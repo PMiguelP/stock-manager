@@ -128,7 +128,7 @@ public class StockController {
         });
 
         for (TableColumn<TipoPelletSimpleDTO, ?> col : java.util.List.of(colNome, colDiametro, colStockAtual, colStockMin)) {
-            col.setCellFactory(column -> new TableCell<>() {
+            ((TableColumn<TipoPelletSimpleDTO, Object>) col).setCellFactory(column -> new TableCell<>() {
                 @Override
                 protected void updateItem(Object item, boolean empty) {
                     super.updateItem(item, empty);
